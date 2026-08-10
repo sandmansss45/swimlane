@@ -1,0 +1,68 @@
+.shapeNode {
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px 12px;
+  border: 1.5px solid #000;
+  background: #fff;
+  min-width: 120px;
+  max-width: 190px;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+}
+
+.selected {
+  box-shadow: 0 0 0 3px #ffb400;
+}
+
+// Ordinary process steps = blue rounded rectangles
+.process {
+  border-radius: 8px;
+  background: #1f4fa3;
+  color: #fff;
+  font-weight: 600;
+}
+
+// Decision-type = orange diamonds
+.decision {
+  width: 150px;
+  height: 100px;
+  min-width: 150px;
+  max-width: 150px;
+  transform: rotate(45deg);
+  border-radius: 4px;
+  background: #e3792a;
+  color: #fff;
+  font-weight: 600;
+
+  .label {
+    transform: rotate(-45deg);
+    width: 90px;
+    display: inline-block;
+  }
+}
+
+// Approval-type = green circles
+.approval {
+  width: 140px;
+  height: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  border-radius: 50%;
+  background: #146c43;
+  color: #fff;
+  font-weight: 600;
+
+  &:hover {
+    background: #0f5132;
+  }
+}
+
+.label {
+  line-height: 1.3;
+}

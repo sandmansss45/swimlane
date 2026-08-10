@@ -1,0 +1,39 @@
+.swimlaneStudio {
+  padding: 1em 24px;
+  color: #323130;
+  // NOTE: a 100vw/negative-margin "viewport breakout" was tried here to
+  // escape the workbench's narrow default column, but on a real page the
+  // page canvas clips overflow at a different ancestor, so the shifted
+  // content just disappeared (rendered outside the visible section,
+  // clipped to nothing). Width is controlled by the page section instead -
+  // put this web part in a "One column full width" section for maximum
+  // room; this component just fills whatever width its container gives it.
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.title {
+  margin-top: 0;
+}
+
+.addStepForm {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #d8e2ec;
+  border-radius: 8px;
+  max-width: 420px;
+
+  > * {
+    margin-bottom: 10px;
+  }
+}
+
+.riskSection {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #d8e2ec;
+
+  ul {
+    padding-left: 18px;
+  }
+}
