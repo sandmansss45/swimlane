@@ -44,7 +44,8 @@ export class GraphDataService implements IDataService {
     );
     const match = lists.find(l => l.displayName === listTitle);
     if (!match) {
-      throw new Error(`No list titled "${listTitle}" found on the site - check the real list display name.`);
+      const available = lists.map(l => l.displayName).join(', ') || '(no lists found - check Sites.ReadWrite.All was actually granted)';
+      throw new Error(`No list titled "${listTitle}" found on the site. Real lists on this site: ${available}`);
     }
     this._listIdCache.set(listTitle, match.id);
     return match.id;
