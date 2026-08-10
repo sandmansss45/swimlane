@@ -1,17 +1,13 @@
 import { Configuration } from '@azure/msal-browser';
 
-// TODO - confirm the real Entra Application (client) ID once the app
-// registration is created (see AUTH_SETUP.md at the repo root for the
-// exact steps someone with Entra admin rights needs to run). Nothing here
-// will authenticate until that's filled in.
-export const ENTRA_CLIENT_ID = 'TODO-CONFIRM-ENTRA-CLIENT-ID';
+// Real Application (client) ID from the "Swimlane Studio" app registration
+// in the Quantum Leap Energy tenant.
+export const ENTRA_CLIENT_ID = 'b654eeeb-7451-49cf-94e4-d089592de6e5';
 
-// The site's own hostname/domain (qleapenergy.sharepoint.com) confirms the
-// tenant's primary domain is qleapenergy.com, so the authority can target
-// it by verified domain name rather than a raw tenant GUID. Swap for the
-// real tenant ID from the Entra admin center if this domain-based form
-// ever stops resolving.
-export const ENTRA_TENANT = 'qleapenergy.com';
+// Real tenant directory ID, confirmed from an actual AADSTS error response
+// during setup (not guessed) - more robust than the domain-name form if
+// the tenant's verified domains ever change.
+export const ENTRA_TENANT = 'f75d6062-398e-493a-9af8-5b532b88d594';
 
 export const msalConfig: Configuration = {
   auth: {
