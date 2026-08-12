@@ -11,6 +11,7 @@ export const BRAND = {
   blueLight: '#e6f0ff',
   approval: '#146c43',
   decision: '#c96a1f',
+  document: '#5b6478',
   textPrimary: '#16233d',
   textSecondary: '#5b6b84',
   border: '#dde3ea',

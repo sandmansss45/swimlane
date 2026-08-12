@@ -13,11 +13,16 @@ const SHAPE_OPTIONS: IDropdownOption[] = [
   { key: '', text: '(use Action Type / wording heuristic)' },
   { key: 'Process Step', text: 'Process (rounded rectangle)' },
   { key: 'Decision', text: 'Decision (diamond)' },
-  { key: 'Approval', text: 'Approval (circle)' }
+  { key: 'Approval', text: 'Approval (circle)' },
+  { key: 'Document', text: 'Document (artifact)' }
 ];
+
+const truncate = (text: string, max: number): string =>
+  text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
 export interface ISwimlaneCanvasProps {
   steps: IProcessStep[]; // already filtered to the current Progress ID (and Process Step ID, if drilled down) - for display
+  allSteps: IProcessStep[]; // FULL, unfiltered, original-order dataset - needed to compute row-number DependsOn tokens and to offer every step as a "depends on" option regardless of what's currently filtered into view
   edges: IResolvedEdge[]; // resolved against the FULL, unfiltered dataset (row numbers only make sense that way) - this component only draws the ones whose endpoints are currently rendered
   drilledDownStepId: string | undefined;
   employees: IEmployee[];
@@ -45,10 +50,11 @@ interface IEditDraft {
   actionType: string;
   shapeOverride: string;
   responsibleJobTitle: string;
+  dependsOnStepIds: string[];
 }
 
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, edges, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
+  steps, allSteps, edges, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const nodeRefs = React.useRef(new Map<string, HTMLDivElement>());
@@ -59,11 +65,56 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
 
   const stepsById = React.useMemo(() => new Map(steps.map(s => [s.id, s])), [steps]);
 
+  // Row number = position in the FULL unfiltered dataset + 2 (header
+  // counted as row 1) - the same scheme resolveDependencyEdges uses.
+  // Needed here so the "Depends on" picker can convert a human pick
+  // (another step) into the row-number token the rest of the app expects,
+  // and back again when loading a step's existing dependencies into the form.
+  const rowNumberById = React.useMemo(() => {
+    const map = new Map<string, number>();
+    allSteps.forEach((s, i) => map.set(s.id, i + 2));
+    return map;
+  }, [allSteps]);
+
+  const stepIdByRowNumber = React.useMemo(() => {
+    const map = new Map<number, string>();
+    allSteps.forEach((s, i) => map.set(i + 2, s.id));
+    return map;
+  }, [allSteps]);
+
+  const dependsOnOptions: IDropdownOption[] = React.useMemo(
+    () => allSteps
+      .filter(s => s.id !== selectedNodeId)
+      .map(s => ({ key: s.id, text: `${s.processStepId} — ${truncate(s.actionDescription, 50)}` })),
+    [allSteps, selectedNodeId]
+  );
+
   const lanes = React.useMemo(
     () => Array.from(new Set(steps.map(s => s.responsibleJobTitle || 'Unassigned'))),
     [steps]
   );
   const columns = React.useMemo(() => buildColumns(steps, drilledDownStepId), [steps, drilledDownStepId]);
+
+  // Each step's position within its own lane+column cell's stacking order
+  // (same sort the render loop below uses) - needed to tell whether two
+  // steps in the SAME lane are adjacent (nothing between them, a direct
+  // line is fine) or not (another step from that same lane sits between
+  // them in the stack, so a direct line would cut straight through it -
+  // this is the same problem gutter-routing already solves for
+  // different-lane connections, just triggered by lane+column stacking
+  // order instead of by lane identity).
+  const cellStackIndex = React.useMemo(() => {
+    const index = new Map<string, number>();
+    lanes.forEach(lane => {
+      columns.forEach(col => {
+        const cellSteps = steps
+          .filter(s => (s.responsibleJobTitle || 'Unassigned') === lane && columnKeyFor(s, drilledDownStepId) === col)
+          .sort((a, b) => compareProcessStepIds(a.processStepId, b.processStepId));
+        cellSteps.forEach((s, i) => index.set(s.id, i));
+      });
+    });
+    return index;
+  }, [steps, lanes, columns, drilledDownStepId]);
 
   // Only edges whose both ends are currently rendered - the rest belong to
   // a different Progress ID / Process Step ID that isn't in view right now.
@@ -95,26 +146,43 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       const b: IRect = rectFromDomRect(toEl.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop);
       const mid = pathMidpoint(a, b);
 
-      // Lanes stack vertically within a column, so a same-column
-      // connection between different lanes almost always has at least one
-      // other lane's box physically between source and target - route
-      // those through the empty gutter instead of straight through
-      // whatever's in the way. Same-lane (adjacent, nothing between them)
-      // and different-column connections use the normal direct routing.
+      // A direct line is only safe between two boxes that are truly
+      // adjacent in the SAME lane+column cell's stack - literally nothing
+      // else can be physically between them. Any other pairing (different
+      // lane, different column, or same lane/column but with another step
+      // stacked between them) risks the connector's bend cutting straight
+      // through unrelated boxes sitting on that path - route those
+      // through the empty left-margin gutter instead, which is guaranteed
+      // clear no matter how far apart the two boxes are.
       const sameColumn = columnKeyFor(fromStep, drilledDownStepId) === columnKeyFor(toStep, drilledDownStepId);
       const sameLane = (fromStep.responsibleJobTitle || 'Unassigned') === (toStep.responsibleJobTitle || 'Unassigned');
-      const path = (sameColumn && !sameLane) ? gutterPath(a, b, GUTTER_X) : connectorPath(a, b);
+      const fromIdx = cellStackIndex.get(fromStep.id);
+      const toIdx = cellStackIndex.get(toStep.id);
+      const adjacentInSameCell = sameLane && sameColumn && fromIdx !== undefined && toIdx !== undefined && Math.abs(fromIdx - toIdx) <= 1;
+      const needsGutter = !adjacentInSameCell;
+      const path = needsGutter ? gutterPath(a, b, GUTTER_X) : connectorPath(a, b);
 
       geometries.push({ edge, path, labelX: mid.x, labelY: mid.y });
     });
     setEdgeGeometry(geometries);
-  }, [visibleEdges, stepsById, drilledDownStepId]);
+  }, [visibleEdges, stepsById, drilledDownStepId, cellStackIndex]);
 
   React.useLayoutEffect(() => {
     measureEdges();
     window.addEventListener('resize', measureEdges);
     return () => window.removeEventListener('resize', measureEdges);
   }, [measureEdges]);
+
+  const resolveDependsOnStepIds = (step: IProcessStep): string[] => {
+    const ids: string[] = [];
+    step.dependsOn.forEach(token => {
+      const match = /(\d+)\s*$/.exec(token);
+      if (!match) return;
+      const depId = stepIdByRowNumber.get(parseInt(match[1], 10));
+      if (depId) ids.push(depId);
+    });
+    return ids;
+  };
 
   const handleNodeClick = (step: IProcessStep): void => {
     const deselecting = selectedNodeId === step.id;
@@ -124,21 +192,34 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       actionDescription: step.actionDescription,
       actionType: step.actionType,
       shapeOverride: step.shapeOverride || '',
-      responsibleJobTitle: step.responsibleJobTitle
+      responsibleJobTitle: step.responsibleJobTitle,
+      dependsOnStepIds: resolveDependsOnStepIds(step)
     });
   };
 
-  const saveLabel = (token: string, toRowId: string): void => {
-    const label = draftLabels[token];
+  // Two different dependent steps can produce the exact same literal
+  // DependsOn token text (e.g. both depending on the same decision row
+  // while sharing that decision's own processStepId prefix), so the
+  // token alone isn't a safe key for draft input state or React lists -
+  // scope every lookup to toRowId+token instead.
+  const draftKey = (edge: IResolvedEdge): string => `${edge.toRowId}::${edge.token}`;
+
+  const saveLabel = (edge: IResolvedEdge): void => {
+    const label = draftLabels[draftKey(edge)];
     if (label && label.trim()) {
-      onLabelEdge(toRowId, token, label.trim());
+      onLabelEdge(edge.toRowId, edge.token, label.trim());
     }
   };
 
   const saveEdit = (): void => {
     const original = selectedNodeId ? stepsById.get(selectedNodeId) : undefined;
     if (!original || !editDraft) return;
-    onEditStep({ ...original, ...editDraft });
+    const { dependsOnStepIds, ...fields } = editDraft;
+    const dependsOn = dependsOnStepIds
+      .map(id => rowNumberById.get(id))
+      .filter((rowNumber): rowNumber is number => rowNumber !== undefined)
+      .map(rowNumber => String(rowNumber));
+    onEditStep({ ...original, ...fields, dependsOn });
   };
 
   const deleteSelected = (): void => {
@@ -251,20 +332,34 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
               value={editDraft.responsibleJobTitle}
               onChange={(jobTitle) => setEditDraft(prev => (prev ? { ...prev, responsibleJobTitle: jobTitle } : prev))}
             />
+            <Dropdown
+              label="Depends on"
+              placeholder="Which step(s) does this follow?"
+              multiSelect
+              selectedKeys={editDraft.dependsOnStepIds}
+              options={dependsOnOptions}
+              onChange={(_e, option) => setEditDraft(prev => {
+                if (!prev || !option) return prev;
+                const ids = option.selected
+                  ? [...prev.dependsOnStepIds, String(option.key)]
+                  : prev.dependsOnStepIds.filter(id => id !== option.key);
+                return { ...prev, dependsOnStepIds: ids };
+              })}
+            />
             <DefaultButton text="Save changes" onClick={saveEdit} />
           </div>
 
           <h4>Outgoing connections</h4>
           {connectionsForSelectedNode.length === 0 && <p>Nothing else currently visible depends on this row.</p>}
           {connectionsForSelectedNode.map(edge => (
-            <div className={styles.connectionRow} key={edge.token}>
+            <div className={styles.connectionRow} key={`${edge.toRowId}-${edge.token}`}>
               <span>&rarr; {stepsById.get(edge.toRowId)?.actionDescription}</span>
               <input
                 type="text"
                 placeholder="Yes / No / label this branch"
                 defaultValue={edge.label || ''}
-                onChange={(e) => setDraftLabels(prev => ({ ...prev, [edge.token]: e.target.value }))}
-                onBlur={() => saveLabel(edge.token, edge.toRowId)}
+                onChange={(e) => setDraftLabels(prev => ({ ...prev, [draftKey(edge)]: e.target.value }))}
+                onBlur={() => saveLabel(edge)}
               />
             </div>
           ))}

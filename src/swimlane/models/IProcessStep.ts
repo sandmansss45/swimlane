@@ -1,4 +1,4 @@
-export type ShapeType = 'process' | 'decision' | 'approval';
+export type ShapeType = 'process' | 'decision' | 'approval' | 'document';
 
 export interface IProcessStep {
   id: string; // SharePoint list item ID
@@ -50,17 +50,20 @@ export function parseDependsOn(raw: string | undefined): string[] {
 
 /**
  * Shapes: Approval-type = circles, Decision-type = diamonds, ordinary
- * process steps = rounded rectangles - confirmed, do not flip this.
- * ShapeOverride wins when present; Action Type is the fallback signal
- * when it's blank (Approve/Endorse actions render as approval circles),
- * and a question-phrased Action Description is the last-resort signal
- * for decisions the source data didn't explicitly mark.
+ * process steps = rounded rectangles, physical/system artifacts
+ * (purchase orders, invoices, remittances) = the document shape -
+ * confirmed, do not flip this. ShapeOverride wins when present; Action
+ * Type is the fallback signal when it's blank (Approve/Endorse actions
+ * render as approval circles), and a question-phrased Action Description
+ * is the last-resort signal for decisions the source data didn't
+ * explicitly mark.
  */
 export function getShapeType(step: IProcessStep): ShapeType {
   const override = (step.shapeOverride || '').trim().toLowerCase();
   if (override === 'approval') return 'approval';
   if (override === 'decision') return 'decision';
   if (override === 'process step') return 'process';
+  if (override === 'document') return 'document';
 
   const actionType = (step.actionType || '').trim().toLowerCase();
   if (actionType.indexOf('approve') === 0 || actionType.indexOf('endorse') === 0) return 'approval';

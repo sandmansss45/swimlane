@@ -152,6 +152,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
           <SwimlaneCanvas
             steps={visibleSteps}
+            allSteps={steps}
             edges={edges}
             drilledDownStepId={drilledDownStepId}
             employees={employees}

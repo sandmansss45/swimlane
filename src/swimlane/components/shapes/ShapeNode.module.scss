@@ -67,6 +67,23 @@
   }
 }
 
+// Document-type = physical/system artifacts (a PO, an invoice, a
+// remittance) passing between people rather than an action someone
+// takes - a wavy-bottomed rectangle, the standard flowchart "document"
+// symbol. The zigzag is a straight-line approximation of a wave (real
+// curves need SVG, not plain CSS clip-path) but reads clearly at this size.
+.document {
+  border-radius: 4px 4px 0 0;
+  background: var(--document);
+  color: #fff;
+  font-weight: 600;
+  padding-bottom: 16px;
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 88%,
+    87.5% 94%, 75% 88%, 62.5% 94%, 50% 88%, 37.5% 94%, 25% 88%, 12.5% 94%, 0% 88%
+  );
+}
+
 .label {
   line-height: 1.3;
 }

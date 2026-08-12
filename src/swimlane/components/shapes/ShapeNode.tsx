@@ -10,14 +10,17 @@ export interface IShapeNodeProps {
 }
 
 // Approval-type = circles (green). Decision-type = diamonds (orange).
-// Ordinary process steps = rounded rectangles (blue). Confirmed design
-// rule - do not flip this.
+// Ordinary process steps = rounded rectangles (blue). Document-type
+// (a physical/system artifact like a PO or invoice passing between
+// people, not an action someone takes) = wavy-bottomed rectangles
+// (slate). Confirmed design rule - do not flip this.
 const ShapeNode: React.FC<IShapeNodeProps> = ({ label, shape, selected, onClick }) => {
   const className = [
     styles.shapeNode,
     shape === 'decision' ? styles.decision : '',
     shape === 'approval' ? styles.approval : '',
     shape === 'process' ? styles.process : '',
+    shape === 'document' ? styles.document : '',
     selected ? styles.selected : ''
   ].filter(Boolean).join(' ');
 
