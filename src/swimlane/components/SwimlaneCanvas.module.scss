@@ -2,7 +2,10 @@
   position: relative;
   overflow: auto;
   max-height: 70vh;
-  border: 1px solid #d8e2ec;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 .edgeOverlay {
@@ -20,7 +23,7 @@
 .edgeLabel {
   font-size: 11px;
   font-weight: 600;
-  fill: #0b2148;
+  fill: var(--navy);
 }
 
 .grid {
@@ -31,15 +34,16 @@
 .corner,
 .columnHeader,
 .laneLabel {
-  background: #fff;
-  border-bottom: 1.5px solid #000;
-  border-right: 1px dashed #000;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   font-weight: 600;
   font-size: 12px;
-  padding: 8px;
+  padding: 10px 8px;
   text-align: center;
   position: sticky;
   z-index: 2;
+  color: var(--navy);
 }
 
 .columnHeader {
@@ -49,7 +53,7 @@
 .laneLabel {
   left: 0;
   text-align: left;
-  border-right: 1.5px solid #000;
+  border-right: 1px solid var(--border);
 }
 
 .corner {
@@ -59,8 +63,8 @@
 }
 
 .laneCell {
-  border-right: 1px dashed #000;
-  border-bottom: 1px solid #000;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: 24px 12px;
   display: flex;
   flex-direction: column;
@@ -71,24 +75,27 @@
   // or diamonds visually overlap whatever is stacked next to them.
   gap: 48px;
   min-height: 90px;
+  background: var(--surface);
 }
 
 .emptyState {
   padding: 32px;
   text-align: center;
-  color: #62748a;
+  color: var(--text-secondary);
 }
 
 .connectionsPanel {
-  margin-top: 12px;
-  padding: 12px;
-  background: #fff8ec;
-  border: 1px solid #ffb400;
-  border-radius: 8px;
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   font-size: 12.5px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 
   h4 {
     margin: 12px 0 8px;
+    color: var(--navy);
 
     &:first-child {
       margin-top: 0;
@@ -109,20 +116,29 @@
 .editForm {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-width: 420px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #ffb400;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .connectionRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 8px;
 
   input {
     width: 200px;
-    padding: 4px 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12.5px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
   }
 }

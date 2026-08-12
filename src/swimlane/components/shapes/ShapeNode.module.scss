@@ -6,24 +6,28 @@
   justify-content: center;
   text-align: center;
   padding: 8px 12px;
-  border: 1.5px solid #000;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: #fff;
   min-width: 120px;
   max-width: 190px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.15);
+  transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 
   &:hover {
-    filter: brightness(0.95);
+    filter: brightness(0.96);
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.22);
+    transform: translateY(-1px);
   }
 }
 
 .selected {
-  box-shadow: 0 0 0 3px #ffb400;
+  box-shadow: 0 0 0 3px var(--blue), 0 4px 10px rgba(16, 24, 40, 0.22);
 }
 
 // Ordinary process steps = blue rounded rectangles
 .process {
   border-radius: 8px;
-  background: #1f4fa3;
+  background: var(--blue);
   color: #fff;
   font-weight: 600;
 }
@@ -36,7 +40,7 @@
   max-width: 150px;
   transform: rotate(45deg);
   border-radius: 4px;
-  background: #e3792a;
+  background: var(--decision);
   color: #fff;
   font-weight: 600;
 
@@ -54,7 +58,7 @@
   min-width: 140px;
   max-width: 140px;
   border-radius: 50%;
-  background: #146c43;
+  background: var(--approval);
   color: #fff;
   font-weight: 600;
 

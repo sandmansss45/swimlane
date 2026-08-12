@@ -123,7 +123,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   return (
     <section className={styles.swimlaneStudio}>
-      <h2 className={styles.title}>Swimlane Studio</h2>
+      <header className={styles.header}>
+        <h2 className={styles.title}>Swimlane Studio</h2>
+        {selectedProgressId && (
+          <p className={styles.breadcrumb}>
+            {selectedProgressId}
+            {drilledDownStepId ? ` / ${drilledDownStepId}` : ''}
+            {selectedRegion ? ` — ${selectedRegion}` : ''}
+          </p>
+        )}
+      </header>
 
       {error && (
         <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -135,9 +144,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         <ProgressIdPicker steps={steps} onSelect={setSelectedProgressId} />
       ) : (
         <>
-          <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
-          <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
-          <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
+          <div className={styles.toolbar}>
+            <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+            <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
+            <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
+          </div>
 
           <SwimlaneCanvas
             steps={visibleSteps}
@@ -151,6 +162,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           />
 
           <div className={styles.addStepForm}>
+            <h3 className={styles.cardTitle}>Add a step</h3>
             <TextField
               label="New step - action description"
               value={newActionDescription}
@@ -170,7 +182,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
       {riskStatements.length > 0 && (
         <div className={styles.riskSection}>
-          <h3>Risk Register ({riskStatements.length})</h3>
+          <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
           <ul>
             {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
           </ul>

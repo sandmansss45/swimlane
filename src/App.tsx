@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { IPublicClientApplication } from '@azure/msal-browser';
 import { MsalProvider, AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from '@azure/msal-react';
-import { DefaultButton, MessageBar, MessageBarType } from '@fluentui/react';
+import { ThemeProvider, PrimaryButton, MessageBar, MessageBarType } from '@fluentui/react';
 import SwimlaneStudio from './swimlane/components/SwimlaneStudio';
 import { MockDataService } from './swimlane/services/MockDataService';
 import { GraphDataService } from './swimlane/services/GraphDataService';
 import { GRAPH_SCOPES, ENTRA_CLIENT_ID } from './swimlane/auth/authConfig';
+import { swimlaneTheme } from './swimlane/theme';
+import styles from './App.module.scss';
 
 interface IAppProps {
   msalInstance: IPublicClientApplication;
@@ -27,21 +29,31 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
   const registrationPending = ENTRA_CLIENT_ID.indexOf('TODO') === 0;
 
   return (
-    <div style={{ padding: 32, maxWidth: 520 }}>
-      <h2>Swimlane Studio</h2>
-      {registrationPending && (
-        <MessageBar messageBarType={MessageBarType.warning}>
-          The Entra app registration hasn&apos;t been created yet, so sign-in will fail until
-          ENTRA_CLIENT_ID in src/swimlane/auth/authConfig.ts is filled in. Use mock data below
-          in the meantime.
-        </MessageBar>
-      )}
-      <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-        <DefaultButton
-          text="Sign in with Microsoft"
-          onClick={() => instance.loginPopup({ scopes: GRAPH_SCOPES })}
-        />
-        <DefaultButton text="Use mock data (no sign-in)" onClick={onUseMock} />
+    <div className={styles.signInScreen}>
+      <div className={styles.card}>
+        <div className={styles.mark}>QLE</div>
+        <h2 className={styles.title}>Swimlane Studio</h2>
+        <p className={styles.subtitle}>Finance process visualization</p>
+
+        {registrationPending && (
+          <div className={styles.warning}>
+            <MessageBar messageBarType={MessageBarType.warning}>
+              The Entra app registration hasn&apos;t been created yet, so sign-in will fail until
+              ENTRA_CLIENT_ID in src/swimlane/auth/authConfig.ts is filled in. Use mock data
+              below in the meantime.
+            </MessageBar>
+          </div>
+        )}
+
+        <div className={styles.actions}>
+          <PrimaryButton
+            text="Sign in with Microsoft"
+            onClick={() => instance.loginPopup({ scopes: GRAPH_SCOPES })}
+          />
+          <button type="button" className={styles.mockLink} onClick={onUseMock}>
+            Use mock data (no sign-in)
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -51,19 +63,21 @@ function App({ msalInstance }: IAppProps) {
   const [useMock, setUseMock] = useState(false);
   const mockService = useMemo(() => new MockDataService(), []);
 
-  if (useMock) {
-    return <SwimlaneStudio dataService={mockService} />;
-  }
-
   return (
-    <MsalProvider instance={msalInstance}>
-      <AuthenticatedTemplate>
-        <SignedInApp />
-      </AuthenticatedTemplate>
-      <UnauthenticatedTemplate>
-        <SignInGate onUseMock={() => setUseMock(true)} />
-      </UnauthenticatedTemplate>
-    </MsalProvider>
+    <ThemeProvider theme={swimlaneTheme}>
+      {useMock ? (
+        <SwimlaneStudio dataService={mockService} />
+      ) : (
+        <MsalProvider instance={msalInstance}>
+          <AuthenticatedTemplate>
+            <SignedInApp />
+          </AuthenticatedTemplate>
+          <UnauthenticatedTemplate>
+            <SignInGate onUseMock={() => setUseMock(true)} />
+          </UnauthenticatedTemplate>
+        </MsalProvider>
+      )}
+    </ThemeProvider>
   );
 }
 
