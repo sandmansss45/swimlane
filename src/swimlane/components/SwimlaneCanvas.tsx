@@ -4,7 +4,7 @@ import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups } from '../utils/columns';
-import { connectorPath, highwayPath, pathMidpoint, rectFromDomRect, IRect } from '../utils/arrowRouting';
+import { connectorPath, highwayPath, rectFromDomRect, IRect } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
 import EmployeePicker from './EmployeePicker';
 import styles from './SwimlaneCanvas.module.scss';
@@ -197,11 +197,10 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     });
 
     const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, needsHighway }) => {
-      const mid = pathMidpoint(a, b);
       const track = trackByEdge.get(edge) || 0;
       const highwayY = highwayBaseY + HIGHWAY_TRACK_Y[track % HIGHWAY_TRACK_Y.length];
-      const path = needsHighway ? highwayPath(a, b, highwayY) : connectorPath(a, b);
-      return { edge, path, labelX: mid.x, labelY: mid.y };
+      const result = needsHighway ? highwayPath(a, b, highwayY) : connectorPath(a, b);
+      return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
     });
     setEdgeGeometry(geometries);
   }, [visibleEdges, orderedSteps]);
