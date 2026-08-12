@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { TextField, Dropdown, IDropdownOption, DefaultButton, IconButton, Modal } from '@fluentui/react';
+import { TextField, Dropdown, IDropdownOption, DefaultButton, PrimaryButton, IconButton, Modal } from '@fluentui/react';
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
@@ -448,7 +448,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                   return { ...prev, dependsOnStepIds: ids };
                 })}
               />
-              <DefaultButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
+              <PrimaryButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
             </div>
 
             <h4>Outgoing connections</h4>

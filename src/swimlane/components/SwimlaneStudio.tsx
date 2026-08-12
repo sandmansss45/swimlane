@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Spinner, MessageBar, MessageBarType, DefaultButton, TextField } from '@fluentui/react';
+import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, TextField } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
 import { IProcessStep, getProgressId } from '../models/IProcessStep';
@@ -190,7 +190,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               value={newResponsibleJobTitle}
               onChange={setNewResponsibleJobTitle}
             />
-            <DefaultButton text={saving ? 'Adding...' : 'Add step'} disabled={saving} onClick={handleAddStep} />
+            <PrimaryButton text={saving ? 'Adding...' : 'Add step'} disabled={saving} onClick={handleAddStep} />
           </div>
         </>
       )}

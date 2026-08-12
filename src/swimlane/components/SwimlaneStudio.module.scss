@@ -58,6 +58,10 @@
 .toolbar {
   display: flex;
   flex-direction: column;
+  // Flex columns default to align-items:stretch, which was forcing "Back
+  // to Progress IDs" to fill the entire toolbar width like an accidental
+  // banner instead of a normal button sized to its own text.
+  align-items: flex-start;
   gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
