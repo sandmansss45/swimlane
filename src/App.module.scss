@@ -21,9 +21,11 @@
 }
 
 .mark {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 20px;
+  // Real logo's native aspect ratio is 189x60 - fixed square sizing
+  // would distort it, so cap width and let height follow.
+  width: 220px;
+  height: auto;
+  margin: 0 auto 24px;
 }
 
 .title {
