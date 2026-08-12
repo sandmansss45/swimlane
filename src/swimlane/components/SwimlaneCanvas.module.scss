@@ -79,7 +79,10 @@
 // column now belongs to exactly one step), across this strip, then back
 // down into the target's column. Never render anything in here.
 .highwaySpacer {
-  height: 56px;
+  // Tall enough to comfortably fit the widest HIGHWAY_TRACK_Y spread
+  // (+/-36px) plus the path's own corner radius, so parallel highway
+  // tracks never crowd the header above or the first lane row below.
+  height: 110px;
   border-bottom: 1px solid var(--border);
 }
 

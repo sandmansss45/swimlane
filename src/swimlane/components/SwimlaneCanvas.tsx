@@ -121,7 +121,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
-    const HIGHWAY_TRACK_Y = [0, -8, 8, -16, 16]; // parallel tracks inside the reserved highway strip
+    // Parallel tracks inside the reserved highway strip. Two independent
+    // edges that both need the highway (e.g. a decision's "No" branch AND
+    // an unrelated reconvergence edge skipping the same sibling box) can
+    // easily land on adjacent tracks - 8px apart reads as one tangled,
+    // doubled-up line rather than two distinct ones, especially once an
+    // unlabeled edge sits right next to a labeled one.
+    const HIGHWAY_TRACK_Y = [0, -18, 18, -36, 36];
 
     // The overlay's width/height:100% would otherwise only cover the
     // CANVAS's visible viewport (its CSS containing-block size), not the
