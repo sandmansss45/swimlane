@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { TextField, Dropdown, IDropdownOption, DefaultButton, IconButton, Modal } from '@fluentui/react';
+import { toJpeg } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
@@ -271,12 +273,63 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     closeEditPopup();
   };
 
+  const [exporting, setExporting] = React.useState(false);
+
+  const exportToPdf = async (): Promise<void> => {
+    const canvas = canvasRef.current;
+    if (!canvas || exporting) return;
+    setExporting(true);
+    try {
+      // The live element only shows its scrolled/visible portion - render
+      // the capture at the FULL scrollable content size instead (same
+      // scrollWidth/scrollHeight the SVG overlay is already sized to), and
+      // override overflow so nothing gets clipped in the snapshot the way
+      // it would in the live, scrolled view.
+      const width = canvas.scrollWidth;
+      const height = canvas.scrollHeight;
+      // PNG at pixelRatio 2 on a wide diagram produced a ~95MB file
+      // (lossless full-resolution bitmap) - completely impractical to
+      // download or email. JPEG at high quality and native resolution
+      // brings a diagram this size down to single-digit MB while staying
+      // sharp enough to read every label.
+      const dataUrl = await toJpeg(canvas, {
+        width,
+        height,
+        pixelRatio: 1,
+        quality: 0.92,
+        backgroundColor: '#ffffff',
+        style: { overflow: 'visible', maxHeight: 'none' }
+      });
+      const pdf = new jsPDF({
+        orientation: width >= height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [width, height]
+      });
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height);
+      pdf.save(`swimlane-studio-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('PDF export failed', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (steps.length === 0) {
     return <div className={styles.emptyState}>No steps to show yet.</div>;
   }
 
   return (
-    <div className={styles.canvas} ref={canvasRef}>
+    <>
+      <div className={styles.canvasToolbar}>
+        <DefaultButton
+          text={exporting ? 'Exporting…' : 'Export to PDF'}
+          iconProps={{ iconName: 'PDF' }}
+          onClick={exportToPdf}
+          disabled={exporting}
+        />
+      </div>
+      <div className={styles.canvas} ref={canvasRef}>
       <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>
           <marker id="swimlaneArrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
@@ -415,7 +468,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
           </div>
         )}
       </Modal>
-    </div>
+      </div>
+    </>
   );
 };
 
