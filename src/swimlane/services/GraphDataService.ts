@@ -174,6 +174,17 @@ export class GraphDataService implements IDataService {
     return { ...step, id: created.id };
   }
 
+  public async addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
+    // Sequential, not Promise.all - row order must match creation order
+    // (later rows' DependsOn tokens are meaningless if rows land out of
+    // order), and it keeps well clear of Graph's per-request throttling.
+    const created: IProcessStep[] = [];
+    for (const step of steps) {
+      created.push(await this.addProcessStep(step));
+    }
+    return created;
+  }
+
   public async updateProcessStep(step: IProcessStep): Promise<void> {
     const fieldMap = await this._resolveFieldMap(PROCESS_LIST_TITLE);
     const siteId = await this._resolveSiteId();

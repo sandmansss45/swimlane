@@ -31,6 +31,12 @@ export const BRAND = {
 
 export const swimlaneTheme: ITheme = createTheme({
   defaultFontStyle: { fontFamily: 'inherit' },
+  // Fluent's own default (2px) reads as boxy/dated next to the rest of
+  // the app's hand-styled cards and buttons, which all use 8-16px radii -
+  // this brings every Fluent-rendered button, input, and dropdown in line
+  // with that same softer look instead of standing out as "the generic
+  // component library one".
+  effects: { roundedCorner2: '6px' },
   palette: {
     themePrimary: BRAND.blue,
     themeLighterAlt: '#f2f7fd',
@@ -64,6 +70,7 @@ export const swimlaneTheme: ITheme = createTheme({
 export const signInTheme: ITheme = createTheme({
   isInverted: true,
   defaultFontStyle: { fontFamily: 'inherit' },
+  effects: { roundedCorner2: '6px' },
   palette: {
     themePrimary: BRAND.brightBlue,
     themeLighterAlt: '#0a1420',

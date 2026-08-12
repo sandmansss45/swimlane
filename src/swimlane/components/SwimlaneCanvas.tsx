@@ -121,13 +121,21 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
-    // Parallel tracks inside the reserved highway strip. Two independent
-    // edges that both need the highway (e.g. a decision's "No" branch AND
-    // an unrelated reconvergence edge skipping the same sibling box) can
-    // easily land on adjacent tracks - 8px apart reads as one tangled,
-    // doubled-up line rather than two distinct ones, especially once an
-    // unlabeled edge sits right next to a labeled one.
-    const HIGHWAY_TRACK_Y = [0, -18, 18, -36, 36];
+    // Parallel tracks inside the reserved cross-lane strip. Two
+    // independent edges that both genuinely need it can still land on
+    // overlapping X-ranges - give them real separation so they don't read
+    // as one tangled, doubled-up line.
+    const HIGHWAY_TRACK_Y = [0, -24, 24, -48, 48];
+    // Parallel tracks for a same-lane "local hop" - these only ever share
+    // space with OTHER hops in that same row, which is rare, so a
+    // tighter spread is enough and keeps the bend close to the row.
+    const LOCAL_HOP_TRACK_Y = [0, -12, 12];
+    // How far above a lane's tallest box top a hop clears before bending
+    // sideways - see the row-gap comment in SwimlaneCanvas.module.scss for
+    // why 44px of gap comfortably fits this even against a decision
+    // diamond, which leaves almost none of that clearance inside its own
+    // cell.
+    const LOCAL_HOP_CLEARANCE = 22;
 
     // The overlay's width/height:100% would otherwise only cover the
     // CANVAS's visible viewport (its CSS containing-block size), not the
@@ -153,6 +161,20 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       ? rectFromDomRect(highwaySpacerRef.current.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop).cy
       : 20;
 
+    // Topmost edge of each lane's tallest rendered box (a diamond sits
+    // much higher within its own cell than a rect does) - a local hop
+    // clears everything in its row by bending above THIS, not just above
+    // its own two endpoints, so it can't clip a shorter sibling that
+    // happens to sit between them.
+    const laneMinTop = new Map<string, number>();
+    orderedSteps.forEach(step => {
+      const rect = rectById.get(step.id);
+      if (!rect) return;
+      const lane = step.responsibleJobTitle || 'Unassigned';
+      const current = laneMinTop.get(lane);
+      if (current === undefined || rect.top < current) laneMinTop.set(lane, rect.top);
+    });
+
     // A direct line between two boxes is safe exactly when no OTHER box
     // sits anywhere inside the straight-line path's bounding rectangle -
     // connectorPath's bends never travel outside that rectangle, so this
@@ -171,47 +193,97 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       });
     };
 
-    interface ICandidate { edge: IResolvedEdge; a: IRect; b: IRect; needsHighway: boolean }
+    // Three routing tiers, cheapest first:
+    //  - direct: nothing between the two boxes, draw straight/dogleg.
+    //  - localHop: blocked, but only by a SIBLING IN THE SAME LANE (same
+    //    row, some column between them) - decision branches reconverging
+    //    around a sibling branch is exactly this, and it's the overwhelming
+    //    majority of "blocked" edges in a real swimlane. A hop confined to
+    //    that one row clears it without ever leaving the row.
+    //  - highway: blocked by something in a DIFFERENT lane - the straight
+    //    path crosses other rows too, which a hop confined to one row can't
+    //    route around, so it takes the shared cross-lane strip at the top.
+    type RoutingTier = 'direct' | 'localHop' | 'highway';
+    interface ICandidate { edge: IResolvedEdge; a: IRect; b: IRect; tier: RoutingTier; lane?: string }
     const candidates: ICandidate[] = [];
 
     visibleEdges.forEach(edge => {
       const a = rectById.get(edge.fromRowId);
       const b = rectById.get(edge.toRowId);
       if (!a || !b) return;
-      candidates.push({ edge, a, b, needsHighway: !pathIsClear(edge.fromRowId, a, edge.toRowId, b) });
-    });
-
-    // Every highway edge's horizontal run shares the same reserved strip,
-    // so two edges whose X-ranges overlap would draw on top of each other
-    // and read as one merged line - assign each a distinct parallel
-    // Y-level within the strip (classic greedy interval-coloring: sorted
-    // by start, reuse the first track that's already clear by then) so
-    // overlapping connections stay visually distinguishable.
-    const highwayEdges = candidates
-      .filter(c => c.needsHighway)
-      .map(c => ({ ...c, xStart: Math.min(c.a.cx, c.b.cx), xEnd: Math.max(c.a.cx, c.b.cx) }))
-      .sort((x, y) => x.xStart - y.xStart);
-    const trackEndX: number[] = [];
-    const trackByEdge = new Map<IResolvedEdge, number>();
-    highwayEdges.forEach(c => {
-      let track = trackEndX.findIndex(endX => endX < c.xStart);
-      if (track === -1) {
-        track = trackEndX.length;
-        trackEndX.push(c.xEnd);
-      } else {
-        trackEndX[track] = c.xEnd;
+      if (pathIsClear(edge.fromRowId, a, edge.toRowId, b)) {
+        candidates.push({ edge, a, b, tier: 'direct' });
+        return;
       }
-      trackByEdge.set(c.edge, track);
+      const fromLane = stepsById.get(edge.fromRowId)?.responsibleJobTitle || 'Unassigned';
+      const toLane = stepsById.get(edge.toRowId)?.responsibleJobTitle || 'Unassigned';
+      if (fromLane === toLane) {
+        candidates.push({ edge, a, b, tier: 'localHop', lane: fromLane });
+      } else {
+        candidates.push({ edge, a, b, tier: 'highway' });
+      }
     });
 
-    const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, needsHighway }) => {
-      const track = trackByEdge.get(edge) || 0;
+    // Classic greedy interval-coloring (sort by start, reuse the first
+    // track that's already clear by then) so two connections whose
+    // horizontal spans overlap land on distinct parallel Y-levels instead
+    // of drawing on top of each other. Run separately per group - the
+    // shared cross-lane strip is one group, and each lane gets its own
+    // independent local-hop group, since hops in different lanes never
+    // share visual space and so never need to be coordinated together.
+    const assignTracks = (group: ICandidate[]): Map<IResolvedEdge, number> => {
+      const sorted = group
+        .map(c => ({ c, xStart: Math.min(c.a.cx, c.b.cx), xEnd: Math.max(c.a.cx, c.b.cx) }))
+        .sort((x, y) => x.xStart - y.xStart);
+      const trackEndX: number[] = [];
+      const trackByEdge = new Map<IResolvedEdge, number>();
+      sorted.forEach(({ c, xStart, xEnd }) => {
+        let track = trackEndX.findIndex(endX => endX < xStart);
+        if (track === -1) {
+          track = trackEndX.length;
+          trackEndX.push(xEnd);
+        } else {
+          trackEndX[track] = xEnd;
+        }
+        trackByEdge.set(c.edge, track);
+      });
+      return trackByEdge;
+    };
+
+    const highwayTracks = assignTracks(candidates.filter(c => c.tier === 'highway'));
+
+    const localHopGroups = new Map<string, ICandidate[]>();
+    candidates.filter(c => c.tier === 'localHop').forEach(c => {
+      const key = c.lane || 'Unassigned';
+      const list = localHopGroups.get(key) || [];
+      list.push(c);
+      localHopGroups.set(key, list);
+    });
+    const localHopTracks = new Map<IResolvedEdge, number>();
+    localHopGroups.forEach(group => {
+      assignTracks(group).forEach((track, edge) => localHopTracks.set(edge, track));
+    });
+
+    const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, tier, lane }) => {
+      if (tier === 'direct') {
+        const result = connectorPath(a, b);
+        return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
+      }
+      if (tier === 'localHop') {
+        const track = localHopTracks.get(edge) || 0;
+        const laneTop = laneMinTop.get(lane || 'Unassigned');
+        const baseTop = laneTop === undefined ? Math.min(a.top, b.top) : laneTop;
+        const hopY = baseTop - LOCAL_HOP_CLEARANCE + LOCAL_HOP_TRACK_Y[track % LOCAL_HOP_TRACK_Y.length];
+        const result = highwayPath(a, b, hopY);
+        return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
+      }
+      const track = highwayTracks.get(edge) || 0;
       const highwayY = highwayBaseY + HIGHWAY_TRACK_Y[track % HIGHWAY_TRACK_Y.length];
-      const result = needsHighway ? highwayPath(a, b, highwayY) : connectorPath(a, b);
+      const result = highwayPath(a, b, highwayY);
       return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
     });
     setEdgeGeometry(geometries);
-  }, [visibleEdges, orderedSteps]);
+  }, [visibleEdges, orderedSteps, stepsById]);
 
   React.useLayoutEffect(() => {
     measureEdges();

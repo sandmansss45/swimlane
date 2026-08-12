@@ -96,6 +96,15 @@ export class MockDataService implements IDataService {
     return Promise.resolve(created);
   }
 
+  public addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
+    const created = steps.map(step => {
+      const item: IProcessStep = { ...step, id: `mock-${this._steps.length + 1}` };
+      this._steps.push(item);
+      return item;
+    });
+    return Promise.resolve(created);
+  }
+
   public updateProcessStep(step: IProcessStep): Promise<void> {
     const index = this._steps.findIndex(s => s.id === step.id);
     if (index >= 0) {

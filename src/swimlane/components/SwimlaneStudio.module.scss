@@ -15,9 +15,20 @@
   align-items: center;
   gap: 14px;
   padding: 14px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  // Navy, not the light --surface white: the real QLE logo's wordmark is
+  // drawn in solid white fill (see qle-logo.svg) - it's only legible on a
+  // dark background, which is exactly why the sign-in screen already uses
+  // one. Matching that here instead of white also gives the whole app a
+  // consistent, strongly-branded top bar rather than just the sign-in
+  // gate looking on-brand.
+  background: var(--navy);
+  border-bottom: 3px solid var(--blue);
   margin-bottom: 24px;
+  box-shadow: 0 2px 10px rgba(11, 33, 72, 0.25);
+}
+
+.appBarActions {
+  margin-left: auto;
 }
 
 .appBarLogo {
@@ -29,12 +40,15 @@
 .title {
   margin: 0;
   font-size: 18px;
+  // Overrides the global h2 { color: var(--navy) } rule - navy text on
+  // this bar's now-navy background would be invisible.
+  color: #fff;
 }
 
 .breadcrumb {
   margin: 2px 0 0;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #a9bbdb;
 }
 
 .swimlaneStudio {

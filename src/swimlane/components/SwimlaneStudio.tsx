@@ -11,6 +11,7 @@ import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeePicker from './EmployeePicker';
 import SwimlaneCanvas from './SwimlaneCanvas';
+import ImportCsvModal from './ImportCsvModal';
 import qleLogo from '../../assets/qle-logo.svg';
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
@@ -29,6 +30,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [newActionDescription, setNewActionDescription] = React.useState('');
   const [newResponsibleJobTitle, setNewResponsibleJobTitle] = React.useState<string | undefined>(undefined);
   const [saving, setSaving] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
 
   const loadAll = React.useCallback(() => {
     setLoading(true);
@@ -90,6 +92,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     dataService.deleteProcessStep(stepId).catch((err: Error) => setError(err.message));
   };
 
+  const handleImported = (created: IProcessStep[]): void => {
+    setSteps(prev => [...prev, ...created]);
+  };
+
   const handleAddStep = (): void => {
     if (!selectedProgressId || !newActionDescription.trim()) return;
     const referenceStep = stepsInProgressId[0];
@@ -138,7 +144,33 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             <p className={styles.breadcrumb}>Finance process visualization</p>
           )}
         </div>
+        <div className={styles.appBarActions}>
+          <DefaultButton
+            text="Import CSV"
+            iconProps={{ iconName: 'Upload' }}
+            onClick={() => setImportOpen(true)}
+            styles={{
+              root: {
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: 8
+              },
+              rootHovered: { background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.45)' },
+              rootPressed: { background: 'rgba(255,255,255,0.24)' },
+              label: { color: '#fff', fontWeight: 600 },
+              icon: { color: '#fff' }
+            }}
+          />
+        </div>
       </header>
+
+      <ImportCsvModal
+        isOpen={importOpen}
+        dataService={dataService}
+        insertionIndex={steps.length}
+        onDismiss={() => setImportOpen(false)}
+        onImported={handleImported}
+      />
 
       <section className={styles.swimlaneStudio}>
         {error && (
