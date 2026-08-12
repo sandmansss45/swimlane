@@ -109,20 +109,21 @@ export function pathMidpoint(a: IRect, b: IRect): { x: number; y: number } {
 }
 
 /**
- * Multiple lanes stack vertically within the same column, so a "same
- * column" connection between two different lanes isn't actually adjacent -
- * there's usually at least one other lane's box sitting physically between
- * source and target. A straight connectorPath line there cuts right
- * through whatever's in between. This routes through the lane-label
- * gutter on the left instead (dedicated whitespace, never has task
- * content in it) - exit left, travel down the gutter, re-enter left -
- * which guarantees the line never crosses another box's content no matter
- * how many lanes it spans.
+ * Every step gets its own column now, so the vertical channel directly
+ * above and below a box, within its own column, is ALWAYS empty - no
+ * other step ever shares that column. That makes "straight up out of the
+ * box, across a dedicated empty strip above every lane, straight down
+ * into the target box" a route that's safe by construction for ANY two
+ * boxes, no matter how far apart or which lanes they're in - unlike
+ * routing sideways through the source's own lane row first (the old
+ * gutterPath approach), which cuts through every other box sitting in
+ * that same row between the source and the margin whenever the source
+ * isn't already near the edge.
  */
-export function gutterPath(a: IRect, b: IRect, gutterX: number): string {
+export function highwayPath(a: IRect, b: IRect, highwayY: number): string {
   const r = 10;
-  const y1 = a.cy;
-  const y2 = b.cy;
-  const vDir = y2 >= y1 ? 1 : -1;
-  return `M ${a.left} ${y1} L ${gutterX + r} ${y1} Q ${gutterX} ${y1} ${gutterX} ${y1 + vDir * r} L ${gutterX} ${y2 - vDir * r} Q ${gutterX} ${y2} ${gutterX + r} ${y2} L ${b.left} ${y2}`;
+  const x1 = a.cx;
+  const x2 = b.cx;
+  const hDir = x2 >= x1 ? 1 : -1;
+  return `M ${x1} ${a.top} L ${x1} ${highwayY + r} Q ${x1} ${highwayY} ${x1 + hDir * r} ${highwayY} L ${x2 - hDir * r} ${highwayY} Q ${x2} ${highwayY} ${x2} ${highwayY + r} L ${x2} ${b.top}`;
 }

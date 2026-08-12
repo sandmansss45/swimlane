@@ -3,16 +3,6 @@ import { IProcessStep } from '../models/IProcessStep';
 /**
  * Tasks within a Progress ID group sequence left-to-right by numeric
  * Process Step ID order - confirmed design rule.
- *
- * Top-level view (all rows under a Progress ID): one column per distinct
- * Process Step ID, ordered numerically, so rows sharing a step stack
- * together in one column.
- *
- * Drill-down view (single Process Step ID selected): every row shares that
- * one step, so there's only one column - rows stack vertically within
- * their lane cell in original row order instead of spreading sideways
- * (spreading them into one column per row made a 10-row step 10 columns
- * wide for no reason, forcing pointless horizontal scrolling).
  */
 export function compareProcessStepIds(a: string, b: string): number {
   const aParts = a.split('.').map(p => parseInt(p, 10));
@@ -26,14 +16,45 @@ export function compareProcessStepIds(a: string, b: string): number {
   return 0;
 }
 
-export function buildColumns(steps: IProcessStep[], drilledDownStepId: string | undefined): string[] {
-  if (drilledDownStepId) {
-    return [drilledDownStepId];
-  }
-  const distinctStepIds = Array.from(new Set(steps.map(s => s.processStepId)));
-  return distinctStepIds.sort(compareProcessStepIds);
+export interface IColumnGroup {
+  processStepId: string;
+  stepIds: string[]; // in column order, left to right
 }
 
-export function columnKeyFor(step: IProcessStep, _drilledDownStepId: string | undefined): string {
-  return step.processStepId;
+/**
+ * Every visible step gets its OWN column (a timeline slot), instead of
+ * grouping every row that shares a Process Step ID into one narrow,
+ * densely-stacked zone. A real swimlane reads left-to-right as one
+ * continuous flow - cramming, say, six of one actor's steps into a single
+ * cell forces every OTHER actor's edge into/out of that cell to detour
+ * around the stack, which is exactly what was producing the tangled
+ * gutter lines. Spreading every step across its own slot means most
+ * connections are between near-adjacent cells with nothing else in the
+ * way, which is what actually produces short, direct, uncluttered arrows.
+ *
+ * Sort is stable (JS guarantees this), so rows sharing a Process Step ID
+ * keep their original relative order - this doubles as the row-number
+ * order DependsOn resolution already depends on, so it stays correct.
+ */
+export function orderStepsForTimeline(steps: IProcessStep[]): IProcessStep[] {
+  return [...steps].sort((a, b) => compareProcessStepIds(a.processStepId, b.processStepId));
+}
+
+/**
+ * Groups consecutive same-Process-Step-ID columns for the header row,
+ * so "9.6.1.1" still reads as one labeled zone spanning its own steps'
+ * columns, the way a merged header cell would, without forcing every row
+ * under it into the same physical cell.
+ */
+export function buildColumnGroups(orderedSteps: IProcessStep[]): IColumnGroup[] {
+  const groups: IColumnGroup[] = [];
+  orderedSteps.forEach(step => {
+    const last = groups[groups.length - 1];
+    if (last && last.processStepId === step.processStepId) {
+      last.stepIds.push(step.id);
+    } else {
+      groups.push({ processStepId: step.processStepId, stepIds: [step.id] });
+    }
+  });
+  return groups;
 }

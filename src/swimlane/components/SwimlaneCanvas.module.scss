@@ -62,19 +62,31 @@
   z-index: 3;
 }
 
+// Reserved, genuinely empty strip between the header row and the first
+// lane row - highwayPath routes long-distance connections straight up
+// out of their own column (always empty above/below a box, since every
+// column now belongs to exactly one step), across this strip, then back
+// down into the target's column. Never render anything in here.
+.highwaySpacer {
+  height: 40px;
+  border-bottom: 1px solid var(--border);
+}
+
 .laneCell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 24px 12px;
+  padding: 12px 8px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  // Decision diamonds are rotated 45deg from a 150x100 box, so their real
-  // painted footprint is taller than the layout box CSS transforms don't
-  // affect - this gap has to be generous enough to cover that difference
-  // or diamonds visually overlap whatever is stacked next to them.
-  gap: 48px;
-  min-height: 90px;
+  justify-content: center;
+  // Each cell now holds at most one shape (every step gets its own
+  // column, so there's no more stacking within a cell) - the generous
+  // min-height is still needed because a decision diamond is rotated
+  // 45deg from a 150x100 box, and CSS transforms don't affect the
+  // layout/grid-row-sizing box, only what's painted. Without this, a
+  // diamond's real ~177px painted footprint would visually bleed into
+  // the lane row above/below it, which the grid has no way to know about.
+  min-height: 170px;
   background: var(--surface);
 }
 

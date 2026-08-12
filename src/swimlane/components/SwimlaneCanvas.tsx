@@ -3,8 +3,8 @@ import { TextField, Dropdown, IDropdownOption, DefaultButton, IconButton, Modal 
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
-import { buildColumns, columnKeyFor, compareProcessStepIds } from '../utils/columns';
-import { connectorPath, gutterPath, pathMidpoint, rectFromDomRect, IRect } from '../utils/arrowRouting';
+import { orderStepsForTimeline, buildColumnGroups } from '../utils/columns';
+import { connectorPath, highwayPath, pathMidpoint, rectFromDomRect, IRect } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
 import EmployeePicker from './EmployeePicker';
 import styles from './SwimlaneCanvas.module.scss';
@@ -57,6 +57,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   steps, allSteps, edges, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
+  const svgRef = React.useRef<SVGSVGElement>(null);
+  const highwaySpacerRef = React.useRef<HTMLDivElement>(null);
   const nodeRefs = React.useRef(new Map<string, HTMLDivElement>());
   const [edgeGeometry, setEdgeGeometry] = React.useState<IEdgeGeometry[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>(undefined);
@@ -93,28 +95,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     () => Array.from(new Set(steps.map(s => s.responsibleJobTitle || 'Unassigned'))),
     [steps]
   );
-  const columns = React.useMemo(() => buildColumns(steps, drilledDownStepId), [steps, drilledDownStepId]);
 
-  // Each step's position within its own lane+column cell's stacking order
-  // (same sort the render loop below uses) - needed to tell whether two
-  // steps in the SAME lane are adjacent (nothing between them, a direct
-  // line is fine) or not (another step from that same lane sits between
-  // them in the stack, so a direct line would cut straight through it -
-  // this is the same problem gutter-routing already solves for
-  // different-lane connections, just triggered by lane+column stacking
-  // order instead of by lane identity).
-  const cellStackIndex = React.useMemo(() => {
-    const index = new Map<string, number>();
-    lanes.forEach(lane => {
-      columns.forEach(col => {
-        const cellSteps = steps
-          .filter(s => (s.responsibleJobTitle || 'Unassigned') === lane && columnKeyFor(s, drilledDownStepId) === col)
-          .sort((a, b) => compareProcessStepIds(a.processStepId, b.processStepId));
-        cellSteps.forEach((s, i) => index.set(s.id, i));
-      });
-    });
-    return index;
-  }, [steps, lanes, columns, drilledDownStepId]);
+  // Every visible step gets its own column (timeline slot) instead of
+  // being grouped/stacked with every other row that shares its Process
+  // Step ID - see utils/columns.ts for why. orderedSteps IS the column
+  // axis: orderedSteps[i] is column i.
+  const orderedSteps = React.useMemo(() => orderStepsForTimeline(steps), [steps]);
+  const columnGroups = React.useMemo(() => buildColumnGroups(orderedSteps), [orderedSteps]);
 
   // Only edges whose both ends are currently rendered - the rest belong to
   // a different Progress ID / Process Step ID that isn't in view right now.
@@ -132,69 +119,92 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
-    const GUTTER_TRACK_X = [30, 22, 38, 14, 46]; // parallel tracks inside the 170px lane-label column, left of its text
+    const HIGHWAY_TRACK_Y = [0, -8, 8, -16, 16]; // parallel tracks inside the reserved highway strip
 
-    interface ICandidate { edge: IResolvedEdge; a: IRect; b: IRect; needsGutter: boolean }
+    // The overlay's width/height:100% would otherwise only cover the
+    // CANVAS's visible viewport (its CSS containing-block size), not the
+    // full scrollable grid - since path coordinates are computed in
+    // full-content space (see rectFromDomRect's scroll offset add-back),
+    // any edge past the initially-visible width/height would silently
+    // fall outside the SVG's own box and get clipped by its default
+    // overflow:hidden. Force it to the real scrollable size instead.
+    if (svgRef.current) {
+      svgRef.current.style.width = `${canvas.scrollWidth}px`;
+      svgRef.current.style.height = `${canvas.scrollHeight}px`;
+    }
+
+    const rectById = new Map<string, IRect>();
+    orderedSteps.forEach(step => {
+      const el = nodeRefs.current.get(step.id);
+      if (!el) return;
+      rectById.set(step.id, rectFromDomRect(el.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop));
+    });
+    const allRects = Array.from(rectById.entries());
+
+    const highwayBaseY = highwaySpacerRef.current
+      ? rectFromDomRect(highwaySpacerRef.current.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop).cy
+      : 20;
+
+    // A direct line between two boxes is safe exactly when no OTHER box
+    // sits anywhere inside the straight-line path's bounding rectangle -
+    // connectorPath's bends never travel outside that rectangle, so this
+    // is both a necessary and sufficient check, and it works regardless
+    // of which lane/column the two boxes happen to land in (unlike a
+    // "same lane" / "same column" heuristic, which only covers the grid
+    // shapes this app happened to use before).
+    const pathIsClear = (id1: string, a: IRect, id2: string, b: IRect): boolean => {
+      const left = Math.min(a.left, b.left);
+      const right = Math.max(a.right, b.right);
+      const top = Math.min(a.top, b.top);
+      const bottom = Math.max(a.bottom, b.bottom);
+      return !allRects.some(([id, rect]) => {
+        if (id === id1 || id === id2) return false;
+        return rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top;
+      });
+    };
+
+    interface ICandidate { edge: IResolvedEdge; a: IRect; b: IRect; needsHighway: boolean }
     const candidates: ICandidate[] = [];
 
     visibleEdges.forEach(edge => {
-      const fromEl = nodeRefs.current.get(edge.fromRowId);
-      const toEl = nodeRefs.current.get(edge.toRowId);
-      const fromStep = stepsById.get(edge.fromRowId);
-      const toStep = stepsById.get(edge.toRowId);
-      if (!fromEl || !toEl || !fromStep || !toStep) return;
-
-      const a: IRect = rectFromDomRect(fromEl.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop);
-      const b: IRect = rectFromDomRect(toEl.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop);
-
-      // A direct line is only safe between two boxes that are truly
-      // adjacent in the SAME lane+column cell's stack - literally nothing
-      // else can be physically between them. Any other pairing (different
-      // lane, different column, or same lane/column but with another step
-      // stacked between them) risks the connector's bend cutting straight
-      // through unrelated boxes sitting on that path - route those
-      // through the empty left-margin gutter instead, which is guaranteed
-      // clear no matter how far apart the two boxes are.
-      const sameColumn = columnKeyFor(fromStep, drilledDownStepId) === columnKeyFor(toStep, drilledDownStepId);
-      const sameLane = (fromStep.responsibleJobTitle || 'Unassigned') === (toStep.responsibleJobTitle || 'Unassigned');
-      const fromIdx = cellStackIndex.get(fromStep.id);
-      const toIdx = cellStackIndex.get(toStep.id);
-      const adjacentInSameCell = sameLane && sameColumn && fromIdx !== undefined && toIdx !== undefined && Math.abs(fromIdx - toIdx) <= 1;
-      candidates.push({ edge, a, b, needsGutter: !adjacentInSameCell });
+      const a = rectById.get(edge.fromRowId);
+      const b = rectById.get(edge.toRowId);
+      if (!a || !b) return;
+      candidates.push({ edge, a, b, needsHighway: !pathIsClear(edge.fromRowId, a, edge.toRowId, b) });
     });
 
-    // Every gutter edge's vertical run shares the exact same narrow
-    // corridor, so two edges whose Y-ranges overlap would draw on top of
-    // each other and read as one thick merged line - assign each a
-    // distinct parallel track (classic greedy interval-coloring: sorted
+    // Every highway edge's horizontal run shares the same reserved strip,
+    // so two edges whose X-ranges overlap would draw on top of each other
+    // and read as one merged line - assign each a distinct parallel
+    // Y-level within the strip (classic greedy interval-coloring: sorted
     // by start, reuse the first track that's already clear by then) so
     // overlapping connections stay visually distinguishable.
-    const gutterEdges = candidates
-      .filter(c => c.needsGutter)
-      .map(c => ({ ...c, yStart: Math.min(c.a.cy, c.b.cy), yEnd: Math.max(c.a.cy, c.b.cy) }))
-      .sort((x, y) => x.yStart - y.yStart);
-    const trackEndY: number[] = [];
+    const highwayEdges = candidates
+      .filter(c => c.needsHighway)
+      .map(c => ({ ...c, xStart: Math.min(c.a.cx, c.b.cx), xEnd: Math.max(c.a.cx, c.b.cx) }))
+      .sort((x, y) => x.xStart - y.xStart);
+    const trackEndX: number[] = [];
     const trackByEdge = new Map<IResolvedEdge, number>();
-    gutterEdges.forEach(c => {
-      let track = trackEndY.findIndex(endY => endY < c.yStart);
+    highwayEdges.forEach(c => {
+      let track = trackEndX.findIndex(endX => endX < c.xStart);
       if (track === -1) {
-        track = trackEndY.length;
-        trackEndY.push(c.yEnd);
+        track = trackEndX.length;
+        trackEndX.push(c.xEnd);
       } else {
-        trackEndY[track] = c.yEnd;
+        trackEndX[track] = c.xEnd;
       }
       trackByEdge.set(c.edge, track);
     });
 
-    const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, needsGutter }) => {
+    const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, needsHighway }) => {
       const mid = pathMidpoint(a, b);
       const track = trackByEdge.get(edge) || 0;
-      const gutterX = GUTTER_TRACK_X[track % GUTTER_TRACK_X.length];
-      const path = needsGutter ? gutterPath(a, b, gutterX) : connectorPath(a, b);
+      const highwayY = highwayBaseY + HIGHWAY_TRACK_Y[track % HIGHWAY_TRACK_Y.length];
+      const path = needsHighway ? highwayPath(a, b, highwayY) : connectorPath(a, b);
       return { edge, path, labelX: mid.x, labelY: mid.y };
     });
     setEdgeGeometry(geometries);
-  }, [visibleEdges, stepsById, drilledDownStepId, cellStackIndex]);
+  }, [visibleEdges, orderedSteps]);
 
   React.useLayoutEffect(() => {
     measureEdges();
@@ -268,7 +278,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
 
   return (
     <div className={styles.canvas} ref={canvasRef}>
-      <svg className={styles.edgeOverlay}>
+      <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>
           <marker id="swimlaneArrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
             <path d="M0,0 L9,4.5 L0,9 Z" fill="#3c4a63" />
@@ -296,28 +306,31 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         })}
       </svg>
 
-      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${columns.length}, minmax(160px, 1fr))` }}>
+      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(150px, 1fr))` }}>
         <div className={styles.corner} />
-        {columns.map(col => (
-          <div className={styles.columnHeader} key={col}>
-            {drilledDownStepId ? (steps.find(s => s.processStepId === col)?.processStepName || col) : col}
+        {columnGroups.map(group => (
+          <div
+            className={styles.columnHeader}
+            key={group.processStepId}
+            style={{ gridColumn: `span ${group.stepIds.length}` }}
+          >
+            {drilledDownStepId
+              ? (orderedSteps.find(s => s.processStepId === group.processStepId)?.processStepName || group.processStepId)
+              : group.processStepId}
           </div>
         ))}
+
+        <div className={styles.highwaySpacer} ref={highwaySpacerRef} style={{ gridColumn: '1 / -1' }} />
 
         {lanes.map(lane => (
           <React.Fragment key={lane}>
             <div className={styles.laneLabel}>{lane}</div>
-            {columns.map(col => {
-              const cellSteps = steps
-                .filter(s => (s.responsibleJobTitle || 'Unassigned') === lane && columnKeyFor(s, drilledDownStepId) === col)
-                .sort((a, b) => compareProcessStepIds(a.processStepId, b.processStepId));
+            {orderedSteps.map(step => {
+              const belongsToLane = (step.responsibleJobTitle || 'Unassigned') === lane;
               return (
-                <div className={styles.laneCell} key={`${lane}-${col}`}>
-                  {cellSteps.map(step => (
-                    <div
-                      key={step.id}
-                      ref={el => { if (el) nodeRefs.current.set(step.id, el); }}
-                    >
+                <div className={styles.laneCell} key={`${lane}-${step.id}`}>
+                  {belongsToLane && (
+                    <div ref={el => { if (el) nodeRefs.current.set(step.id, el); }}>
                       <ShapeNode
                         label={step.actionDescription}
                         shape={getShapeType(step)}
@@ -325,7 +338,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                         onClick={() => handleNodeClick(step)}
                       />
                     </div>
-                  ))}
+                  )}
                 </div>
               );
             })}
