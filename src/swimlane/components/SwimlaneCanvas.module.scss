@@ -29,6 +29,11 @@
 .grid {
   display: grid;
   border-collapse: collapse;
+  // Breathing room between adjacent nodes so an edge label sitting on the
+  // connector between them has clear space to render in, instead of
+  // crowding right up against one of the two boxes it's labeling.
+  column-gap: 28px;
+  row-gap: 16px;
 }
 
 .corner,
@@ -68,14 +73,14 @@
 // column now belongs to exactly one step), across this strip, then back
 // down into the target's column. Never render anything in here.
 .highwaySpacer {
-  height: 40px;
+  height: 56px;
   border-bottom: 1px solid var(--border);
 }
 
 .laneCell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 12px 8px;
+  padding: 16px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -86,7 +91,7 @@
   // layout/grid-row-sizing box, only what's painted. Without this, a
   // diamond's real ~177px painted footprint would visually bleed into
   // the lane row above/below it, which the grid has no way to know about.
-  min-height: 170px;
+  min-height: 190px;
   background: var(--surface);
 }
 
