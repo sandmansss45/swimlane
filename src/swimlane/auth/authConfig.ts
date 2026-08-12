@@ -20,17 +20,23 @@ export const msalConfig: Configuration = {
   }
 };
 
-// Sites.ReadWrite.All is the broadest option and the simplest to get
-// admin consent for; Sites.Selected (scoped to just the QLEFinance site)
-// is the least-privilege alternative but needs an extra Graph/PowerShell
-// step from an admin to grant this app access to that one site - ask
-// whoever administers Entra ID which they'd rather set up.
-export const GRAPH_SCOPES = ['User.Read', 'Sites.ReadWrite.All'];
+// CONFIRMED approach (per Method Group, 2026-08): a dedicated new
+// SharePoint site named "Swimlane Studio" is being created specifically
+// for this app, and the app registration's Graph permission is
+// Sites.Selected rather than Sites.ReadWrite.All - this app can only ever
+// touch that one site, never QLEFinance or anything else in the tenant.
+// Admin consent alone is NOT enough for Sites.Selected - a tenant admin
+// also has to run one additional Graph call granting this specific app
+// access to this specific site once it exists (see AUTH_SETUP.md).
+export const GRAPH_SCOPES = ['User.Read', 'Sites.Selected'];
 
 export const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 
 // SharePoint site identified by hostname + server-relative path, resolved
 // to a real Graph site ID at runtime (see GraphDataService) rather than
 // hardcoding a guessed GUID.
+// TODO - CONFIRM the real path once the new "Swimlane Studio" site
+// actually exists - Method Group hasn't created it yet, so this is not a
+// real value, just a placeholder guess at the likely URL slug.
 export const SHAREPOINT_SITE_HOSTNAME = 'qleapenergy.sharepoint.com';
-export const SHAREPOINT_SITE_PATH = '/sites/QLEFinance';
+export const SHAREPOINT_SITE_PATH = '/sites/TODO-CONFIRM-SWIMLANE-STUDIO-SITE-PATH';

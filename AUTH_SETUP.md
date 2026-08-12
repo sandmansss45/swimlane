@@ -1,51 +1,80 @@
-# One-time setup: Entra app registration
+# Entra app registration + site permission setup
 
-The app can't sign anyone in or call Microsoft Graph until this exists. It's a
-one-time step in the Entra admin center — not something I can do from here,
-and the "grant admin consent" step needs whoever administers your Entra ID
-tenant (may or may not be the same people as "Method Group" for your local
-machine — worth checking).
+## Status (as of 2026-08-12)
 
-## 1. Create the registration
+- App registration exists: **Swimlane Studio**, client ID `b654eeeb-7451-49cf-94e4-d089592de6e5`.
+- **Confirmed plan with Method Group**: a brand-new, dedicated SharePoint site
+  named "Swimlane Studio" is being created (not touching the audited QLEFinance
+  site at all), and the app's Graph permission is **`Sites.Selected`** —
+  scoped to only that one new site, never anything else in the tenant.
+- Code (`src/swimlane/auth/authConfig.ts`) already requests `Sites.Selected`
+  to match.
+- **Blocked on:** Method Group creating the new site, then two admin actions
+  below (steps 1 and 2) that only they can do.
 
-1. Go to https://entra.microsoft.com (or portal.azure.com → Microsoft Entra ID) → **App registrations** → **New registration**.
-2. Name: `Swimlane Studio` (anything recognizable is fine).
-3. Supported account types: **Accounts in this organizational directory only** (single tenant).
-4. Redirect URI: platform = **Single-page application (SPA)**, URI = `http://localhost:5173`.
-5. Click **Register**.
-6. Back on **Authentication**, add a second SPA redirect URI once GitHub Pages
-   is live: `https://<your-github-username>.github.io` (origin only, no
-   `/repo-name/` path — the app matches on origin, not full path).
+## 1. Confirm the app registration's permission is `Sites.Selected`
 
-## 2. Copy the client ID
+If it's still showing `Sites.ReadWrite.All` from the earlier request:
 
-On the registration's **Overview** page, copy the **Application (client) ID**
-(a GUID) and send it back — I'll drop it into
-`src/swimlane/auth/authConfig.ts` as `ENTRA_CLIENT_ID`.
+1. Entra admin center (entra.microsoft.com) → **App registrations** → **Swimlane Studio** → **API permissions**.
+2. Remove `Sites.ReadWrite.All` if present. Add **`Sites.Selected`** (Microsoft Graph, delegated). `User.Read` stays as-is.
+3. Click **Grant admin consent for Quantum Leap Energy** → **Yes**.
 
-## 3. Add Graph permissions
+Note: admin consent here only allows the *app* to request `Sites.Selected`
+tokens — it does **not** by itself give the app access to any specific site.
+That's step 2.
 
-1. Left nav → **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**.
-2. Add `Sites.ReadWrite.All` (broad, simplest to consent). `User.Read` is usually
-   there by default.
-3. Click **Grant admin consent for [tenant name]** — this is the button that
-   needs an Entra admin, not just any user. Nothing works until this is green-checked.
+## 2. Grant the app access to the new "Swimlane Studio" site
 
-   **Least-privilege alternative:** instead of `Sites.ReadWrite.All` (every
-   site in the tenant), an admin can grant `Sites.Selected` and then run one
-   Graph/PowerShell command to scope this app to just the QLEFinance site.
-   More steps, but the app literally cannot see any other site's data. Say
-   the word if you'd rather do it this way and I'll write out those exact
-   commands.
+This is the extra step `Sites.Selected` needs that `Sites.ReadWrite.All`
+wouldn't have — a one-time Graph API call scoping this specific app to this
+specific site. Needs a SharePoint Administrator or Global Administrator.
+Easiest way (no PowerShell install needed):
 
-## 4. Tell me the client ID (and which permission model you used)
+1. Go to https://developer.microsoft.com/graph/graph-explorer and sign in
+   with an admin account.
+2. If prompted, consent to the `Sites.FullControl.All` permission for Graph
+   Explorer itself (only needed to run this one call, not part of our app).
+3. Find the new site's ID: run a GET request to
+   `https://graph.microsoft.com/v1.0/sites/qleapenergy.sharepoint.com:/sites/<new-site-url-name>`
+   and copy the `id` field from the response.
+4. Run a POST request to `https://graph.microsoft.com/v1.0/sites/<site-id>/permissions`
+   with this body:
+   ```json
+   {
+     "roles": ["write"],
+     "grantedToIdentities": [
+       {
+         "application": {
+           "id": "b654eeeb-7451-49cf-94e4-d089592de6e5",
+           "displayName": "Swimlane Studio"
+         }
+       }
+     ]
+   }
+   ```
+5. A 201 response confirms it — the app can now read/write that one site and
+   nothing else.
 
-Once steps 1–3 are done, send me the GUID. I'll wire it in and we can test
-real sign-in against `http://localhost:5173`.
+(Alternative if your team prefers PowerShell: PnP PowerShell's
+`Grant-PnPAzureADAppSitePermission -AppId b654eeeb-7451-49cf-94e4-d089592de6e5 -Site <site-url> -Permissions Write`
+does the same thing.)
+
+## 3. Tell me the new site's URL
+
+Once the site exists, send me its URL — I'll fill in
+`SHAREPOINT_SITE_HOSTNAME`/`SHAREPOINT_SITE_PATH` in `authConfig.ts` (currently
+a placeholder) and we can test real sign-in end to end.
+
+## 4. Redirect URIs already registered
+
+- `http://localhost:5173` (local dev)
+- Add `https://sandmansss45.github.io` (origin only, no `/repo/` path) once
+  it isn't already there — this is the live app's actual hosting URL.
 
 ---
 
 **Until this is done**, the app still runs and is fully clickable using the
-"Use mock data (no sign-in)" button on the sign-in screen — that's the same
-fixture data used throughout the SPFx build, so all the layout/arrow/edit
-work can keep being reviewed without waiting on this.
+"Use mock data (no sign-in)" button on the sign-in screen — that's fixture
+data, not the real SharePoint site, so all the layout/arrow/edit work can
+keep being reviewed without waiting on any of this.
