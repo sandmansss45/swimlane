@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { TextField, Dropdown, IDropdownOption, DefaultButton, IconButton } from '@fluentui/react';
+import { TextField, Dropdown, IDropdownOption, DefaultButton, IconButton, Modal } from '@fluentui/react';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
@@ -132,8 +132,10 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const canvasRect = canvas.getBoundingClientRect();
-    const geometries: IEdgeGeometry[] = [];
-    const GUTTER_X = 30; // inside the 170px lane-label column, left of its text
+    const GUTTER_TRACK_X = [30, 22, 38, 14, 46]; // parallel tracks inside the 170px lane-label column, left of its text
+
+    interface ICandidate { edge: IResolvedEdge; a: IRect; b: IRect; needsGutter: boolean }
+    const candidates: ICandidate[] = [];
 
     visibleEdges.forEach(edge => {
       const fromEl = nodeRefs.current.get(edge.fromRowId);
@@ -144,7 +146,6 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
 
       const a: IRect = rectFromDomRect(fromEl.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop);
       const b: IRect = rectFromDomRect(toEl.getBoundingClientRect(), canvasRect, canvas.scrollLeft, canvas.scrollTop);
-      const mid = pathMidpoint(a, b);
 
       // A direct line is only safe between two boxes that are truly
       // adjacent in the SAME lane+column cell's stack - literally nothing
@@ -159,10 +160,38 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       const fromIdx = cellStackIndex.get(fromStep.id);
       const toIdx = cellStackIndex.get(toStep.id);
       const adjacentInSameCell = sameLane && sameColumn && fromIdx !== undefined && toIdx !== undefined && Math.abs(fromIdx - toIdx) <= 1;
-      const needsGutter = !adjacentInSameCell;
-      const path = needsGutter ? gutterPath(a, b, GUTTER_X) : connectorPath(a, b);
+      candidates.push({ edge, a, b, needsGutter: !adjacentInSameCell });
+    });
 
-      geometries.push({ edge, path, labelX: mid.x, labelY: mid.y });
+    // Every gutter edge's vertical run shares the exact same narrow
+    // corridor, so two edges whose Y-ranges overlap would draw on top of
+    // each other and read as one thick merged line - assign each a
+    // distinct parallel track (classic greedy interval-coloring: sorted
+    // by start, reuse the first track that's already clear by then) so
+    // overlapping connections stay visually distinguishable.
+    const gutterEdges = candidates
+      .filter(c => c.needsGutter)
+      .map(c => ({ ...c, yStart: Math.min(c.a.cy, c.b.cy), yEnd: Math.max(c.a.cy, c.b.cy) }))
+      .sort((x, y) => x.yStart - y.yStart);
+    const trackEndY: number[] = [];
+    const trackByEdge = new Map<IResolvedEdge, number>();
+    gutterEdges.forEach(c => {
+      let track = trackEndY.findIndex(endY => endY < c.yStart);
+      if (track === -1) {
+        track = trackEndY.length;
+        trackEndY.push(c.yEnd);
+      } else {
+        trackEndY[track] = c.yEnd;
+      }
+      trackByEdge.set(c.edge, track);
+    });
+
+    const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, needsGutter }) => {
+      const mid = pathMidpoint(a, b);
+      const track = trackByEdge.get(edge) || 0;
+      const gutterX = GUTTER_TRACK_X[track % GUTTER_TRACK_X.length];
+      const path = needsGutter ? gutterPath(a, b, gutterX) : connectorPath(a, b);
+      return { edge, path, labelX: mid.x, labelY: mid.y };
     });
     setEdgeGeometry(geometries);
   }, [visibleEdges, stepsById, drilledDownStepId, cellStackIndex]);
@@ -222,11 +251,15 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     onEditStep({ ...original, ...fields, dependsOn });
   };
 
+  const closeEditPopup = (): void => {
+    setSelectedNodeId(undefined);
+    setEditDraft(undefined);
+  };
+
   const deleteSelected = (): void => {
     if (!selectedNodeId) return;
     onDeleteStep(selectedNodeId);
-    setSelectedNodeId(undefined);
-    setEditDraft(undefined);
+    closeEditPopup();
   };
 
   if (steps.length === 0) {
@@ -300,71 +333,76 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         ))}
       </div>
 
-      {selectedNodeId && editDraft && (
-        <div className={styles.connectionsPanel}>
-          <div className={styles.editHeader}>
-            <h4>Edit task</h4>
-            <IconButton iconProps={{ iconName: 'Delete' }} title="Delete this task" onClick={deleteSelected} />
-          </div>
-
-          <div className={styles.editForm}>
-            <TextField
-              label="Action description"
-              multiline
-              value={editDraft.actionDescription}
-              onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionDescription: v || '' } : prev))}
-            />
-            <TextField
-              label="Action type"
-              value={editDraft.actionType}
-              onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionType: v || '' } : prev))}
-            />
-            <Dropdown
-              label="Shape"
-              selectedKey={editDraft.shapeOverride}
-              options={SHAPE_OPTIONS}
-              onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, shapeOverride: String(option.key) } : prev))}
-            />
-            <EmployeePicker
-              employees={employees}
-              selectedRegion={selectedRegion}
-              actionType={editDraft.actionType}
-              value={editDraft.responsibleJobTitle}
-              onChange={(jobTitle) => setEditDraft(prev => (prev ? { ...prev, responsibleJobTitle: jobTitle } : prev))}
-            />
-            <Dropdown
-              label="Depends on"
-              placeholder="Which step(s) does this follow?"
-              multiSelect
-              selectedKeys={editDraft.dependsOnStepIds}
-              options={dependsOnOptions}
-              onChange={(_e, option) => setEditDraft(prev => {
-                if (!prev || !option) return prev;
-                const ids = option.selected
-                  ? [...prev.dependsOnStepIds, String(option.key)]
-                  : prev.dependsOnStepIds.filter(id => id !== option.key);
-                return { ...prev, dependsOnStepIds: ids };
-              })}
-            />
-            <DefaultButton text="Save changes" onClick={saveEdit} />
-          </div>
-
-          <h4>Outgoing connections</h4>
-          {connectionsForSelectedNode.length === 0 && <p>Nothing else currently visible depends on this row.</p>}
-          {connectionsForSelectedNode.map(edge => (
-            <div className={styles.connectionRow} key={`${edge.toRowId}-${edge.token}`}>
-              <span>&rarr; {stepsById.get(edge.toRowId)?.actionDescription}</span>
-              <input
-                type="text"
-                placeholder="Yes / No / label this branch"
-                defaultValue={edge.label || ''}
-                onChange={(e) => setDraftLabels(prev => ({ ...prev, [draftKey(edge)]: e.target.value }))}
-                onBlur={() => saveLabel(edge)}
-              />
+      <Modal isOpen={!!(selectedNodeId && editDraft)} onDismiss={closeEditPopup} isBlocking={false} containerClassName={styles.editModal}>
+        {editDraft && (
+          <div className={styles.connectionsPanel}>
+            <div className={styles.editHeader}>
+              <h4>Edit task</h4>
+              <div>
+                <IconButton iconProps={{ iconName: 'Delete' }} title="Delete this task" onClick={deleteSelected} />
+                <IconButton iconProps={{ iconName: 'Cancel' }} title="Close" onClick={closeEditPopup} />
+              </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className={styles.editForm}>
+              <TextField
+                label="Action description"
+                multiline
+                value={editDraft.actionDescription}
+                onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionDescription: v || '' } : prev))}
+              />
+              <TextField
+                label="Action type"
+                value={editDraft.actionType}
+                onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionType: v || '' } : prev))}
+              />
+              <Dropdown
+                label="Shape"
+                selectedKey={editDraft.shapeOverride}
+                options={SHAPE_OPTIONS}
+                onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, shapeOverride: String(option.key) } : prev))}
+              />
+              <EmployeePicker
+                employees={employees}
+                selectedRegion={selectedRegion}
+                actionType={editDraft.actionType}
+                value={editDraft.responsibleJobTitle}
+                onChange={(jobTitle) => setEditDraft(prev => (prev ? { ...prev, responsibleJobTitle: jobTitle } : prev))}
+              />
+              <Dropdown
+                label="Depends on"
+                placeholder="Which step(s) does this follow?"
+                multiSelect
+                selectedKeys={editDraft.dependsOnStepIds}
+                options={dependsOnOptions}
+                onChange={(_e, option) => setEditDraft(prev => {
+                  if (!prev || !option) return prev;
+                  const ids = option.selected
+                    ? [...prev.dependsOnStepIds, String(option.key)]
+                    : prev.dependsOnStepIds.filter(id => id !== option.key);
+                  return { ...prev, dependsOnStepIds: ids };
+                })}
+              />
+              <DefaultButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
+            </div>
+
+            <h4>Outgoing connections</h4>
+            {connectionsForSelectedNode.length === 0 && <p>Nothing else currently visible depends on this row.</p>}
+            {connectionsForSelectedNode.map(edge => (
+              <div className={styles.connectionRow} key={`${edge.toRowId}-${edge.token}`}>
+                <span>&rarr; {stepsById.get(edge.toRowId)?.actionDescription}</span>
+                <input
+                  type="text"
+                  placeholder="Yes / No / label this branch"
+                  defaultValue={edge.label || ''}
+                  onChange={(e) => setDraftLabels(prev => ({ ...prev, [draftKey(edge)]: e.target.value }))}
+                  onBlur={() => saveLabel(edge)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
