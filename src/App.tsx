@@ -6,7 +6,8 @@ import SwimlaneStudio from './swimlane/components/SwimlaneStudio';
 import { MockDataService } from './swimlane/services/MockDataService';
 import { GraphDataService } from './swimlane/services/GraphDataService';
 import { GRAPH_SCOPES, ENTRA_CLIENT_ID } from './swimlane/auth/authConfig';
-import { swimlaneTheme } from './swimlane/theme';
+import { swimlaneTheme, signInTheme } from './swimlane/theme';
+import LogoMark from './swimlane/components/LogoMark';
 import styles from './App.module.scss';
 
 interface IAppProps {
@@ -29,9 +30,9 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
   const registrationPending = ENTRA_CLIENT_ID.indexOf('TODO') === 0;
 
   return (
-    <div className={styles.signInScreen}>
+    <ThemeProvider theme={signInTheme} className={styles.signInScreen}>
       <div className={styles.card}>
-        <div className={styles.mark}>QLE</div>
+        <LogoMark className={styles.mark} />
         <h2 className={styles.title}>Swimlane Studio</h2>
         <p className={styles.subtitle}>Finance process visualization</p>
 
@@ -55,7 +56,7 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
           </button>
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 };
 

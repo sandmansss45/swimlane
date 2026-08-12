@@ -9,6 +9,10 @@
   --border: #dde3ea;
   --canvas: #f5f7fb;
   --surface: #ffffff;
+  --dark-bg: #0a1420;
+  --dark-surface: #111d33;
+  --bright-blue: #3f6fe0;
+  --accent-green: #4ade80;
   color-scheme: light;
 }
 

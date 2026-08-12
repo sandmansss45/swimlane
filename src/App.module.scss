@@ -4,13 +4,16 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
+  // Matches the real QLE logo's dark navy background, so this screen
+  // reads as on-brand rather than generic corporate light-blue.
+  background: var(--dark-bg);
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--dark-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 48px rgba(0, 0, 0, 0.4);
   padding: 40px;
   max-width: 440px;
   width: 100%;
@@ -18,27 +21,20 @@
 }
 
 .mark {
-  width: 52px;
-  height: 52px;
+  width: 72px;
+  height: 72px;
   margin: 0 auto 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--blue), var(--navy));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: -0.5px;
 }
 
 .title {
   margin: 0 0 4px;
+  color: #fff;
   font-size: 22px;
 }
 
 .subtitle {
   margin: 0 0 28px;
+  color: #9fb0cc;
   font-size: 13.5px;
 }
 
@@ -52,7 +48,7 @@
 .mockLink {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: #9fb0cc;
   font-size: 13px;
   cursor: pointer;
   text-decoration: underline;
@@ -60,7 +56,7 @@
   font-family: inherit;
 
   &:hover {
-    color: var(--blue);
+    color: var(--bright-blue);
   }
 }
 
