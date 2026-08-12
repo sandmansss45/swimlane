@@ -11,6 +11,7 @@ import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeePicker from './EmployeePicker';
 import SwimlaneCanvas from './SwimlaneCanvas';
+import qleLogo from '../../assets/qle-logo.svg';
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const { dataService } = props;
@@ -122,25 +123,38 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   }
 
   return (
-    <section className={styles.swimlaneStudio}>
-      <header className={styles.header}>
-        <h2 className={styles.title}>Swimlane Studio</h2>
-        {selectedProgressId && (
-          <p className={styles.breadcrumb}>
-            {selectedProgressId}
-            {drilledDownStepId ? ` / ${drilledDownStepId}` : ''}
-            {selectedRegion ? ` — ${selectedRegion}` : ''}
-          </p>
-        )}
+    <div className={styles.page}>
+      <header className={styles.appBar}>
+        <img src={qleLogo} className={styles.appBarLogo} alt="Quantum Leap Energy" />
+        <div>
+          <h2 className={styles.title}>Swimlane Studio</h2>
+          {selectedProgressId ? (
+            <p className={styles.breadcrumb}>
+              {selectedProgressId}
+              {drilledDownStepId ? ` / ${drilledDownStepId}` : ''}
+              {selectedRegion ? ` — ${selectedRegion}` : ''}
+            </p>
+          ) : (
+            <p className={styles.breadcrumb}>Finance process visualization</p>
+          )}
+        </div>
       </header>
 
-      {error && (
-        <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
-          {error}
-        </MessageBar>
-      )}
+      <section className={styles.swimlaneStudio}>
+        {error && (
+          <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
+            {error}
+          </MessageBar>
+        )}
 
-      {!selectedProgressId ? (
+        {!selectedProgressId && (
+          <div className={styles.intro}>
+            <h3>Select a process to explore</h3>
+            <p>Pick a Progress ID below to open its swimlane - drill into an individual step, filter by region, or add and edit tasks directly.</p>
+          </div>
+        )}
+
+        {!selectedProgressId ? (
         <ProgressIdPicker steps={steps} onSelect={setSelectedProgressId} />
       ) : (
         <>
@@ -181,15 +195,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </>
       )}
 
-      {riskStatements.length > 0 && (
-        <div className={styles.riskSection}>
-          <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
-          <ul>
-            {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
-          </ul>
-        </div>
-      )}
-    </section>
+        {riskStatements.length > 0 && (
+          <div className={styles.riskSection}>
+            <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
+            <ul>
+              {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
+            </ul>
+          </div>
+        )}
+      </section>
+    </div>
   );
 };
 

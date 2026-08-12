@@ -1,5 +1,6 @@
-.swimlaneStudio {
-  padding: 20px 28px 40px;
+.page {
+  width: 100%;
+  box-sizing: border-box;
   // NOTE: a 100vw/negative-margin "viewport breakout" was tried here to
   // escape the workbench's narrow default column, but on a real page the
   // page canvas clips overflow at a different ancestor, so the shifted
@@ -7,22 +8,51 @@
   // clipped to nothing). Width is controlled by the page section instead -
   // this component just fills whatever width its container gives it, and
   // must never get a max-width here.
-  width: 100%;
-  box-sizing: border-box;
 }
 
-.header {
-  margin-bottom: 16px;
+.appBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.appBarLogo {
+  height: 32px;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .title {
-  margin: 0 0 2px;
+  margin: 0;
+  font-size: 18px;
 }
 
 .breadcrumb {
-  margin: 0;
+  margin: 2px 0 0;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.swimlaneStudio {
+  padding: 0 28px 40px;
+}
+
+.intro {
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+  }
+
+  p {
+    margin: 0;
+    max-width: 640px;
+  }
 }
 
 .toolbar {
