@@ -34,9 +34,8 @@ export const GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
 
 // SharePoint site identified by hostname + server-relative path, resolved
 // to a real Graph site ID at runtime (see GraphDataService) rather than
-// hardcoding a guessed GUID.
-// TODO - CONFIRM the real path once the new "Swimlane Studio" site
-// actually exists - Method Group hasn't created it yet, so this is not a
-// real value, just a placeholder guess at the likely URL slug.
+// hardcoding a guessed GUID. Confirmed 2026-08-13 from the real site URL
+// (qleapenergy.sharepoint.com/sites/SwimlaneStudio) once Method Group
+// created it.
 export const SHAREPOINT_SITE_HOSTNAME = 'qleapenergy.sharepoint.com';
-export const SHAREPOINT_SITE_PATH = '/sites/TODO-CONFIRM-SWIMLANE-STUDIO-SITE-PATH';
+export const SHAREPOINT_SITE_PATH = '/sites/SwimlaneStudio';

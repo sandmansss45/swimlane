@@ -1,16 +1,19 @@
 # Entra app registration + site permission setup
 
-## Status (as of 2026-08-12)
+## Status (as of 2026-08-13)
 
 - App registration exists: **Swimlane Studio**, client ID `b654eeeb-7451-49cf-94e4-d089592de6e5`.
-- **Confirmed plan with Method Group**: a brand-new, dedicated SharePoint site
-  named "Swimlane Studio" is being created (not touching the audited QLEFinance
-  site at all), and the app's Graph permission is **`Sites.Selected`** —
-  scoped to only that one new site, never anything else in the tenant.
-- Code (`src/swimlane/auth/authConfig.ts`) already requests `Sites.Selected`
-  to match.
-- **Blocked on:** Method Group creating the new site, then two admin actions
-  below (steps 1 and 2) that only they can do.
+- Site created: **qleapenergy.sharepoint.com/sites/SwimlaneStudio** - confirmed
+  and filled into `authConfig.ts`.
+- Steps 1 and 2 below (permission set to `Sites.Selected` + site-specific
+  access grant) - reported done by Method Group, not yet verified end to end
+  with a real sign-in.
+- **Still outstanding, separate from auth**: `PROCESS_LIST_TITLE` and
+  `EMPLOYEES_LIST_TITLE` in `src/swimlane/services/GraphDataService.ts` are
+  still literal placeholder strings. Even with sign-in working, the app will
+  fail to load real data until the actual SharePoint **Lists** (not the
+  default Documents library) exist in this site and their real titles are
+  filled in there.
 
 ## 1. Confirm the app registration's permission is `Sites.Selected`
 
