@@ -69,11 +69,26 @@ Once the site exists, send me its URL — I'll fill in
 `SHAREPOINT_SITE_HOSTNAME`/`SHAREPOINT_SITE_PATH` in `authConfig.ts` (currently
 a placeholder) and we can test real sign-in end to end.
 
-## 4. Redirect URIs already registered
+## 4. Redirect URI - CORRECTION, real sign-in tested 2026-08-13
 
-- `http://localhost:5173` (local dev)
-- Add `https://sandmansss45.github.io` (origin only, no `/repo/` path) once
-  it isn't already there — this is the live app's actual hosting URL.
+Testing the actual sign-in flow against the live GitHub Pages site turned up
+a real bug: it landed on `sandmansss45.github.io/` (bare domain, GitHub's
+404 page) instead of the app. Cause: GitHub Pages serves this project repo
+at `/swimlane/`, not `/` (see `base` in `vite.config.ts`), but the code was
+building the redirect URI from `window.location.origin` alone, which drops
+that path. Fixed in `authConfig.ts` to append Vite's own `BASE_URL`.
+
+**The earlier guidance below (origin only, no path) was wrong** - the
+redirect URI registered in Entra has to be the exact URL the app sends,
+including the path, or Microsoft rejects it (AADSTS50011 mismatch):
+
+- `http://localhost:5173/` (local dev)
+- `https://sandmansss45.github.io/swimlane/` (live site - **note the
+  trailing `/swimlane/` path**, replacing whatever origin-only entry may
+  already be registered)
+
+Needs updating in Entra admin center → App registrations → Swimlane Studio
+→ Authentication → Redirect URIs.
 
 ---
 

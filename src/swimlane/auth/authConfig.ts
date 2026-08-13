@@ -13,7 +13,14 @@ export const msalConfig: Configuration = {
   auth: {
     clientId: ENTRA_CLIENT_ID,
     authority: `https://login.microsoftonline.com/${ENTRA_TENANT}`,
-    redirectUri: window.location.origin
+    // window.location.origin alone drops the /swimlane/ base path GitHub
+    // Pages serves this project repo under (see vite.config.ts) - Microsoft
+    // would send the signed-in user back to the bare domain instead of the
+    // app itself (a real 404 this produced once tested for real).
+    // import.meta.env.BASE_URL is Vite's own record of that same base path
+    // (already '/' in local dev, '/swimlane/' in the GitHub Pages build),
+    // so this always matches wherever the app is actually being served.
+    redirectUri: window.location.origin + import.meta.env.BASE_URL
   },
   cache: {
     cacheLocation: 'localStorage'
