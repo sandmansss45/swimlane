@@ -7,11 +7,12 @@
   text-align: center;
   padding: 8px 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  // Every shape's fill - shape TYPE (process/decision/approval/document)
-  // is conveyed purely by form (rounded rect, diamond, circle,
-  // wavy-bottomed rect), not by color. Risk severity, once linked, adds a
-  // colored ring on top (see .riskHigh/.riskMedium/.riskLow below)
-  // instead of replacing this fill - see that comment for why.
+  // Default fill when no risk is linked - shape TYPE (process/decision/
+  // approval/document) is conveyed purely by form (rounded rect, diamond,
+  // circle, wavy-bottomed rect), not by color, since color is reserved
+  // for risk severity once the Risk Register is linked in. Every shape
+  // starts here and only a .riskHigh/.riskMedium/.riskLow class (added
+  // once a risk is linked) overrides it to red/amber/green.
   background: var(--blue);
   color: #fff;
   font-weight: 600;
@@ -82,62 +83,19 @@
   );
 }
 
-// Risk severity as a colored ring, not a solid fill - a risk in the real
-// data links to a whole Process Step ID group (every row sharing that
-// ID), so filling the whole shape would paint an entire 10+ step group
-// solid red/amber/green, leaving nothing to actually stand out. A ring
-// flags it while the shape keeps its normal blue fill and stays readable.
-//
-// Built from stacked zero-blur drop-shadow()s rather than box-shadow:
-// box-shadow draws around the element's rectangular border box, but the
-// decision diamond and document shapes are cut from a rectangle with
-// clip-path - a box-shadow ring on those would mostly get clipped away
-// right at the corners, leaving a broken partial outline. drop-shadow
-// instead follows the shape's own rendered silhouette (its alpha
-// channel), so the ring comes out complete and correctly shaped on every
-// shape type, diamond included.
-@mixin risk-ring($color) {
-  filter:
-    drop-shadow(2px 0 0 #{$color})
-    drop-shadow(-2px 0 0 #{$color})
-    drop-shadow(0 2px 0 #{$color})
-    drop-shadow(0 -2px 0 #{$color})
-    drop-shadow(1.5px 1.5px 0 #{$color})
-    drop-shadow(-1.5px 1.5px 0 #{$color})
-    drop-shadow(1.5px -1.5px 0 #{$color})
-    drop-shadow(-1.5px -1.5px 0 #{$color});
-}
-
-// filter is a single property - .shapeNode:hover's brightness dimming
-// and a risk ring's drop-shadow stack would otherwise replace each other
-// instead of combining, so the hover state needs its own copy that
-// includes both.
-@mixin risk-ring-hover($color) {
-  filter:
-    brightness(0.96)
-    drop-shadow(2px 0 0 #{$color})
-    drop-shadow(-2px 0 0 #{$color})
-    drop-shadow(0 2px 0 #{$color})
-    drop-shadow(0 -2px 0 #{$color})
-    drop-shadow(1.5px 1.5px 0 #{$color})
-    drop-shadow(-1.5px 1.5px 0 #{$color})
-    drop-shadow(1.5px -1.5px 0 #{$color})
-    drop-shadow(-1.5px -1.5px 0 #{$color});
-}
-
+// Risk-severity fills - declared after the shape-type rules above so
+// they win (equal specificity, later wins) when a node carries both a
+// type class and a risk class.
 .riskHigh {
-  @include risk-ring(var(--risk-high));
-  &:hover { @include risk-ring-hover(var(--risk-high)); }
+  background: var(--risk-high);
 }
 
 .riskMedium {
-  @include risk-ring(var(--risk-medium));
-  &:hover { @include risk-ring-hover(var(--risk-medium)); }
+  background: var(--risk-medium);
 }
 
 .riskLow {
-  @include risk-ring(var(--risk-low));
-  &:hover { @include risk-ring-hover(var(--risk-low)); }
+  background: var(--risk-low);
 }
 
 .label {
