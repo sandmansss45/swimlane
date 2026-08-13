@@ -1,22 +1,32 @@
 import * as React from 'react';
-import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, TextField, Pivot, PivotItem } from '@fluentui/react';
+import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, Pivot, PivotItem } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
 import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
-import { resolveDependencyEdges } from '../utils/dependencyResolution';
+import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import ProgressIdPicker from './ProgressIdPicker';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
-import EmployeePicker from './EmployeePicker';
 import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
+import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
 type MainTab = 'flows' | 'employees';
+
+const emptyStepDraft = (): IProcessStepFormValue => ({
+  action: '',
+  actionDescription: '',
+  actionType: 'Execute (Within Limits)',
+  shapeOverride: '',
+  riskLevelOverride: '',
+  responsibleJobTitle: '',
+  dependsOnStepIds: []
+});
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const { dataService } = props;
@@ -31,8 +41,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [drilledDownStepId, setDrilledDownStepId] = React.useState<string | undefined>(undefined);
   const [selectedRegion, setSelectedRegion] = React.useState<string | undefined>(undefined);
 
-  const [newActionDescription, setNewActionDescription] = React.useState('');
-  const [newResponsibleJobTitle, setNewResponsibleJobTitle] = React.useState<string | undefined>(undefined);
+  const [newStepDraft, setNewStepDraft] = React.useState<IProcessStepFormValue>(emptyStepDraft());
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
@@ -64,6 +73,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     () => selectedProgressId ? steps.filter(s => getProgressId(s.processStepId) === selectedProgressId) : [],
     [steps, selectedProgressId]
   );
+
+  // No excludeStepId - a brand-new step has no "self" to leave out, unlike
+  // the edit panel's version of this same list.
+  const addStepDependsOnOptions = React.useMemo(() => buildDependsOnOptions(steps), [steps]);
 
   const visibleSteps = React.useMemo(
     () => drilledDownStepId ? stepsInProgressId.filter(s => s.processStepId === drilledDownStepId) : stepsInProgressId,
@@ -102,25 +115,22 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   const handleAddStep = (): void => {
-    if (!selectedProgressId || !newActionDescription.trim()) return;
+    if (!selectedProgressId || !newStepDraft.actionDescription.trim()) return;
     const referenceStep = stepsInProgressId[0];
+    const { dependsOnStepIds, ...fields } = newStepDraft;
     setSaving(true);
     dataService.addProcessStep({
       apqcTitle: referenceStep ? referenceStep.apqcTitle : selectedProgressId,
       processDescription: referenceStep ? referenceStep.processDescription : '',
       processStepId: drilledDownStepId || selectedProgressId,
       processStepName: referenceStep ? referenceStep.processStepName : '',
-      actionType: 'Execute (Within Limits)',
-      action: '',
-      actionDescription: newActionDescription.trim(),
-      responsibleJobTitle: newResponsibleJobTitle || '',
-      shapeOverride: '',
-      dependsOn: []
+      ...fields,
+      actionDescription: fields.actionDescription.trim(),
+      dependsOn: stepIdsToDependsOnTokens(steps, dependsOnStepIds)
     })
       .then(created => {
         setSteps(prev => [...prev, created]);
-        setNewActionDescription('');
-        setNewResponsibleJobTitle(undefined);
+        setNewStepDraft(emptyStepDraft());
         setSaving(false);
       })
       .catch((err: Error) => {
@@ -230,19 +240,18 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
               <div className={styles.addStepForm}>
                 <h3 className={styles.cardTitle}>Add a step</h3>
-                <TextField
-                  label="New step - action description"
-                  value={newActionDescription}
-                  onChange={(_e, v) => setNewActionDescription(v || '')}
-                />
-                <EmployeePicker
+                <ProcessStepForm
+                  value={newStepDraft}
+                  onChange={setNewStepDraft}
                   employees={employees}
                   selectedRegion={selectedRegion}
-                  actionType="Execute (Within Limits)"
-                  value={newResponsibleJobTitle}
-                  onChange={setNewResponsibleJobTitle}
+                  dependsOnOptions={addStepDependsOnOptions}
                 />
-                <PrimaryButton text={saving ? 'Adding...' : 'Add step'} disabled={saving} onClick={handleAddStep} />
+                <PrimaryButton
+                  text={saving ? 'Adding...' : 'Add step'}
+                  disabled={saving || !newStepDraft.actionDescription.trim()}
+                  onClick={handleAddStep}
+                />
               </div>
             </>
           )}

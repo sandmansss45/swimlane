@@ -46,6 +46,55 @@ export function resolveDependencyEdges(orderedSteps: IProcessStep[]): IResolvedE
 }
 
 /**
+ * Row number (header counted as row 1) for a step's position in the FULL
+ * unfiltered dataset - the same numbering resolveDependencyEdges itself
+ * uses. Shared by the add-step form and the edit panel so both convert a
+ * human's "depends on" pick into a raw DependsOn token the exact same way.
+ */
+export function rowNumberForStepId(allSteps: IProcessStep[], stepId: string): number | undefined {
+  const idx = allSteps.findIndex(s => s.id === stepId);
+  return idx === -1 ? undefined : idx + 2;
+}
+
+export function stepIdForRowNumber(allSteps: IProcessStep[], rowNumber: number): string | undefined {
+  return allSteps[rowNumber - 2]?.id;
+}
+
+/** Human-picked "depends on" step IDs -> raw DependsOn row-number tokens. */
+export function stepIdsToDependsOnTokens(allSteps: IProcessStep[], stepIds: string[]): string[] {
+  return stepIds
+    .map(id => rowNumberForStepId(allSteps, id))
+    .filter((n): n is number => n !== undefined)
+    .map(n => String(n));
+}
+
+/** Raw DependsOn tokens -> the step IDs they resolve to (for pre-populating a picker from existing data). */
+export function dependsOnTokensToStepIds(allSteps: IProcessStep[], tokens: string[]): string[] {
+  const ids: string[] = [];
+  tokens.forEach(token => {
+    const match = /(\d+)\s*$/.exec(token);
+    if (!match) return;
+    const stepId = stepIdForRowNumber(allSteps, parseInt(match[1], 10));
+    if (stepId) ids.push(stepId);
+  });
+  return ids;
+}
+
+/**
+ * Options for a "depends on" picker: every step, labeled by its Process
+ * Step ID and a truncated description so two steps with the same wording
+ * elsewhere are still distinguishable. Shared by the add-step form and
+ * the edit panel - `excludeStepId` leaves out the step being edited
+ * (nothing to add for a brand-new step being created).
+ */
+export function buildDependsOnOptions(allSteps: IProcessStep[], excludeStepId?: string): Array<{ key: string; text: string }> {
+  const truncate = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+  return allSteps
+    .filter(s => s.id !== excludeStepId)
+    .map(s => ({ key: s.id, text: `${s.processStepId} — ${truncate(s.actionDescription, 50)}` }));
+}
+
+/**
  * Every outgoing edge from a decision must have a visible label (confirmed
  * design rule) - flags edges that need one.
  */

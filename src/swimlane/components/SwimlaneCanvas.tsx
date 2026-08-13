@@ -1,35 +1,17 @@
 import * as React from 'react';
-import { TextField, Dropdown, IDropdownOption, DefaultButton, PrimaryButton, IconButton, Modal } from '@fluentui/react';
+import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption } from '@fluentui/react';
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IRiskStatement, resolveRiskLevel } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
-import { IResolvedEdge } from '../utils/dependencyResolution';
+import { IResolvedEdge, dependsOnTokensToStepIds, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups, computeDropOrder } from '../utils/columns';
 import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
 import ShapeLegend from './ShapeLegend';
-import EmployeePicker from './EmployeePicker';
+import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import styles from './SwimlaneCanvas.module.scss';
-
-const SHAPE_OPTIONS: IDropdownOption[] = [
-  { key: '', text: '(use Action Type / wording heuristic)' },
-  { key: 'Process Step', text: 'Process (rounded rectangle)' },
-  { key: 'Decision', text: 'Decision (diamond)' },
-  { key: 'Approval', text: 'Approval (circle)' },
-  { key: 'Document', text: 'Document (artifact)' }
-];
-
-const RISK_LEVEL_OPTIONS: IDropdownOption[] = [
-  { key: '', text: '(use Risk Register)' },
-  { key: 'High', text: 'High' },
-  { key: 'Medium', text: 'Medium' },
-  { key: 'Low', text: 'Low' }
-];
-
-const truncate = (text: string, max: number): string =>
-  text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
 export interface ISwimlaneCanvasProps {
   steps: IProcessStep[]; // already filtered to the current Progress ID (and Process Step ID, if drilled down) - for display
@@ -62,15 +44,6 @@ interface IEdgeGeometry {
 // refs after layout and routed via connectorPath (picks whichever side of
 // each box actually faces the other node, so lines don't cut diagonally
 // through unrelated boxes between them).
-interface IEditDraft {
-  actionDescription: string;
-  actionType: string;
-  shapeOverride: string;
-  riskLevelOverride: string;
-  responsibleJobTitle: string;
-  dependsOnStepIds: string[];
-}
-
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   steps, allSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
 }) => {
@@ -81,7 +54,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [edgeGeometry, setEdgeGeometry] = React.useState<IEdgeGeometry[]>([]);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>(undefined);
   const [draftLabels, setDraftLabels] = React.useState<{ [token: string]: string }>({});
-  const [editDraft, setEditDraft] = React.useState<IEditDraft | undefined>(undefined);
+  const [editDraft, setEditDraft] = React.useState<IProcessStepFormValue | undefined>(undefined);
   const [draggingStepId, setDraggingStepId] = React.useState<string | undefined>(undefined);
   const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
 
@@ -138,27 +111,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     setDraggingStepId(undefined);
   };
 
-  // Row number = position in the FULL unfiltered dataset + 2 (header
-  // counted as row 1) - the same scheme resolveDependencyEdges uses.
-  // Needed here so the "Depends on" picker can convert a human pick
-  // (another step) into the row-number token the rest of the app expects,
-  // and back again when loading a step's existing dependencies into the form.
-  const rowNumberById = React.useMemo(() => {
-    const map = new Map<string, number>();
-    allSteps.forEach((s, i) => map.set(s.id, i + 2));
-    return map;
-  }, [allSteps]);
-
-  const stepIdByRowNumber = React.useMemo(() => {
-    const map = new Map<number, string>();
-    allSteps.forEach((s, i) => map.set(i + 2, s.id));
-    return map;
-  }, [allSteps]);
-
   const dependsOnOptions: IDropdownOption[] = React.useMemo(
-    () => allSteps
-      .filter(s => s.id !== selectedNodeId)
-      .map(s => ({ key: s.id, text: `${s.processStepId} — ${truncate(s.actionDescription, 50)}` })),
+    () => buildDependsOnOptions(allSteps, selectedNodeId),
     [allSteps, selectedNodeId]
   );
 
@@ -404,28 +358,18 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     return () => window.removeEventListener('resize', measureEdges);
   }, [measureEdges]);
 
-  const resolveDependsOnStepIds = (step: IProcessStep): string[] => {
-    const ids: string[] = [];
-    step.dependsOn.forEach(token => {
-      const match = /(\d+)\s*$/.exec(token);
-      if (!match) return;
-      const depId = stepIdByRowNumber.get(parseInt(match[1], 10));
-      if (depId) ids.push(depId);
-    });
-    return ids;
-  };
-
   const handleNodeClick = (step: IProcessStep): void => {
     const deselecting = selectedNodeId === step.id;
     setSelectedNodeId(deselecting ? undefined : step.id);
     setDraftLabels({});
     setEditDraft(deselecting ? undefined : {
+      action: step.action,
       actionDescription: step.actionDescription,
       actionType: step.actionType,
       shapeOverride: step.shapeOverride || '',
       riskLevelOverride: step.riskLevelOverride || '',
       responsibleJobTitle: step.responsibleJobTitle,
-      dependsOnStepIds: resolveDependsOnStepIds(step)
+      dependsOnStepIds: dependsOnTokensToStepIds(allSteps, step.dependsOn)
     });
   };
 
@@ -447,10 +391,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const original = selectedNodeId ? stepsById.get(selectedNodeId) : undefined;
     if (!original || !editDraft) return;
     const { dependsOnStepIds, ...fields } = editDraft;
-    const dependsOn = dependsOnStepIds
-      .map(id => rowNumberById.get(id))
-      .filter((rowNumber): rowNumber is number => rowNumber !== undefined)
-      .map(rowNumber => String(rowNumber));
+    const dependsOn = stepIdsToDependsOnTokens(allSteps, dependsOnStepIds);
     onEditStep({ ...original, ...fields, dependsOn });
   };
 
@@ -622,49 +563,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             </div>
 
             <div className={styles.editForm}>
-              <TextField
-                label="Action description"
-                multiline
-                value={editDraft.actionDescription}
-                onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionDescription: v || '' } : prev))}
-              />
-              <TextField
-                label="Action type"
-                value={editDraft.actionType}
-                onChange={(_e, v) => setEditDraft(prev => (prev ? { ...prev, actionType: v || '' } : prev))}
-              />
-              <Dropdown
-                label="Shape"
-                selectedKey={editDraft.shapeOverride}
-                options={SHAPE_OPTIONS}
-                onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, shapeOverride: String(option.key) } : prev))}
-              />
-              <Dropdown
-                label="Risk level"
-                selectedKey={editDraft.riskLevelOverride}
-                options={RISK_LEVEL_OPTIONS}
-                onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, riskLevelOverride: String(option.key) } : prev))}
-              />
-              <EmployeePicker
+              <ProcessStepForm
+                value={editDraft}
+                onChange={setEditDraft}
                 employees={employees}
                 selectedRegion={selectedRegion}
-                actionType={editDraft.actionType}
-                value={editDraft.responsibleJobTitle}
-                onChange={(jobTitle) => setEditDraft(prev => (prev ? { ...prev, responsibleJobTitle: jobTitle } : prev))}
-              />
-              <Dropdown
-                label="Depends on"
-                placeholder="Which step(s) does this follow?"
-                multiSelect
-                selectedKeys={editDraft.dependsOnStepIds}
-                options={dependsOnOptions}
-                onChange={(_e, option) => setEditDraft(prev => {
-                  if (!prev || !option) return prev;
-                  const ids = option.selected
-                    ? [...prev.dependsOnStepIds, String(option.key)]
-                    : prev.dependsOnStepIds.filter(id => id !== option.key);
-                  return { ...prev, dependsOnStepIds: ids };
-                })}
+                dependsOnOptions={dependsOnOptions}
               />
               <PrimaryButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
             </div>
