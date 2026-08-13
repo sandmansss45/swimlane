@@ -49,7 +49,17 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
         <div className={styles.actions}>
           <PrimaryButton
             text="Sign in with Microsoft"
-            onClick={() => instance.loginPopup({ scopes: GRAPH_SCOPES })}
+            // loginRedirect, not loginPopup - the redirect URI points at
+            // this same full app bundle (there's no separate minimal
+            // "blank" page for a popup to land on), so a popup ends up
+            // booting the entire app inside itself instead of just
+            // relaying the result back to the opener and closing, which
+            // is exactly what got stuck showing a blank popup window when
+            // tested for real. loginRedirect avoids the whole class of
+            // bug - the same tab navigates away and back, and
+            // handleRedirectPromise() in msalInstance.ts already picks up
+            // the result on the next load.
+            onClick={() => instance.loginRedirect({ scopes: GRAPH_SCOPES })}
           />
           <button type="button" className={styles.mockLink} onClick={onUseMock}>
             Use mock data (no sign-in)
