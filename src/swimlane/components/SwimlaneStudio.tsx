@@ -11,6 +11,7 @@ import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeePicker from './EmployeePicker';
 import EmployeesList from './EmployeesList';
+import RiskRegisterList from './RiskRegisterList';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import qleLogo from '../../assets/qle-logo.svg';
@@ -245,14 +246,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             </>
           )}
 
-            {riskStatements.length > 0 && (
-              <div className={styles.riskSection}>
-                <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
-                <ul>
-                  {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
-                </ul>
-              </div>
-            )}
+            <RiskRegisterList riskStatements={riskStatements} />
           </>
         )}
       </section>

@@ -82,24 +82,26 @@
   clip-path: polygon(0% 0%, 100% 0%, 100% 80%, 75% 100%, 50% 80%, 25% 100%, 0% 80%);
 }
 
-// Risk-level dots - plain circles regardless of shape type, since risk
-// severity applies the same way across every shape.
+// Risk-level dots - a blue center with a colored ring, matching how a
+// flagged shape actually renders (a ring over its normal fill, not a
+// solid color swap - see ShapeNode.module.scss for why).
 .dot {
   display: inline-block;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  background: var(--blue);
   flex-shrink: 0;
 }
 
 .riskHigh {
-  background: var(--risk-high);
+  box-shadow: 0 0 0 2px var(--risk-high);
 }
 
 .riskMedium {
-  background: var(--risk-medium);
+  box-shadow: 0 0 0 2px var(--risk-medium);
 }
 
 .riskLow {
-  background: var(--risk-low);
+  box-shadow: 0 0 0 2px var(--risk-low);
 }
