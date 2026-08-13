@@ -6,11 +6,14 @@ import { IRiskStatement, RiskLevel } from '../models/IRiskStatement';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
-// TODO - CONFIRM AGAINST THE REAL "QLE Finance" SITE, same as the SPFx
-// build's SharePointDataService - swap in the real display names once
-// known (or run logFieldSchema/resolveListId manually from the browser
-// console to check).
-const PROCESS_LIST_TITLE = 'TODO-CONFIRM-PROCESS-LIST-TITLE';
+// CONFIRMED 2026-08-13 against the real "Swimlane Studio" site - a list
+// named "9.6 tester" exists there with exactly the expected columns
+// (APQC Title, Process Description, Process Step ID, Process Step Name,
+// Action Type, Action, Action Description, ResponsibleJobTitle,
+// ShapeOverride, DependsOn), already populated with real data.
+const PROCESS_LIST_TITLE = '9.6 tester';
+// TODO - CONFIRM: not yet seen on the real site - only "9.6 tester" and
+// the default "Documents" library exist there so far.
 const EMPLOYEES_LIST_TITLE = 'TODO-CONFIRM-EMPLOYEES-LIST-TITLE';
 const RISK_LIST_TITLE = 'risk regnew';
 
