@@ -58,19 +58,69 @@ export interface ICsvImportPreview {
 }
 
 /**
+ * When a blank-DependsOn row's own Action verb has a known preferred
+ * predecessor verb, prefer the most recent row in the group carrying that
+ * verb over just grabbing whatever row happens to sit directly above it -
+ * e.g. a "Receive" is really caused by a "Send", not by whatever
+ * unrelated row a vendor happened to list first. Still plain keyword
+ * matching against this export's own action vocabulary, not a trained
+ * model reading the wording - it has no fallback for verbs outside this
+ * list beyond "use the row before it", and no way to tell that a phrase
+ * it wasn't specifically taught means the same thing.
+ */
+const VERB_PREDECESSORS: Record<string, string[]> = {
+  receive: ['send', 'issue'],
+  forward: ['send', 'receive'],
+  review: ['receive', 'forward', 'create', 'submit'],
+  approve: ['review', 'create', 'submit'],
+  create: ['review', 'approve', 'receive'],
+  submit: ['create', 'review'],
+  automated: ['approve'],
+  issue: ['approve', 'automated'],
+  reconcile: ['issue', 'automated']
+};
+
+interface IGroupHistoryEntry {
+  rowNumber: number;
+  action: string;
+}
+
+/**
+ * Picks the auto-link target for a blank-DependsOn row: the most recent
+ * row in its group whose Action verb is a preferred predecessor for this
+ * row's own verb, or - when this row's verb isn't in VERB_PREDECESSORS,
+ * or none of its preferred verbs have appeared yet - the row directly
+ * before it, same fallback as before this heuristic existed.
+ */
+function findAutoPredecessor(action: string, groupHistory: IGroupHistoryEntry[]): number | undefined {
+  if (groupHistory.length === 0) return undefined;
+  const preferred = VERB_PREDECESSORS[action.trim().toLowerCase()];
+  if (preferred && preferred.length > 0) {
+    for (let i = groupHistory.length - 1; i >= 0; i--) {
+      if (preferred.includes(groupHistory[i].action.trim().toLowerCase())) {
+        return groupHistory[i].rowNumber;
+      }
+    }
+  }
+  return groupHistory[groupHistory.length - 1].rowNumber;
+}
+
+/**
  * Parses a CSV matching the confirmed export schema. Column order is not
  * assumed - each column is located by its display-name header, same
  * resolve-by-name approach the SharePoint data service uses, so the file
  * doesn't need to list columns in a fixed order.
  *
- * Auto-link heuristic: when a row's DependsOn is blank, it's chained to the
- * previous row within the same Process Step ID group (real exports list
- * steps in that group top-to-bottom in flow order, so this is the sensible
- * default). A row that's the first in its group with no DependsOn is left
- * with none - it's a legitimate starting point, not a missing value. This
- * is a deterministic fallback, not a trained model: there's no training
- * data or backend to run one on, and a default flow a person can correct
- * through the existing "Depends on" picker achieves the same outcome.
+ * Auto-link heuristic: when a row's DependsOn is blank, it's chained to a
+ * row earlier in the same Process Step ID group - the row with a matching
+ * verb per VERB_PREDECESSORS if one exists, otherwise the row directly
+ * before it (real exports list steps in a group top-to-bottom in flow
+ * order, so that's still a sensible default). A row that's the first in
+ * its group with no DependsOn is left with none - it's a legitimate
+ * starting point, not a missing value. This is a deterministic keyword
+ * heuristic, not a trained model: there's no training data or backend to
+ * run one on, and a default flow a person can correct through the
+ * existing "Depends on" picker achieves the same outcome.
  */
 export function buildImportPreview(csvText: string): ICsvImportPreview {
   const rawRows = parseCsvText(csvText);
@@ -101,7 +151,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
   };
 
   const parsedRows: IParsedCsvRow[] = [];
-  const lastRowNumberForGroup = new Map<string, number>();
+  const groupHistory = new Map<string, IGroupHistoryEntry[]>();
 
   rawRows.forEach((cells, arrIdx) => {
     if (arrIdx === 0) return; // header
@@ -109,18 +159,23 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
     if (cells.every(c => (c || '').trim() === '')) return; // blank separator row
 
     const processStepId = get(cells, 'Process Step ID');
+    const action = get(cells, 'Action');
     let dependsOn = parseDependsOn(get(cells, 'DependsOn'));
     let autoLinked = false;
 
     if (dependsOn.length === 0) {
-      const priorRowNumber = lastRowNumberForGroup.get(processStepId);
-      if (priorRowNumber !== undefined) {
-        dependsOn = [`${processStepId || 'row'}-${priorRowNumber}`];
+      const predecessorRow = findAutoPredecessor(action, groupHistory.get(processStepId) || []);
+      if (predecessorRow !== undefined) {
+        dependsOn = [`${processStepId || 'row'}-${predecessorRow}`];
         autoLinked = true;
       }
     }
 
-    if (processStepId) lastRowNumberForGroup.set(processStepId, csvRowNumber);
+    if (processStepId) {
+      const history = groupHistory.get(processStepId) || [];
+      history.push({ rowNumber: csvRowNumber, action });
+      groupHistory.set(processStepId, history);
+    }
 
     parsedRows.push({
       csvRowNumber,
@@ -131,7 +186,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
         processStepId,
         processStepName: get(cells, 'Process Step Name'),
         actionType: get(cells, 'Action Type'),
-        action: get(cells, 'Action'),
+        action,
         actionDescription: get(cells, 'Action Description'),
         responsibleJobTitle: get(cells, 'ResponsibleJobTitle'),
         shapeOverride: get(cells, 'ShapeOverride'),

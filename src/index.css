@@ -3,12 +3,19 @@
   --blue: #1f4fa3;
   --blue-light: #e6f0ff;
   --approval: #146c43;
+  --green-light: #e0f5ea;
   --decision: #c96a1f;
   --document: #5b6478;
+  /* Traffic-light risk severity - fills a step's shape once it's linked
+     to a Risk Register entry, taking over from the old per-shape-type
+     color. */
+  --risk-high: #d92d20;
+  --risk-medium: #dc6803;
+  --risk-low: #17803d;
   --text: #16233d;
   --text-secondary: #5b6b84;
   --border: #dde3ea;
-  --canvas: #f5f7fb;
+  --canvas: #eaf2fd;
   --surface: #ffffff;
   --dark-bg: #0a1420;
   --dark-surface: #111d33;

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, TextField } from '@fluentui/react';
+import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, TextField, Pivot, PivotItem } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
 import { IProcessStep, getProgressId } from '../models/IProcessStep';
@@ -10,9 +10,12 @@ import ProgressIdPicker from './ProgressIdPicker';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeePicker from './EmployeePicker';
+import EmployeesList from './EmployeesList';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import qleLogo from '../../assets/qle-logo.svg';
+
+type MainTab = 'flows' | 'employees';
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const { dataService } = props;
@@ -31,6 +34,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [newResponsibleJobTitle, setNewResponsibleJobTitle] = React.useState<string | undefined>(undefined);
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
   const loadAll = React.useCallback(() => {
     setLoading(true);
@@ -179,61 +183,77 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           </MessageBar>
         )}
 
-        {!selectedProgressId && (
-          <div className={styles.intro}>
-            <h3>Select a process to explore</h3>
-            <p>Pick a Progress ID below to open its swimlane - drill into an individual step, filter by region, or add and edit tasks directly.</p>
-          </div>
-        )}
+        <Pivot
+          className={styles.mainTabs}
+          selectedKey={activeTab}
+          onLinkClick={(item?: PivotItem) => setActiveTab(item?.props.itemKey === 'employees' ? 'employees' : 'flows')}
+        >
+          <PivotItem headerText="Process Flows" itemKey="flows" />
+          <PivotItem headerText="Employees" itemKey="employees" />
+        </Pivot>
 
-        {!selectedProgressId ? (
-        <ProgressIdPicker steps={steps} onSelect={setSelectedProgressId} />
-      ) : (
-        <>
-          <div className={styles.toolbar}>
-            <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
-            <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
-            <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
-          </div>
+        {activeTab === 'employees' ? (
+          <EmployeesList employees={employees} />
+        ) : (
+          <>
+            {!selectedProgressId && (
+              <div className={styles.intro}>
+                <h3>Select a process to explore</h3>
+                <p>Pick a Progress ID below to open its swimlane - drill into an individual step, filter by region, or add and edit tasks directly.</p>
+              </div>
+            )}
 
-          <SwimlaneCanvas
-            steps={visibleSteps}
-            allSteps={steps}
-            edges={edges}
-            drilledDownStepId={drilledDownStepId}
-            employees={employees}
-            selectedRegion={selectedRegion}
-            onLabelEdge={handleLabelEdge}
-            onEditStep={handleEditStep}
-            onDeleteStep={handleDeleteStep}
-          />
+            {!selectedProgressId ? (
+            <ProgressIdPicker steps={steps} onSelect={setSelectedProgressId} />
+          ) : (
+            <>
+              <div className={styles.toolbar}>
+                <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+                <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
+                <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
+              </div>
 
-          <div className={styles.addStepForm}>
-            <h3 className={styles.cardTitle}>Add a step</h3>
-            <TextField
-              label="New step - action description"
-              value={newActionDescription}
-              onChange={(_e, v) => setNewActionDescription(v || '')}
-            />
-            <EmployeePicker
-              employees={employees}
-              selectedRegion={selectedRegion}
-              actionType="Execute (Within Limits)"
-              value={newResponsibleJobTitle}
-              onChange={setNewResponsibleJobTitle}
-            />
-            <PrimaryButton text={saving ? 'Adding...' : 'Add step'} disabled={saving} onClick={handleAddStep} />
-          </div>
-        </>
-      )}
+              <SwimlaneCanvas
+                steps={visibleSteps}
+                allSteps={steps}
+                edges={edges}
+                riskStatements={riskStatements}
+                drilledDownStepId={drilledDownStepId}
+                employees={employees}
+                selectedRegion={selectedRegion}
+                onLabelEdge={handleLabelEdge}
+                onEditStep={handleEditStep}
+                onDeleteStep={handleDeleteStep}
+              />
 
-        {riskStatements.length > 0 && (
-          <div className={styles.riskSection}>
-            <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
-            <ul>
-              {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
-            </ul>
-          </div>
+              <div className={styles.addStepForm}>
+                <h3 className={styles.cardTitle}>Add a step</h3>
+                <TextField
+                  label="New step - action description"
+                  value={newActionDescription}
+                  onChange={(_e, v) => setNewActionDescription(v || '')}
+                />
+                <EmployeePicker
+                  employees={employees}
+                  selectedRegion={selectedRegion}
+                  actionType="Execute (Within Limits)"
+                  value={newResponsibleJobTitle}
+                  onChange={setNewResponsibleJobTitle}
+                />
+                <PrimaryButton text={saving ? 'Adding...' : 'Add step'} disabled={saving} onClick={handleAddStep} />
+              </div>
+            </>
+          )}
+
+            {riskStatements.length > 0 && (
+              <div className={styles.riskSection}>
+                <h3 className={styles.cardTitle}>Risk Register ({riskStatements.length})</h3>
+                <ul>
+                  {riskStatements.map(r => (<li key={r.id}><strong>{r.title}</strong>: {r.riskStatement}</li>))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

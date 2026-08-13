@@ -7,7 +7,15 @@
   text-align: center;
   padding: 8px 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  background: #fff;
+  // Default fill when no risk is linked - shape TYPE (process/decision/
+  // approval/document) is now conveyed purely by form (rounded rect,
+  // diamond, circle, wavy-bottomed rect), not by color, since color is
+  // reserved for risk severity once the Risk Register is linked in. Every
+  // shape starts here and only a .riskHigh/.riskMedium/.riskLow class
+  // (added once a risk is linked) overrides it to red/amber/green.
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
   min-width: 120px;
   max-width: 190px;
   box-shadow: 0 1px 3px rgba(16, 24, 40, 0.15);
@@ -24,47 +32,41 @@
   box-shadow: 0 0 0 3px var(--blue), 0 4px 10px rgba(16, 24, 40, 0.22);
 }
 
-// Ordinary process steps = blue rounded rectangles
+// Ordinary process steps = rounded rectangles
 .process {
   border-radius: 8px;
-  background: var(--blue);
-  color: #fff;
-  font-weight: 600;
 }
 
-// Decision-type = orange diamonds
+// Decision-type = diamonds. A rotated non-square rectangle isn't
+// actually a symmetric diamond - it comes out stretched/lopsided,
+// because rotation preserves the box's own unequal width/height. Cutting
+// the diamond out of an UNROTATED box with clip-path instead gives a
+// true, evenly-pointed rhombus regardless of the box's aspect ratio, and
+// as a bonus the box's own layout bounds (what getBoundingClientRect
+// returns for arrow anchoring) now exactly match where the diamond's
+// points are - top-center/right-center/bottom-center/left-center - so
+// connectors land precisely on the tip instead of approximating it
+// against a rotated bounding box.
 .decision {
-  width: 150px;
-  height: 100px;
-  min-width: 150px;
-  max-width: 150px;
-  transform: rotate(45deg);
-  border-radius: 4px;
-  background: var(--decision);
-  color: #fff;
-  font-weight: 600;
+  width: 170px;
+  height: 130px;
+  min-width: 170px;
+  max-width: 170px;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 
   .label {
-    transform: rotate(-45deg);
-    width: 90px;
+    max-width: 100px;
     display: inline-block;
   }
 }
 
-// Approval-type = green circles
+// Approval-type = circles
 .approval {
   width: 140px;
   height: 140px;
   min-width: 140px;
   max-width: 140px;
   border-radius: 50%;
-  background: var(--approval);
-  color: #fff;
-  font-weight: 600;
-
-  &:hover {
-    background: #0f5132;
-  }
 }
 
 // Document-type = physical/system artifacts (a PO, an invoice, a
@@ -74,14 +76,26 @@
 // curves need SVG, not plain CSS clip-path) but reads clearly at this size.
 .document {
   border-radius: 4px 4px 0 0;
-  background: var(--document);
-  color: #fff;
-  font-weight: 600;
   padding-bottom: 16px;
   clip-path: polygon(
     0% 0%, 100% 0%, 100% 88%,
     87.5% 94%, 75% 88%, 62.5% 94%, 50% 88%, 37.5% 94%, 25% 88%, 12.5% 94%, 0% 88%
   );
+}
+
+// Risk-severity fills - declared after the shape-type rules above so
+// they win (equal specificity, later wins) when a node carries both a
+// type class and a risk class.
+.riskHigh {
+  background: var(--risk-high);
+}
+
+.riskMedium {
+  background: var(--risk-medium);
+}
+
+.riskLow {
+  background: var(--risk-low);
 }
 
 .label {

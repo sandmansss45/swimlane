@@ -2,7 +2,7 @@ import { IPublicClientApplication } from '@azure/msal-browser';
 import { IDataService } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
-import { IRiskStatement } from '../models/IRiskStatement';
+import { IRiskStatement, RiskLevel } from '../models/IRiskStatement';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -114,6 +114,9 @@ export class GraphDataService implements IDataService {
       actionDescription: get(item, 'Action Description'),
       responsibleJobTitle: get(item, 'ResponsibleJobTitle'),
       shapeOverride: get(item, 'ShapeOverride'),
+      // TODO-CONFIRM: guessed display name, not verified against the real
+      // process list yet - same caveat as ShapeOverride's own history.
+      riskLevelOverride: get(item, 'RiskLevelOverride'),
       dependsOn: parseDependsOn(get(item, 'DependsOn'))
     }));
   }
@@ -141,11 +144,25 @@ export class GraphDataService implements IDataService {
     console.log(`[SwimlaneStudio] "${RISK_LIST_TITLE}" live row count: ${items.length} - confirm this matches the list in SharePoint.`);
 
     const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+    const toRiskLevel = (raw: string): RiskLevel | undefined => {
+      const normalized = raw.trim().toLowerCase();
+      if (normalized === 'high') return 'High';
+      if (normalized === 'medium') return 'Medium';
+      if (normalized === 'low') return 'Low';
+      return undefined;
+    };
 
+    // TODO-CONFIRM: "Risk Level" and "Linked Process Step IDs" are
+    // guessed display names, not verified against the real "risk regnew"
+    // list yet - same caveat as the rest of this list's field mapping
+    // (see the IRiskStatement model). Missing/unrecognized values just
+    // fall back to no risk coloring rather than throwing.
     return items.map((item): IRiskStatement => ({
       id: item.id,
       title: get(item, 'Title'),
-      riskStatement: get(item, 'Risk Statement')
+      riskStatement: get(item, 'Risk Statement'),
+      riskLevel: toRiskLevel(get(item, 'Risk Level')),
+      linkedProcessStepIds: parseDependsOn(get(item, 'Linked Process Step IDs'))
     }));
   }
 
@@ -168,6 +185,7 @@ export class GraphDataService implements IDataService {
     set('Action Description', step.actionDescription);
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('ShapeOverride', step.shapeOverride || '');
+    set('RiskLevelOverride', step.riskLevelOverride || '');
     set('DependsOn', step.dependsOn.join(', '));
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
@@ -204,6 +222,7 @@ export class GraphDataService implements IDataService {
     set('Action Description', step.actionDescription);
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('ShapeOverride', step.shapeOverride || '');
+    set('RiskLevelOverride', step.riskLevelOverride || '');
     set('DependsOn', step.dependsOn.join(', '));
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${step.id}/fields`, fields);

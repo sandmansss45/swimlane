@@ -85,6 +85,33 @@ function vBendPath(x1: number, y1: number, x2: number, y2: number): IPathResult 
   };
 }
 
+export type Side = 'top' | 'bottom' | 'left' | 'right';
+
+/**
+ * Which side of each box a connector attaches to, based on the dominant
+ * direction between them - exported separately from connectorPath so
+ * SwimlaneCanvas can figure out, ahead of drawing anything, which other
+ * edges land on the exact same side of the exact same box (multiple
+ * dependencies converging on one node, or one decision's several
+ * branches leaving from the same node) and spread their attachment
+ * points apart instead of every one of them puncturing the box at the
+ * identical pixel.
+ */
+export function pickSides(a: IRect, b: IRect): { fromSide: Side; toSide: Side } {
+  const dx = b.cx - a.cx;
+  const dy = b.cy - a.cy;
+  if (Math.abs(dy) < 6) {
+    return dx >= 0 ? { fromSide: 'right', toSide: 'left' } : { fromSide: 'left', toSide: 'right' };
+  }
+  if (Math.abs(dx) < 6) {
+    return dy >= 0 ? { fromSide: 'bottom', toSide: 'top' } : { fromSide: 'top', toSide: 'bottom' };
+  }
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? { fromSide: 'right', toSide: 'left' } : { fromSide: 'left', toSide: 'right' };
+  }
+  return dy >= 0 ? { fromSide: 'bottom', toSide: 'top' } : { fromSide: 'top', toSide: 'bottom' };
+}
+
 /**
  * Picks the anchor side on each box based on the dominant direction
  * between them, so a box directly below its source gets a straight
@@ -93,37 +120,50 @@ function vBendPath(x1: number, y1: number, x2: number, y2: number): IPathResult 
  * boxes between them (they exit/enter at whichever side actually faces
  * the other node, and bend through the gap between rows/columns).
  *
+ * aOffset/bOffset nudge the attachment point away from dead-center on
+ * whichever side gets picked - top/bottom sides shift along X, left/right
+ * sides shift along Y - so that when SwimlaneCanvas assigns different
+ * offsets to edges sharing a side, they visibly land at different points
+ * along the box's edge instead of every one entering/exiting through the
+ * same hole.
+ *
  * Returns a label point that's actually ON the drawn path - a plain
  * midpoint between the two boxes' centers can land nowhere near the real
  * line once it bends, which is exactly what made a "Yes" label appear to
  * sit next to the wrong branch's box.
  */
-export function connectorPath(a: IRect, b: IRect): IPathResult {
+export function connectorPath(a: IRect, b: IRect, aOffset = 0, bOffset = 0): IPathResult {
   const dx = b.cx - a.cx;
   const dy = b.cy - a.cy;
+  const { fromSide } = pickSides(a, b);
+  const onXAxis = fromSide === 'top' || fromSide === 'bottom'; // offset shifts X, not Y
 
   if (Math.abs(dy) < 6) {
     const goRight = dx >= 0;
     const x1 = goRight ? a.right : a.left;
     const x2 = goRight ? b.left : b.right;
-    return { d: `M ${x1} ${a.cy} L ${x2} ${b.cy}`, labelX: (x1 + x2) / 2, labelY: a.cy };
+    const y1 = a.cy + aOffset;
+    const y2 = b.cy + bOffset;
+    return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
   }
   if (Math.abs(dx) < 6) {
     const goDown = dy >= 0;
     const y1 = goDown ? a.bottom : a.top;
     const y2 = goDown ? b.top : b.bottom;
-    return { d: `M ${a.cx} ${y1} L ${b.cx} ${y2}`, labelX: a.cx, labelY: (y1 + y2) / 2 };
+    const x1 = a.cx + aOffset;
+    const x2 = b.cx + bOffset;
+    return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
   }
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    const goRight = dx >= 0;
-    const x1 = goRight ? a.right : a.left;
-    const x2 = goRight ? b.left : b.right;
-    return hBendPath(x1, a.cy, x2, b.cy);
+  if (onXAxis) {
+    const goDown = dy >= 0;
+    const y1 = goDown ? a.bottom : a.top;
+    const y2 = goDown ? b.top : b.bottom;
+    return vBendPath(a.cx + aOffset, y1, b.cx + bOffset, y2);
   }
-  const goDown = dy >= 0;
-  const y1 = goDown ? a.bottom : a.top;
-  const y2 = goDown ? b.top : b.bottom;
-  return vBendPath(a.cx, y1, b.cx, y2);
+  const goRight = dx >= 0;
+  const x1 = goRight ? a.right : a.left;
+  const x2 = goRight ? b.left : b.right;
+  return hBendPath(x1, a.cy + aOffset, x2, b.cy + bOffset);
 }
 
 /**
@@ -138,11 +178,17 @@ export function connectorPath(a: IRect, b: IRect): IPathResult {
  * that same row between the source and the margin whenever the source
  * isn't already near the edge. Label sits on the highway's own
  * horizontal run, not the source/target's straight-line midpoint.
+ *
+ * aOffset/bOffset shift the up-tick/down-tick away from dead-center of
+ * the source/target column, same reasoning as connectorPath - every
+ * highway/local-hop edge attaches from the top, so without this, any two
+ * of them sharing a source or target would puncture that box at the
+ * exact same point.
  */
-export function highwayPath(a: IRect, b: IRect, highwayY: number): IPathResult {
+export function highwayPath(a: IRect, b: IRect, highwayY: number, aOffset = 0, bOffset = 0): IPathResult {
   const r = 10;
-  const x1 = a.cx;
-  const x2 = b.cx;
+  const x1 = a.cx + aOffset;
+  const x2 = b.cx + bOffset;
   const hDir = x2 >= x1 ? 1 : -1;
   return {
     d: `M ${x1} ${a.top} L ${x1} ${highwayY + r} Q ${x1} ${highwayY} ${x1 + hDir * r} ${highwayY} L ${x2 - hDir * r} ${highwayY} Q ${x2} ${highwayY} ${x2} ${highwayY + r} L ${x2} ${b.top}`,

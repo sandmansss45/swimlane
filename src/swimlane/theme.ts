@@ -10,13 +10,17 @@ export const BRAND = {
   blue: '#1f4fa3',
   blueLight: '#e6f0ff',
   approval: '#146c43',
+  greenLight: '#e0f5ea',
   decision: '#c96a1f',
   document: '#5b6478',
+  riskHigh: '#d92d20',
+  riskMedium: '#dc6803',
+  riskLow: '#17803d',
   textPrimary: '#16233d',
   textSecondary: '#5b6b84',
   border: '#dde3ea',
   surface: '#ffffff',
-  canvas: '#f5f7fb',
+  canvas: '#eaf2fd',
   // Lifted from the real QLE logo (dark navy background, brighter
   // orbit-ring blue, small emerald accent dot) - used only on the
   // sign-in screen. The rest of the app stays on the light BRAND
@@ -47,7 +51,7 @@ export const swimlaneTheme: ITheme = createTheme({
     themeDarkAlt: '#1c479390',
     themeDark: '#173c7c',
     themeDarker: '#112c5c',
-    neutralLighterAlt: '#f5f7fb',
+    neutralLighterAlt: BRAND.canvas,
     neutralLighter: '#eef1f6',
     neutralLight: '#e2e7ee',
     neutralQuaternaryAlt: '#d3d9e2',

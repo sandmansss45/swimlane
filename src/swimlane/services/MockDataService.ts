@@ -71,8 +71,9 @@ const MOCK_EMPLOYEES: IEmployee[] = [
 ];
 
 const MOCK_RISKS: IRiskStatement[] = [
-  { id: 'r1', title: 'Segregation of duties - AP', riskStatement: 'Same person creates and approves a purchase order.', linkedProcessStepIds: ['9.6.1.1'] },
-  { id: 'r2', title: 'Unauthorized payment', riskStatement: 'Payment released without required approval threshold met.', linkedProcessStepIds: ['9.6.1.3'] }
+  { id: 'r1', title: 'Segregation of duties - AP', riskStatement: 'Same person creates and approves a purchase order.', linkedProcessStepIds: ['9.6.1.1'], riskLevel: 'High' },
+  { id: 'r2', title: 'Unauthorized payment', riskStatement: 'Payment released without required approval threshold met.', linkedProcessStepIds: ['9.6.1.3'], riskLevel: 'Medium' },
+  { id: 'r3', title: 'Invoice processed without PO', riskStatement: 'Invoice approved without a matching Purchase Order on file.', linkedProcessStepIds: ['9.6.1.2'], riskLevel: 'Low' }
 ];
 
 export class MockDataService implements IDataService {

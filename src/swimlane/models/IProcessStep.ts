@@ -11,6 +11,13 @@ export interface IProcessStep {
   actionDescription: string;
   responsibleJobTitle: string;
   shapeOverride?: string; // raw SharePoint value, e.g. 'Approval', 'Decision', 'Process Step'
+  // Raw value from the shape's edit panel ('High' | 'Medium' | 'Low' | '')
+  // - kept as a plain string, same reasoning as shapeOverride, and
+  // validated where it's consumed (resolveRiskLevel in IRiskStatement.ts)
+  // rather than by the type here. Wins over whatever the Risk Register
+  // would derive for this step; '' means "no override, use the Risk
+  // Register".
+  riskLevelOverride?: string;
   // Raw DependsOn tokens, e.g. "9.6.1.1-3" - CONFIRMED these refer to a row
   // number (the row's position in the source data, header counted as row
   // 1 - so the first data row is row 2), not a Process Step ID. A single

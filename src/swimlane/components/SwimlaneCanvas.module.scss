@@ -10,7 +10,7 @@
   max-height: 70vh;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--canvas);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
@@ -46,17 +46,19 @@
   // all detouring through the same shared strip and reading as one
   // tangled knot. 44px comfortably fits the hop's ~22px clearance above
   // the row plus a couple of parallel tracks, even against the tightest
-  // shape (a rotated decision diamond leaves only ~6px of its own cell
+  // shape (the 140px approval circle leaves ~25px of its own cell
   // above/below it).
   row-gap: 44px;
 }
 
 .corner,
-.columnHeader,
-.laneLabel {
+.columnHeader {
   background: var(--canvas);
-  border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
+  // Full border, not just bottom/right - with the row/column gaps between
+  // cells, a partial border reads as broken/uneven; a border on all four
+  // sides makes each cell a clearly-closed box so the equal gaps between
+  // them look deliberate instead of like something's missing.
+  border: 1px solid var(--border);
   font-weight: 600;
   font-size: 12px;
   padding: 10px 8px;
@@ -70,10 +72,23 @@
   top: 0;
 }
 
+// Job-title column - given its own louder treatment (bigger, bolder,
+// tinted background, a full green border) rather than sharing the
+// header row's quieter grey styling, since this is the label someone's
+// eye has to land on repeatedly while tracing a lane across the whole
+// diagram.
 .laneLabel {
   left: 0;
   text-align: left;
-  border-right: 1px solid var(--border);
+  background: var(--green-light);
+  border: 1px solid var(--approval);
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
+  padding: 12px 14px;
+  position: sticky;
+  z-index: 2;
+  color: var(--approval);
 }
 
 .corner {
@@ -100,21 +115,18 @@
 }
 
 .laneCell {
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
   padding: 16px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   // Each cell now holds at most one shape (every step gets its own
   // column, so there's no more stacking within a cell) - the generous
-  // min-height is still needed because a decision diamond is rotated
-  // 45deg from a 150x100 box, and CSS transforms don't affect the
-  // layout/grid-row-sizing box, only what's painted. Without this, a
-  // diamond's real ~177px painted footprint would visually bleed into
-  // the lane row above/below it, which the grid has no way to know about.
+  // min-height still comfortably clears the tallest shape (the 140px
+  // approval circle) with room to spare for the local-hop clearance
+  // above/below it (see LOCAL_HOP_CLEARANCE in SwimlaneCanvas.tsx).
   min-height: 190px;
-  background: var(--surface);
+  background: var(--canvas);
 }
 
 .emptyState {

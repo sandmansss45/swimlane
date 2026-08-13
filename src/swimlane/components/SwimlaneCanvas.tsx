@@ -3,11 +3,13 @@ import { TextField, Dropdown, IDropdownOption, DefaultButton, PrimaryButton, Ico
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
+import { IRiskStatement, resolveRiskLevel } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups } from '../utils/columns';
-import { connectorPath, highwayPath, rectFromDomRect, IRect } from '../utils/arrowRouting';
+import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
+import ShapeLegend from './ShapeLegend';
 import EmployeePicker from './EmployeePicker';
 import styles from './SwimlaneCanvas.module.scss';
 
@@ -19,6 +21,13 @@ const SHAPE_OPTIONS: IDropdownOption[] = [
   { key: 'Document', text: 'Document (artifact)' }
 ];
 
+const RISK_LEVEL_OPTIONS: IDropdownOption[] = [
+  { key: '', text: '(use Risk Register)' },
+  { key: 'High', text: 'High' },
+  { key: 'Medium', text: 'Medium' },
+  { key: 'Low', text: 'Low' }
+];
+
 const truncate = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
@@ -26,6 +35,7 @@ export interface ISwimlaneCanvasProps {
   steps: IProcessStep[]; // already filtered to the current Progress ID (and Process Step ID, if drilled down) - for display
   allSteps: IProcessStep[]; // FULL, unfiltered, original-order dataset - needed to compute row-number DependsOn tokens and to offer every step as a "depends on" option regardless of what's currently filtered into view
   edges: IResolvedEdge[]; // resolved against the FULL, unfiltered dataset (row numbers only make sense that way) - this component only draws the ones whose endpoints are currently rendered
+  riskStatements: IRiskStatement[]; // drives each shape's traffic-light fill when linked to a step
   drilledDownStepId: string | undefined;
   employees: IEmployee[];
   selectedRegion: string | undefined;
@@ -51,12 +61,13 @@ interface IEditDraft {
   actionDescription: string;
   actionType: string;
   shapeOverride: string;
+  riskLevelOverride: string;
   responsibleJobTitle: string;
   dependsOnStepIds: string[];
 }
 
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, edges, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
+  steps, allSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -132,9 +143,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const LOCAL_HOP_TRACK_Y = [0, -12, 12];
     // How far above a lane's tallest box top a hop clears before bending
     // sideways - see the row-gap comment in SwimlaneCanvas.module.scss for
-    // why 44px of gap comfortably fits this even against a decision
-    // diamond, which leaves almost none of that clearance inside its own
-    // cell.
+    // why 44px of gap comfortably fits this even against the tightest
+    // shape (the 140px approval circle).
     const LOCAL_HOP_CLEARANCE = 22;
 
     // The overlay's width/height:100% would otherwise only cover the
@@ -264,9 +274,54 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       assignTracks(group).forEach((track, edge) => localHopTracks.set(edge, track));
     });
 
+    // Multiple edges attaching to the same side of the same box would
+    // otherwise all pass through that side's exact center point - two
+    // arrows entering/exiting through the same hole, which is what made a
+    // decision's branch and an unrelated reconvergence edge look fused
+    // together right where they neared the same box. Group every edge's
+    // endpoint by (node, side) regardless of whether it's the source or
+    // target end there, sort by where the OTHER end of each edge sits (so
+    // the spread reads left-to-right sensibly instead of crossing more
+    // than it has to), then hand out symmetric offsets around the center.
+    interface IAttachment { edge: IResolvedEdge; role: 'from' | 'to'; side: Side; otherCx: number; otherCy: number }
+    const attachments: IAttachment[] = [];
+    candidates.forEach(c => {
+      const sides = c.tier === 'direct'
+        ? pickSides(c.a, c.b)
+        : { fromSide: 'top' as Side, toSide: 'top' as Side }; // localHop/highway always attach from the top
+      attachments.push({ edge: c.edge, role: 'from', side: sides.fromSide, otherCx: c.b.cx, otherCy: c.b.cy });
+      attachments.push({ edge: c.edge, role: 'to', side: sides.toSide, otherCx: c.a.cx, otherCy: c.a.cy });
+    });
+
+    const attachGroups = new Map<string, IAttachment[]>();
+    attachments.forEach(att => {
+      const nodeId = att.role === 'from' ? att.edge.fromRowId : att.edge.toRowId;
+      const key = `${nodeId}::${att.side}`;
+      const list = attachGroups.get(key) || [];
+      list.push(att);
+      attachGroups.set(key, list);
+    });
+
+    const fromOffset = new Map<IResolvedEdge, number>();
+    const toOffset = new Map<IResolvedEdge, number>();
+    attachGroups.forEach(group => {
+      if (group.length < 2) return;
+      const onXAxis = group[0].side === 'top' || group[0].side === 'bottom';
+      const sorted = [...group].sort((p, q) => (onXAxis ? p.otherCx - q.otherCx : p.otherCy - q.otherCy));
+      const step = onXAxis ? 26 : 16; // top/bottom spreads along a ~150-190px-wide box; left/right along a shorter side
+      const maxAbs = onXAxis ? 65 : 40;
+      const start = -((sorted.length - 1) * step) / 2;
+      sorted.forEach((att, i) => {
+        const offset = Math.max(-maxAbs, Math.min(maxAbs, start + i * step));
+        (att.role === 'from' ? fromOffset : toOffset).set(att.edge, offset);
+      });
+    });
+
     const geometries: IEdgeGeometry[] = candidates.map(({ edge, a, b, tier, lane }) => {
+      const aOffset = fromOffset.get(edge) || 0;
+      const bOffset = toOffset.get(edge) || 0;
       if (tier === 'direct') {
-        const result = connectorPath(a, b);
+        const result = connectorPath(a, b, aOffset, bOffset);
         return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
       }
       if (tier === 'localHop') {
@@ -274,12 +329,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         const laneTop = laneMinTop.get(lane || 'Unassigned');
         const baseTop = laneTop === undefined ? Math.min(a.top, b.top) : laneTop;
         const hopY = baseTop - LOCAL_HOP_CLEARANCE + LOCAL_HOP_TRACK_Y[track % LOCAL_HOP_TRACK_Y.length];
-        const result = highwayPath(a, b, hopY);
+        const result = highwayPath(a, b, hopY, aOffset, bOffset);
         return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
       }
       const track = highwayTracks.get(edge) || 0;
       const highwayY = highwayBaseY + HIGHWAY_TRACK_Y[track % HIGHWAY_TRACK_Y.length];
-      const result = highwayPath(a, b, highwayY);
+      const result = highwayPath(a, b, highwayY, aOffset, bOffset);
       return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
     });
     setEdgeGeometry(geometries);
@@ -310,6 +365,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       actionDescription: step.actionDescription,
       actionType: step.actionType,
       shapeOverride: step.shapeOverride || '',
+      riskLevelOverride: step.riskLevelOverride || '',
       responsibleJobTitle: step.responsibleJobTitle,
       dependsOnStepIds: resolveDependsOnStepIds(step)
     });
@@ -408,6 +464,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         />
       </div>
       <div className={styles.canvas} ref={canvasRef}>
+      <ShapeLegend />
       <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>
           <marker id="swimlaneArrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
@@ -464,6 +521,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                       <ShapeNode
                         label={step.actionDescription}
                         shape={getShapeType(step)}
+                        riskLevel={resolveRiskLevel(step, riskStatements)}
                         selected={selectedNodeId === step.id}
                         onClick={() => handleNodeClick(step)}
                       />
@@ -504,6 +562,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                 selectedKey={editDraft.shapeOverride}
                 options={SHAPE_OPTIONS}
                 onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, shapeOverride: String(option.key) } : prev))}
+              />
+              <Dropdown
+                label="Risk level"
+                selectedKey={editDraft.riskLevelOverride}
+                options={RISK_LEVEL_OPTIONS}
+                onChange={(_e, option) => setEditDraft(prev => (prev && option ? { ...prev, riskLevelOverride: String(option.key) } : prev))}
               />
               <EmployeePicker
                 employees={employees}
