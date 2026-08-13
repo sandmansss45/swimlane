@@ -18,6 +18,13 @@ import qleLogo from '../../assets/qle-logo.svg';
 
 type MainTab = 'flows' | 'employees';
 
+// Promise.allSettled gives back whatever the rejection actually was, not
+// necessarily an Error instance - GraphDataService rejects with a real
+// Error, but this stays safe even if something else throws a plain string.
+function describeError(reason: unknown): string {
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
 const emptyStepDraft = (): IProcessStepFormValue => ({
   action: '',
   actionDescription: '',
@@ -46,18 +53,39 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [importOpen, setImportOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
+  // Promise.allSettled, not Promise.all - the three sources are genuinely
+  // independent (separate SharePoint lists, each with its own chance of
+  // being misconfigured or not existing yet), so one failing (e.g. the
+  // Employees list title not confirmed yet) shouldn't block the other two
+  // from showing. A real case this fixed: Process steps resolving fine
+  // while Employees still 404s would previously blank out the whole app
+  // instead of just the Employees-dependent pieces.
   const loadAll = React.useCallback(() => {
     setLoading(true);
     setError(undefined);
-    Promise.all([dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements()])
-      .then(([loadedSteps, loadedEmployees, loadedRisks]) => {
-        setSteps(loadedSteps);
-        setEmployees(loadedEmployees);
-        setRiskStatements(loadedRisks);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setError(err.message || 'Failed to load data.');
+    Promise.allSettled([dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements()])
+      .then(([stepsResult, employeesResult, risksResult]) => {
+        const errors: string[] = [];
+
+        if (stepsResult.status === 'fulfilled') {
+          setSteps(stepsResult.value);
+        } else {
+          errors.push(`Process steps: ${describeError(stepsResult.reason)}`);
+        }
+
+        if (employeesResult.status === 'fulfilled') {
+          setEmployees(employeesResult.value);
+        } else {
+          errors.push(`Employees: ${describeError(employeesResult.reason)}`);
+        }
+
+        if (risksResult.status === 'fulfilled') {
+          setRiskStatements(risksResult.value);
+        } else {
+          errors.push(`Risk statements: ${describeError(risksResult.reason)}`);
+        }
+
+        setError(errors.length > 0 ? errors.join(' | ') : undefined);
         setLoading(false);
       });
   }, [dataService]);
