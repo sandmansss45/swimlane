@@ -18,6 +18,13 @@ export interface IProcessStep {
   // would derive for this step; '' means "no override, use the Risk
   // Register".
   riskLevelOverride?: string;
+  // Manual drag-and-drop position within this step's own Process Step ID
+  // group (see orderStepsForTimeline in utils/columns.ts) - lower sorts
+  // first. Independent of DependsOn on purpose: DependsOn only decides
+  // which arrows connect to what, this decides left-to-right column
+  // order. Undefined means "never manually moved", which falls back to
+  // wherever it naturally landed in the source data.
+  manualOrder?: number;
   // Raw DependsOn tokens, e.g. "9.6.1.1-3" - CONFIRMED these refer to a row
   // number (the row's position in the source data, header counted as row
   // 1 - so the first data row is row 2), not a Process Step ID. A single

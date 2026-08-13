@@ -127,6 +127,38 @@
   // above/below it (see LOCAL_HOP_CLEARANCE in SwimlaneCanvas.tsx).
   min-height: 190px;
   background: var(--canvas);
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+// A cell that WOULD accept the step currently being dragged (same
+// Process Step ID group as the dragged step) - shown for every such
+// cell for the whole duration of the drag, not just the one directly
+// under the pointer, so it's obvious up front where dropping is even
+// possible before the pointer gets there.
+.validDropTarget {
+  border-style: dashed;
+  border-color: var(--blue);
+}
+
+// The specific cell the pointer is over right now, among the valid ones.
+.dragOver {
+  background: var(--blue-light);
+  border-style: solid;
+  border-width: 2px;
+}
+
+.draggableNode {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// The node actually being dragged - dimmed in place while its "ghost"
+// follows the pointer (the browser draws that ghost itself).
+.dragging {
+  opacity: 0.4;
 }
 
 .emptyState {

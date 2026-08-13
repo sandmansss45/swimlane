@@ -6,7 +6,7 @@ import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IRiskStatement, resolveRiskLevel } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge } from '../utils/dependencyResolution';
-import { orderStepsForTimeline, buildColumnGroups } from '../utils/columns';
+import { orderStepsForTimeline, buildColumnGroups, computeDropOrder } from '../utils/columns';
 import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
 import ShapeLegend from './ShapeLegend';
@@ -42,6 +42,11 @@ export interface ISwimlaneCanvasProps {
   onLabelEdge: (toRowId: string, token: string, label: string) => void;
   onEditStep: (step: IProcessStep) => void;
   onDeleteStep: (stepId: string) => void;
+  // Drag-and-drop: dropping a step onto another step's cell moves it to
+  // that lane and re-sequences it to sit right after that step within
+  // their shared Process Step ID group - see computeDropOrder for why
+  // dragging is confined to one group.
+  onMoveStep: (updated: IProcessStep) => void;
 }
 
 interface IEdgeGeometry {
@@ -67,7 +72,7 @@ interface IEditDraft {
 }
 
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep
+  steps, allSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -77,8 +82,61 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>(undefined);
   const [draftLabels, setDraftLabels] = React.useState<{ [token: string]: string }>({});
   const [editDraft, setEditDraft] = React.useState<IEditDraft | undefined>(undefined);
+  const [draggingStepId, setDraggingStepId] = React.useState<string | undefined>(undefined);
+  const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
 
   const stepsById = React.useMemo(() => new Map(steps.map(s => [s.id, s])), [steps]);
+
+  // Drag-and-drop: `columnStep` is whichever step the target COLUMN
+  // belongs to (orderedSteps[i] for that column, regardless of which
+  // lane's cell is actually being dragged over) - a cell can be empty
+  // (its lane doesn't own that column's step) and still be a valid,
+  // meaningful drop target, since dropping there both re-sequences the
+  // dragged step relative to columnStep AND reassigns it to this cell's
+  // lane.
+  const isValidDropTarget = (columnStep: IProcessStep): boolean => {
+    if (!draggingStepId || draggingStepId === columnStep.id) return false;
+    const dragged = stepsById.get(draggingStepId);
+    return !!dragged && dragged.processStepId === columnStep.processStepId;
+  };
+
+  const handleDragStart = (step: IProcessStep) => (e: React.DragEvent): void => {
+    setDraggingStepId(step.id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Firefox refuses to start a drag at all unless setData is called.
+    e.dataTransfer.setData('text/plain', step.id);
+  };
+
+  const handleDragEnd = (): void => {
+    setDraggingStepId(undefined);
+    setDragOverCellId(undefined);
+  };
+
+  const handleCellDragOver = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
+    if (!isValidDropTarget(columnStep)) return;
+    e.preventDefault(); // only opt into "droppable" when valid - otherwise leave the browser's own "not allowed" cursor
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCellId(`${lane}-${columnStep.id}`);
+  };
+
+  const handleCellDragLeave = (lane: string, columnStep: IProcessStep) => (): void => {
+    setDragOverCellId(prev => (prev === `${lane}-${columnStep.id}` ? undefined : prev));
+  };
+
+  const handleDrop = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
+    e.preventDefault();
+    setDragOverCellId(undefined);
+    if (!draggingStepId || !isValidDropTarget(columnStep)) { setDraggingStepId(undefined); return; }
+    const dragged = stepsById.get(draggingStepId);
+    if (!dragged) { setDraggingStepId(undefined); return; }
+    const newOrder = computeDropOrder(allSteps, draggingStepId, columnStep.id);
+    onMoveStep({
+      ...dragged,
+      responsibleJobTitle: lane === 'Unassigned' ? '' : lane,
+      manualOrder: newOrder !== undefined ? newOrder : dragged.manualOrder
+    });
+    setDraggingStepId(undefined);
+  };
 
   // Row number = position in the FULL unfiltered dataset + 2 (header
   // counted as row 1) - the same scheme resolveDependencyEdges uses.
@@ -514,10 +572,28 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             <div className={styles.laneLabel}>{lane}</div>
             {orderedSteps.map(step => {
               const belongsToLane = (step.responsibleJobTitle || 'Unassigned') === lane;
+              const cellKey = `${lane}-${step.id}`;
+              const cellClassName = [
+                styles.laneCell,
+                isValidDropTarget(step) ? styles.validDropTarget : '',
+                dragOverCellId === cellKey ? styles.dragOver : ''
+              ].filter(Boolean).join(' ');
               return (
-                <div className={styles.laneCell} key={`${lane}-${step.id}`}>
+                <div
+                  className={cellClassName}
+                  key={cellKey}
+                  onDragOver={handleCellDragOver(step, lane)}
+                  onDragLeave={handleCellDragLeave(lane, step)}
+                  onDrop={handleDrop(step, lane)}
+                >
                   {belongsToLane && (
-                    <div ref={el => { if (el) nodeRefs.current.set(step.id, el); }}>
+                    <div
+                      ref={el => { if (el) nodeRefs.current.set(step.id, el); }}
+                      className={[styles.draggableNode, draggingStepId === step.id ? styles.dragging : ''].filter(Boolean).join(' ')}
+                      draggable
+                      onDragStart={handleDragStart(step)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <ShapeNode
                         label={step.actionDescription}
                         shape={getShapeType(step)}

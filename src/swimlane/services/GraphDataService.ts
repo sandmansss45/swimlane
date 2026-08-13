@@ -114,9 +114,14 @@ export class GraphDataService implements IDataService {
       actionDescription: get(item, 'Action Description'),
       responsibleJobTitle: get(item, 'ResponsibleJobTitle'),
       shapeOverride: get(item, 'ShapeOverride'),
-      // TODO-CONFIRM: guessed display name, not verified against the real
+      // TODO-CONFIRM: guessed display names, not verified against the real
       // process list yet - same caveat as ShapeOverride's own history.
       riskLevelOverride: get(item, 'RiskLevelOverride'),
+      manualOrder: (() => {
+        const raw = get(item, 'ManualOrder');
+        const parsed = raw ? parseFloat(raw) : NaN;
+        return isNaN(parsed) ? undefined : parsed;
+      })(),
       dependsOn: parseDependsOn(get(item, 'DependsOn'))
     }));
   }
@@ -186,6 +191,7 @@ export class GraphDataService implements IDataService {
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('ShapeOverride', step.shapeOverride || '');
     set('RiskLevelOverride', step.riskLevelOverride || '');
+    set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
@@ -223,6 +229,7 @@ export class GraphDataService implements IDataService {
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('ShapeOverride', step.shapeOverride || '');
     set('RiskLevelOverride', step.riskLevelOverride || '');
+    set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${step.id}/fields`, fields);

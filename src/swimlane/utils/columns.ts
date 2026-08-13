@@ -16,6 +16,24 @@ export function compareProcessStepIds(a: string, b: string): number {
   return 0;
 }
 
+/**
+ * A step's position within its own Process Step ID group: its manualOrder
+ * if it's ever been dragged, otherwise how many siblings (same Process
+ * Step ID) precede it in the original source order - so a step that's
+ * never been touched keeps behaving exactly like before (source order),
+ * and mixing manually-moved and untouched siblings in the same group
+ * still produces a sensible, stable result.
+ */
+export function getEffectiveOrder(step: IProcessStep, allSteps: IProcessStep[]): number {
+  if (step.manualOrder !== undefined) return step.manualOrder;
+  let index = 0;
+  for (const s of allSteps) {
+    if (s.id === step.id) break;
+    if (s.processStepId === step.processStepId) index++;
+  }
+  return index;
+}
+
 export interface IColumnGroup {
   processStepId: string;
   stepIds: string[]; // in column order, left to right
@@ -32,12 +50,46 @@ export interface IColumnGroup {
  * connections are between near-adjacent cells with nothing else in the
  * way, which is what actually produces short, direct, uncluttered arrows.
  *
- * Sort is stable (JS guarantees this), so rows sharing a Process Step ID
- * keep their original relative order - this doubles as the row-number
- * order DependsOn resolution already depends on, so it stays correct.
+ * Sort is stable (JS guarantees this) and DependsOn row-number resolution
+ * is keyed to the original unsorted dataset's own array index (see
+ * resolveDependencyEdges), not to this function's output - so dragging a
+ * step to a new column here never changes what its DependsOn tokens
+ * resolve to, only where it's drawn.
  */
 export function orderStepsForTimeline(steps: IProcessStep[]): IProcessStep[] {
-  return [...steps].sort((a, b) => compareProcessStepIds(a.processStepId, b.processStepId));
+  return [...steps].sort((a, b) => {
+    const groupCompare = compareProcessStepIds(a.processStepId, b.processStepId);
+    if (groupCompare !== 0) return groupCompare;
+    return getEffectiveOrder(a, steps) - getEffectiveOrder(b, steps);
+  });
+}
+
+/**
+ * New manualOrder for dropping `draggedStepId` immediately after wherever
+ * `targetStepId` currently sits within their shared Process Step ID group
+ * - the fractional-midpoint drag-reorder technique (sits strictly between
+ * the target's own position and whatever comes after it), so only the
+ * dragged step's own record needs to change, not everyone else's.
+ * Returns undefined if the two steps aren't actually in the same group -
+ * dragging across groups is out of scope (see the manualOrder comment on
+ * IProcessStep for why).
+ */
+export function computeDropOrder(allSteps: IProcessStep[], draggedStepId: string, targetStepId: string): number | undefined {
+  const dragged = allSteps.find(s => s.id === draggedStepId);
+  const target = allSteps.find(s => s.id === targetStepId);
+  if (!dragged || !target || dragged.processStepId !== target.processStepId || dragged.id === target.id) {
+    return undefined;
+  }
+  const groupSteps = orderStepsForTimeline(
+    allSteps.filter(s => s.processStepId === dragged.processStepId && s.id !== draggedStepId)
+  );
+  const targetIdx = groupSteps.findIndex(s => s.id === targetStepId);
+  if (targetIdx === -1) return undefined;
+  const targetOrder = getEffectiveOrder(groupSteps[targetIdx], allSteps);
+  const nextOrder = targetIdx + 1 < groupSteps.length
+    ? getEffectiveOrder(groupSteps[targetIdx + 1], allSteps)
+    : targetOrder + 1;
+  return (targetOrder + nextOrder) / 2;
 }
 
 /**

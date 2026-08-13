@@ -225,6 +225,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 onLabelEdge={handleLabelEdge}
                 onEditStep={handleEditStep}
                 onDeleteStep={handleDeleteStep}
+                onMoveStep={handleEditStep}
               />
 
               <div className={styles.addStepForm}>
