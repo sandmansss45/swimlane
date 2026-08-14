@@ -38,6 +38,22 @@ interface IEdgeGeometry {
   labelY: number;
 }
 
+// Real ResponsibleJobTitle values from the source list read as one dense
+// run-on string, e.g. "Finance Manager / 6002 - Finance / United Kingdom"
+// (title / employee code - department / region). Splitting it into a bold
+// title line plus a quieter department+region line makes the lane header
+// scannable without altering the underlying data - falls back to the raw
+// string untouched for values that don't follow the pattern (e.g. a
+// multi-party lane like "Vendor, Business, Finance Manager").
+function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
+  const parts = raw.split(' / ').map(p => p.trim());
+  if (parts.length !== 3) return { primary: raw };
+  const [title, codeAndDept, region] = parts;
+  const deptParts = codeAndDept.split(' - ');
+  const dept = deptParts.length === 2 ? deptParts[1].trim() : codeAndDept;
+  return { primary: title, secondary: `${dept} · ${region}` };
+}
+
 // Ported from the earlier proven vanilla-JS renderer: lanes =
 // ResponsibleJobTitle, columns = Process Step ID (or per-row when drilled
 // into one step), shapes per the confirmed rules, arrows measured via DOM
@@ -52,6 +68,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const highwaySpacerRef = React.useRef<HTMLDivElement>(null);
   const nodeRefs = React.useRef(new Map<string, HTMLDivElement>());
   const [edgeGeometry, setEdgeGeometry] = React.useState<IEdgeGeometry[]>([]);
+  // Whether any edge in the CURRENT view actually needs the reserved
+  // cross-lane highway strip (see the .highwaySpacer comment) - most
+  // filtered views (e.g. drilled into one Progress ID with only 1-2 lanes)
+  // have none, and reserving the full strip height anyway left a large
+  // dead band of empty grid between the header and the first lane row.
+  const [needsHighwayStrip, setNeedsHighwayStrip] = React.useState(true);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>(undefined);
   const [draftLabels, setDraftLabels] = React.useState<{ [token: string]: string }>({});
   const [editDraft, setEditDraft] = React.useState<IProcessStepFormValue | undefined>(undefined);
@@ -272,7 +294,10 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       return trackByEdge;
     };
 
-    const highwayTracks = assignTracks(candidates.filter(c => c.tier === 'highway'));
+    const highwayCandidates = candidates.filter(c => c.tier === 'highway');
+    const needsHighway = highwayCandidates.length > 0;
+    if (needsHighway !== needsHighwayStrip) setNeedsHighwayStrip(needsHighway);
+    const highwayTracks = assignTracks(highwayCandidates);
 
     const localHopGroups = new Map<string, ICandidate[]>();
     candidates.filter(c => c.tier === 'localHop').forEach(c => {
@@ -350,13 +375,17 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       return { edge, path: result.d, labelX: result.labelX, labelY: result.labelY };
     });
     setEdgeGeometry(geometries);
-  }, [visibleEdges, orderedSteps, stepsById]);
+  }, [visibleEdges, orderedSteps, stepsById, needsHighwayStrip]);
 
   React.useLayoutEffect(() => {
+    // Re-runs after needsHighwayStrip flips and the spacer's own height
+    // changes in the DOM, so highway edges (if any) get measured against
+    // its real, settled position rather than a stale one from before the
+    // resize.
     measureEdges();
     window.addEventListener('resize', measureEdges);
     return () => window.removeEventListener('resize', measureEdges);
-  }, [measureEdges]);
+  }, [measureEdges, needsHighwayStrip]);
 
   const handleNodeClick = (step: IProcessStep): void => {
     const deselecting = selectedNodeId === step.id;
@@ -506,11 +535,20 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
           </div>
         ))}
 
-        <div className={styles.highwaySpacer} ref={highwaySpacerRef} style={{ gridColumn: '1 / -1' }} />
+        <div
+          className={[styles.highwaySpacer, needsHighwayStrip ? '' : styles.highwaySpacerCompact].filter(Boolean).join(' ')}
+          ref={highwaySpacerRef}
+          style={{ gridColumn: '1 / -1' }}
+        />
 
-        {lanes.map(lane => (
+        {lanes.map(lane => {
+          const laneLabel = formatLaneLabel(lane);
+          return (
           <React.Fragment key={lane}>
-            <div className={styles.laneLabel}>{lane}</div>
+            <div className={styles.laneLabel}>
+              <div className={styles.laneLabelPrimary}>{laneLabel.primary}</div>
+              {laneLabel.secondary && <div className={styles.laneLabelSecondary}>{laneLabel.secondary}</div>}
+            </div>
             {orderedSteps.map(step => {
               const belongsToLane = (step.responsibleJobTitle || 'Unassigned') === lane;
               const cellKey = `${lane}-${step.id}`;
@@ -548,7 +586,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
               );
             })}
           </React.Fragment>
-        ))}
+          );
+        })}
       </div>
 
       <Modal isOpen={!!(selectedNodeId && editDraft)} onDismiss={closeEditPopup} isBlocking={false} containerClassName={styles.editModal}>

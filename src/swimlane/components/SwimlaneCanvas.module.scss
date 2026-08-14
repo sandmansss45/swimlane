@@ -82,13 +82,27 @@
   text-align: left;
   background: var(--green-light);
   border: 1px solid var(--approval);
-  font-weight: 700;
-  font-size: 14.5px;
-  letter-spacing: 0.01em;
   padding: 12px 14px;
   position: sticky;
   z-index: 2;
+}
+
+// Job title - the primary thing a reader scans this column for, so it
+// gets the loud treatment. Department/employee-code/region (see
+// formatLaneLabel in SwimlaneCanvas.tsx) moves to .laneLabelSecondary
+// instead of running together with the title in one dense line.
+.laneLabelPrimary {
+  font-weight: 700;
+  font-size: 14.5px;
+  letter-spacing: 0.01em;
   color: var(--approval);
+}
+
+.laneLabelSecondary {
+  margin-top: 2px;
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--text-secondary);
 }
 
 .corner {
@@ -112,6 +126,17 @@
   // tracks never crowd the header above or the first lane row below.
   height: 140px;
   border-bottom: 1px solid var(--border);
+}
+
+// Most filtered views (drilled into one Progress ID, especially with only
+// 1-2 lanes) have zero edges that actually need the cross-lane strip -
+// every connection stays inside its own row as a "local hop" instead (see
+// measureEdges in SwimlaneCanvas.tsx). Reserving the full 140px anyway
+// left a large empty band between the header and the first lane row for
+// no reason - SwimlaneCanvas sets needsHighwayStrip false in exactly that
+// case and applies this to shrink it down to a minimal gap instead.
+.highwaySpacerCompact {
+  height: 20px;
 }
 
 .laneCell {
