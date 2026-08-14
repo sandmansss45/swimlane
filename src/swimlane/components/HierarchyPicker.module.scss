@@ -1,9 +1,9 @@
 .grid {
   display: grid;
   // Cards size to their own natural width instead of stretching to fill a
-  // fixed 3-column template - with only one or two Progress IDs loaded
-  // (e.g. the demo dataset), a rigid 3-up grid left two-thirds of the row
-  // empty and made a single card look like a rendering mistake rather
+  // fixed 3-column template - with only one or two entries at a level
+  // (common the deeper you go), a rigid multi-up grid left most of the
+  // row empty and made a single card look like a rendering mistake rather
   // than a deliberate design.
   grid-template-columns: repeat(auto-fill, minmax(260px, 320px));
   gap: 16px;

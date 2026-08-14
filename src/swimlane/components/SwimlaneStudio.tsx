@@ -6,7 +6,8 @@ import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
-import ProgressIdPicker from './ProgressIdPicker';
+import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName } from '../utils/apqcHierarchy';
+import HierarchyPicker from './HierarchyPicker';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeesList from './EmployeesList';
@@ -44,6 +45,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
+  // APQC drill-down: Category (e.g. "9") -> Process Group (e.g. "9.6") ->
+  // Progress ID (e.g. "9.6.1", the existing swimlane-per-flow level) - see
+  // utils/apqcHierarchy.ts. Each level's picker is only reachable once its
+  // parent is chosen, and clearing a level clears everything below it.
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string | undefined>(undefined);
+  const [selectedProcessGroupId, setSelectedProcessGroupId] = React.useState<string | undefined>(undefined);
   const [selectedProgressId, setSelectedProgressId] = React.useState<string | undefined>(undefined);
   const [drilledDownStepId, setDrilledDownStepId] = React.useState<string | undefined>(undefined);
   const [selectedRegion, setSelectedRegion] = React.useState<string | undefined>(undefined);
@@ -95,6 +102,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const regions = React.useMemo(
     () => Array.from(new Set(employees.map(e => e.region).filter((r): r is string => !!r))),
     [employees]
+  );
+
+  const stepsInCategory = React.useMemo(
+    () => selectedCategoryId ? steps.filter(s => getCategoryId(s.processStepId) === selectedCategoryId) : [],
+    [steps, selectedCategoryId]
+  );
+
+  const stepsInProcessGroup = React.useMemo(
+    () => selectedProcessGroupId ? stepsInCategory.filter(s => getProcessGroupId(s.processStepId) === selectedProcessGroupId) : [],
+    [stepsInCategory, selectedProcessGroupId]
   );
 
   const stepsInProgressId = React.useMemo(
@@ -177,10 +194,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         <img src={qleLogo} className={styles.appBarLogo} alt="Quantum Leap Energy" />
         <div>
           <h2 className={styles.title}>Swimlane Studio</h2>
-          {selectedProgressId ? (
+          {selectedCategoryId ? (
             <p className={styles.breadcrumb}>
-              {selectedProgressId}
-              {drilledDownStepId ? ` / ${drilledDownStepId}` : ''}
+              {[selectedCategoryId, selectedProcessGroupId, selectedProgressId, drilledDownStepId].filter(Boolean).join(' / ')}
               {selectedRegion ? ` — ${selectedRegion}` : ''}
             </p>
           ) : (
@@ -235,54 +251,83 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           <EmployeesList employees={employees} />
         ) : (
           <>
-            {!selectedProgressId && (
+            {!selectedCategoryId && (
               <div className={styles.intro}>
-                <h3>Select a process to explore</h3>
-                <p>Pick a Progress ID below to open its swimlane - drill into an individual step, filter by region, or add and edit tasks directly.</p>
+                <h3>Select a category to explore</h3>
+                <p>Pick an APQC process category, then a process group, then a Progress ID to open its swimlane.</p>
               </div>
             )}
 
-            {!selectedProgressId ? (
-            <ProgressIdPicker steps={steps} onSelect={setSelectedProgressId} />
-          ) : (
-            <>
-              <div className={styles.toolbar}>
-                <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
-                <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
-                <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
-              </div>
-
-              <SwimlaneCanvas
-                steps={visibleSteps}
-                allSteps={steps}
-                edges={edges}
-                riskStatements={riskStatements}
-                drilledDownStepId={drilledDownStepId}
-                employees={employees}
-                selectedRegion={selectedRegion}
-                onLabelEdge={handleLabelEdge}
-                onEditStep={handleEditStep}
-                onDeleteStep={handleDeleteStep}
-                onMoveStep={handleEditStep}
+            {!selectedCategoryId ? (
+              <HierarchyPicker
+                steps={steps}
+                getGroupId={getCategoryId}
+                getLabel={id => getCategoryName(id)}
+                onSelect={setSelectedCategoryId}
               />
+            ) : !selectedProcessGroupId ? (
+              <>
+                <div className={styles.toolbar}>
+                  <DefaultButton text="Back to Categories" onClick={() => setSelectedCategoryId(undefined)} />
+                </div>
+                <HierarchyPicker
+                  steps={stepsInCategory}
+                  getGroupId={getProcessGroupId}
+                  getLabel={id => getProcessGroupName(id)}
+                  onSelect={setSelectedProcessGroupId}
+                />
+              </>
+            ) : !selectedProgressId ? (
+              <>
+                <div className={styles.toolbar}>
+                  <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
+                </div>
+                <HierarchyPicker
+                  steps={stepsInProcessGroup}
+                  getGroupId={getProgressId}
+                  getLabel={(_id, sampleStep) => sampleStep.processDescription}
+                  onSelect={setSelectedProgressId}
+                />
+              </>
+            ) : (
+              <>
+                <div className={styles.toolbar}>
+                  <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+                  <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
+                  <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
+                </div>
 
-              <div className={styles.addStepForm}>
-                <h3 className={styles.cardTitle}>Add a step</h3>
-                <ProcessStepForm
-                  value={newStepDraft}
-                  onChange={setNewStepDraft}
+                <SwimlaneCanvas
+                  steps={visibleSteps}
+                  allSteps={steps}
+                  edges={edges}
+                  riskStatements={riskStatements}
+                  drilledDownStepId={drilledDownStepId}
                   employees={employees}
                   selectedRegion={selectedRegion}
-                  dependsOnOptions={addStepDependsOnOptions}
+                  onLabelEdge={handleLabelEdge}
+                  onEditStep={handleEditStep}
+                  onDeleteStep={handleDeleteStep}
+                  onMoveStep={handleEditStep}
                 />
-                <PrimaryButton
-                  text={saving ? 'Adding...' : 'Add step'}
-                  disabled={saving || !newStepDraft.actionDescription.trim()}
-                  onClick={handleAddStep}
-                />
-              </div>
-            </>
-          )}
+
+                <div className={styles.addStepForm}>
+                  <h3 className={styles.cardTitle}>Add a step</h3>
+                  <ProcessStepForm
+                    value={newStepDraft}
+                    onChange={setNewStepDraft}
+                    employees={employees}
+                    selectedRegion={selectedRegion}
+                    dependsOnOptions={addStepDependsOnOptions}
+                  />
+                  <PrimaryButton
+                    text={saving ? 'Adding...' : 'Add step'}
+                    disabled={saving || !newStepDraft.actionDescription.trim()}
+                    onClick={handleAddStep}
+                  />
+                </div>
+              </>
+            )}
 
             <RiskRegisterList riskStatements={riskStatements} />
           </>
