@@ -22,7 +22,13 @@ interface IAppProps {
 const SignedInApp: React.FC = () => {
   const { instance } = useMsal();
   const dataService = useMemo(() => new GraphDataService(instance), [instance]);
-  return <SwimlaneStudio dataService={dataService} />;
+  return (
+    <SwimlaneStudio
+      dataService={dataService}
+      signOutLabel="Sign out"
+      onSignOut={() => instance.logoutRedirect()}
+    />
+  );
 };
 
 const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
@@ -77,7 +83,11 @@ function App({ msalInstance }: IAppProps) {
   return (
     <ThemeProvider theme={swimlaneTheme}>
       {useMock ? (
-        <SwimlaneStudio dataService={mockService} />
+        <SwimlaneStudio
+          dataService={mockService}
+          signOutLabel="Back to sign-in"
+          onSignOut={() => setUseMock(false)}
+        />
       ) : (
         <MsalProvider instance={msalInstance}>
           <AuthenticatedTemplate>

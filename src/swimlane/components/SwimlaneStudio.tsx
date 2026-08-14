@@ -37,7 +37,7 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 });
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
-  const { dataService } = props;
+  const { dataService, onSignOut, signOutLabel } = props;
 
   const [steps, setSteps] = React.useState<IProcessStep[]>([]);
   const [employees, setEmployees] = React.useState<IEmployee[]>([]);
@@ -204,6 +204,23 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           )}
         </div>
         <div className={styles.appBarActions}>
+          {onSignOut && (
+            <DefaultButton
+              text={signOutLabel || 'Sign out'}
+              onClick={onSignOut}
+              styles={{
+                root: {
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: 8,
+                  marginRight: 10
+                },
+                rootHovered: { background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.45)' },
+                rootPressed: { background: 'rgba(255,255,255,0.24)' },
+                label: { color: '#fff', fontWeight: 600 }
+              }}
+            />
+          )}
           <DefaultButton
             text="Import CSV"
             iconProps={{ iconName: 'Upload' }}
