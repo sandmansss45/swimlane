@@ -27,8 +27,15 @@
   box-shadow: 0 2px 10px rgba(11, 33, 72, 0.25);
 }
 
-.appBarActions {
+// Search claims the "push everything after it to the right edge" role -
+// title/breadcrumb stay left-aligned right after the logo, search +
+// actions cluster together on the right.
+.appBarSearch {
   margin-left: auto;
+}
+
+.appBarActions {
+  flex-shrink: 0;
 }
 
 .appBarLogo {

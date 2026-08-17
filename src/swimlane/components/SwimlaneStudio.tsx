@@ -12,6 +12,7 @@ import {
   APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
 } from '../utils/apqcHierarchy';
 import HierarchyPicker from './HierarchyPicker';
+import GlobalSearch from './GlobalSearch';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
 import EmployeesList from './EmployeesList';
@@ -212,6 +213,18 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setNewProcessOpen(false);
   };
 
+  // Jumps straight to a step found via GlobalSearch - same drill-down
+  // state a user would end up in by clicking all the way down through
+  // Category -> Process Group -> Progress ID -> that step's own tab by
+  // hand.
+  const handleSearchNavigate = (step: IProcessStep): void => {
+    setActiveTab('flows');
+    setSelectedCategoryId(getCategoryId(step.processStepId));
+    setSelectedProcessGroupId(getProcessGroupId(step.processStepId));
+    setSelectedProgressId(getProgressId(step.processStepId));
+    setDrilledDownStepId(step.processStepId);
+  };
+
   const newProcessPrefix = selectedProcessGroupId ? `${selectedProcessGroupId}.` : selectedCategoryId ? `${selectedCategoryId}.` : '';
 
   const handleAddStep = (): void => {
@@ -274,6 +287,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           ) : (
             <p className={styles.breadcrumb}>Finance process visualization</p>
           )}
+        </div>
+        <div className={styles.appBarSearch}>
+          <GlobalSearch steps={steps} onNavigate={handleSearchNavigate} />
         </div>
         <div className={styles.appBarActions}>
           {onSignOut && (
