@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Modal, PrimaryButton, DefaultButton, TextField, MessageBar, MessageBarType, Spinner } from '@fluentui/react';
 import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
+import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IDataService } from '../services/IDataService';
 import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName } from '../utils/apqcHierarchy';
 import { getProgressId } from '../models/IProcessStep';
@@ -19,8 +20,13 @@ export interface INewProcessModalProps {
   // already drilled into) - prefills the Process Step ID so continuing
   // that context doesn't mean retyping it.
   processStepIdPrefix: string;
+  // Every Process Group ID that already has a real name, whether from the
+  // static apqcHierarchy.ts table or a previously user-added label - used
+  // to detect when the typed ID's group is genuinely new and needs a name.
+  knownProcessGroupIds: Set<string>;
   onDismiss: () => void;
   onCreated: (created: IProcessStep) => void;
+  onGroupLabelCreated: (created: IProcessGroupLabel) => void;
 }
 
 const emptyStepDraft = (): IProcessStepFormValue => ({
@@ -40,9 +46,11 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 // new area needs (Process Step ID plus the two labels nothing else can
 // infer) and otherwise reuses the same ProcessStepForm as everywhere else.
 const NewProcessModal: React.FC<INewProcessModalProps> = ({
-  isOpen, steps, employees, selectedRegion, dataService, processStepIdPrefix, onDismiss, onCreated
+  isOpen, steps, employees, selectedRegion, dataService, processStepIdPrefix, knownProcessGroupIds,
+  onDismiss, onCreated, onGroupLabelCreated
 }) => {
   const [processStepId, setProcessStepId] = React.useState('');
+  const [processGroupName, setProcessGroupName] = React.useState('');
   const [processDescription, setProcessDescription] = React.useState('');
   const [processStepName, setProcessStepName] = React.useState('');
   const [stepValue, setStepValue] = React.useState<IProcessStepFormValue>(emptyStepDraft());
@@ -55,6 +63,7 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setProcessStepId(processStepIdPrefix);
+      setProcessGroupName('');
       setProcessDescription('');
       setProcessStepName('');
       setStepValue(emptyStepDraft());
@@ -67,11 +76,21 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
 
   const trimmedId = processStepId.trim();
   const idLooksValid = /^\d+(\.\d+){3,}$/.test(trimmedId);
+  const groupId = idLooksValid ? getProcessGroupId(trimmedId) : undefined;
+  // Whether this Process Step ID's group has no name anywhere yet (not the
+  // static confirmed-real table, not a previously user-added label) - only
+  // then do we need to ask for one, since every other case already has a
+  // real name to show.
+  const isNewGroup = !!groupId && !knownProcessGroupIds.has(groupId);
+  const groupLabel = groupId
+    ? (isNewGroup ? (processGroupName.trim() || `Process Group ${groupId}`) : getProcessGroupName(groupId))
+    : '';
   const preview = idLooksValid
-    ? `${getCategoryName(getCategoryId(trimmedId))} · ${getProcessGroupName(getProcessGroupId(trimmedId))} · Progress ID ${getProgressId(trimmedId)}`
+    ? `${getCategoryName(getCategoryId(trimmedId))} · ${groupLabel} · Progress ID ${getProgressId(trimmedId)}`
     : undefined;
 
   const canSubmit = idLooksValid
+    && (!isNewGroup || processGroupName.trim().length > 0)
     && processDescription.trim().length > 0
     && processStepName.trim().length > 0
     && stepValue.actionDescription.trim().length > 0
@@ -82,15 +101,21 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
     setSaving(true);
     setError(undefined);
     const { dependsOnStepIds, ...fields } = stepValue;
-    dataService.addProcessStep({
-      apqcTitle: trimmedId,
-      processDescription: processDescription.trim(),
-      processStepId: trimmedId,
-      processStepName: processStepName.trim(),
-      ...fields,
-      actionDescription: fields.actionDescription.trim(),
-      dependsOn: stepIdsToDependsOnTokens(steps, dependsOnStepIds)
-    })
+
+    const groupLabelStep = isNewGroup && groupId
+      ? dataService.addProcessGroupLabel(groupId, processGroupName.trim()).then(created => { onGroupLabelCreated(created); })
+      : Promise.resolve();
+
+    groupLabelStep
+      .then(() => dataService.addProcessStep({
+        apqcTitle: trimmedId,
+        processDescription: processDescription.trim(),
+        processStepId: trimmedId,
+        processStepName: processStepName.trim(),
+        ...fields,
+        actionDescription: fields.actionDescription.trim(),
+        dependsOn: stepIdsToDependsOnTokens(steps, dependsOnStepIds)
+      }))
       .then(created => {
         setSaving(false);
         onCreated(created);
@@ -122,6 +147,15 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
         errorMessage={trimmedId.length > 0 && !idLooksValid ? 'Needs at least 4 dot-separated numbers, e.g. 7.1.1.1' : undefined}
       />
       {preview && <p className={styles.preview}>{preview}</p>}
+
+      {isNewGroup && (
+        <TextField
+          label={`Process Group ${groupId} name`}
+          placeholder="This Process Group doesn't have a name yet, e.g. Manage petty cash"
+          value={processGroupName}
+          onChange={(_e, v) => setProcessGroupName(v || '')}
+        />
+      )}
 
       <TextField
         label="Process description"

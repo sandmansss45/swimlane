@@ -1,11 +1,14 @@
 import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
+import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 
 export interface IDataService {
   getProcessSteps(): Promise<IProcessStep[]>;
   getEmployees(): Promise<IEmployee[]>;
   getRiskStatements(): Promise<IRiskStatement[]>;
+  getProcessGroupLabels(): Promise<IProcessGroupLabel[]>;
+  addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**
    * Adds several steps in one call, in array order - used by CSV import.

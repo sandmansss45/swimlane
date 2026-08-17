@@ -3,6 +3,7 @@ import { IDataService } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, RiskLevel } from '../models/IRiskStatement';
+import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -16,6 +17,13 @@ const PROCESS_LIST_TITLE = '9.6 tester';
 // the default "Documents" library exist there so far.
 const EMPLOYEES_LIST_TITLE = 'TODO-CONFIRM-EMPLOYEES-LIST-TITLE';
 const RISK_LIST_TITLE = 'risk regnew';
+// TODO - CONFIRM: doesn't exist on the real site yet - needs creating.
+// Stores names for Process Groups the static APQC_PROCESS_GROUP_NAMES
+// table (apqcHierarchy.ts) doesn't already cover, e.g. a brand-new "9.6.4"
+// the business adds later. Suggested columns: the built-in Title field
+// (holds the group's name, e.g. "Manage petty cash") plus a single line
+// of text column called "Group ID" (holds the ID, e.g. "9.6.4").
+const PROCESS_GROUP_LABELS_LIST_TITLE = 'TODO-CONFIRM-PROCESS-GROUP-LABELS-LIST-TITLE';
 
 type FieldMap = { [displayName: string]: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -172,6 +180,35 @@ export class GraphDataService implements IDataService {
       riskLevel: toRiskLevel(get(item, 'Risk Level')),
       linkedProcessStepIds: parseDependsOn(get(item, 'Linked Process Step IDs'))
     }));
+  }
+
+  public async getProcessGroupLabels(): Promise<IProcessGroupLabel[]> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const items = await this._getItems(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): IProcessGroupLabel => ({
+      id: item.id,
+      groupId: get(item, 'Group ID'),
+      name: get(item, 'Title')
+    }));
+  }
+
+  public async addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROCESS_GROUP_LABELS_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Group ID', groupId);
+    set('Title', name);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, groupId, name };
   }
 
   public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {

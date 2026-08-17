@@ -8,12 +8,23 @@
 - Steps 1 and 2 below (permission set to `Sites.Selected` + site-specific
   access grant) - reported done by Method Group, not yet verified end to end
   with a real sign-in.
-- **Still outstanding, separate from auth**: `PROCESS_LIST_TITLE` and
-  `EMPLOYEES_LIST_TITLE` in `src/swimlane/services/GraphDataService.ts` are
-  still literal placeholder strings. Even with sign-in working, the app will
-  fail to load real data until the actual SharePoint **Lists** (not the
-  default Documents library) exist in this site and their real titles are
-  filled in there.
+- **Still outstanding, separate from auth**: `EMPLOYEES_LIST_TITLE` and
+  `PROCESS_GROUP_LABELS_LIST_TITLE` in
+  `src/swimlane/services/GraphDataService.ts` are still literal placeholder
+  strings. Even with sign-in working, the app will fail to load real data
+  until the actual SharePoint **Lists** (not the default Documents library)
+  exist in this site and their real titles are filled in there.
+  - **New list needed: Process Group Labels.** Added 2026-08-17 to support
+    naming a brand-new Process Group (e.g. a future "9.6.4") from inside the
+    app instead of needing a code change every time. Create a list with:
+    - The built-in **Title** column - holds the group's name (e.g.
+      "Manage petty cash").
+    - A single line of text column named **Group ID** - holds the ID (e.g.
+      "9.6.4").
+    Not urgent - until it exists, "+ Add new process" still works fine for
+    any group that already has a name (either the confirmed real ones in
+    `apqcHierarchy.ts`, or the mock/dev in-memory ones); it just can't save
+    a *new* group's name anywhere real users will see it yet.
 
 ## 1. Confirm the app registration's permission is `Sites.Selected`
 

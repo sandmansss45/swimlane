@@ -5,6 +5,7 @@ import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
 import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
+import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
@@ -46,6 +47,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [steps, setSteps] = React.useState<IProcessStep[]>([]);
   const [employees, setEmployees] = React.useState<IEmployee[]>([]);
   const [riskStatements, setRiskStatements] = React.useState<IRiskStatement[]>([]);
+  const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
@@ -75,8 +77,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const loadAll = React.useCallback(() => {
     setLoading(true);
     setError(undefined);
-    Promise.allSettled([dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements()])
-      .then(([stepsResult, employeesResult, risksResult]) => {
+    Promise.allSettled([
+      dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
+      dataService.getProcessGroupLabels()
+    ])
+      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -97,6 +102,15 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           errors.push(`Risk statements: ${describeError(risksResult.reason)}`);
         }
 
+        // Not surfaced as an error - this list is a nice-to-have that most
+        // sites won't have created yet, and every group it would name
+        // already has a working fallback (the static table, or just
+        // "Process Group X.Y"), so a missing/misconfigured list here
+        // shouldn't read as something broken the way the other three do.
+        if (groupLabelsResult.status === 'fulfilled') {
+          setProcessGroupLabels(groupLabelsResult.value);
+        }
+
         setError(errors.length > 0 ? errors.join(' | ') : undefined);
         setLoading(false);
       });
@@ -107,6 +121,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const regions = React.useMemo(
     () => Array.from(new Set(employees.map(e => e.region).filter((r): r is string => !!r))),
     [employees]
+  );
+
+  // User-added names for Process Groups the static apqcHierarchy.ts table
+  // doesn't already cover (see IProcessGroupLabel) - merged in wherever a
+  // Process Group name is looked up or listed, same as the static table.
+  const customGroupNames = React.useMemo(
+    () => Object.fromEntries(processGroupLabels.map(l => [l.groupId, l.name])) as Record<string, string>,
+    [processGroupLabels]
   );
 
   const stepsInCategory = React.useMemo(
@@ -162,6 +184,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleImported = (created: IProcessStep[]): void => {
     setSteps(prev => [...prev, ...created]);
+  };
+
+  const handleGroupLabelCreated = (created: IProcessGroupLabel): void => {
+    setProcessGroupLabels(prev => [...prev, created]);
   };
 
   // Lands the user straight in the swimlane they just created, the same
@@ -275,8 +301,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         selectedRegion={selectedRegion}
         dataService={dataService}
         processStepIdPrefix={newProcessPrefix}
+        knownProcessGroupIds={new Set([...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)])}
         onDismiss={() => setNewProcessOpen(false)}
         onCreated={handleProcessCreated}
+        onGroupLabelCreated={handleGroupLabelCreated}
       />
 
       <section className={styles.swimlaneStudio}>
@@ -330,9 +358,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <HierarchyPicker
                   steps={stepsInCategory}
                   getGroupId={getProcessGroupId}
-                  getLabel={id => getProcessGroupName(id)}
+                  getLabel={id => customGroupNames[id] || getProcessGroupName(id)}
                   onSelect={setSelectedProcessGroupId}
-                  allGroupIds={Object.keys(APQC_PROCESS_GROUP_NAMES).filter(id => getCategoryId(id) === selectedCategoryId)}
+                  allGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
                   emptyMessage="No processes in this category yet - use “+ Add new process” above to start one."
                 />
               </>

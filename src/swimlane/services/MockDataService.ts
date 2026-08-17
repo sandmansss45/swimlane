@@ -2,6 +2,7 @@ import { IDataService } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
+import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 
 // Real accounts-payable process data from the "9.6 tester" SharePoint list
 // (QLE UK) - used deliberately instead of placeholder data, at the user's
@@ -89,6 +90,10 @@ const MOCK_RISKS: IRiskStatement[] = [
 
 export class MockDataService implements IDataService {
   private _steps: IProcessStep[] = buildMockSteps();
+  // Starts empty - the confirmed real Process Groups already live in
+  // apqcHierarchy.ts's static table; this only holds ones a user adds at
+  // runtime via "+ Add new process" for a group that table doesn't cover.
+  private _groupLabels: IProcessGroupLabel[] = [];
 
   public getProcessSteps(): Promise<IProcessStep[]> {
     return Promise.resolve(this._steps.slice());
@@ -100,6 +105,16 @@ export class MockDataService implements IDataService {
 
   public getRiskStatements(): Promise<IRiskStatement[]> {
     return Promise.resolve(MOCK_RISKS.slice());
+  }
+
+  public getProcessGroupLabels(): Promise<IProcessGroupLabel[]> {
+    return Promise.resolve(this._groupLabels.slice());
+  }
+
+  public addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel> {
+    const created: IProcessGroupLabel = { id: `mock-group-${this._groupLabels.length + 1}`, groupId, name };
+    this._groupLabels.push(created);
+    return Promise.resolve(created);
   }
 
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
