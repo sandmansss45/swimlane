@@ -536,7 +536,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         })}
       </svg>
 
-      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(150px, 1fr))` }}>
+      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(170px, 1fr))` }}>
         <div className={styles.corner} />
         {columnGroups.map(group => (
           <div

@@ -37,8 +37,11 @@
   border-collapse: collapse;
   // Breathing room between adjacent nodes so an edge label sitting on the
   // connector between them has clear space to render in, instead of
-  // crowding right up against one of the two boxes it's labeling.
-  column-gap: 28px;
+  // crowding right up against one of the two boxes it's labeling. Bumped
+  // from 28px after real data showed short direct hops (e.g. a
+  // diamond's "Yes"/"No" straight into the very next box) leaving a
+  // label almost touching both shapes.
+  column-gap: 40px;
   // Wide enough for a same-lane "local hop" connector (see measureEdges in
   // SwimlaneCanvas.tsx) to bend above a row and clear a sibling box in
   // between, without needing the full cross-lane highway strip at the top
