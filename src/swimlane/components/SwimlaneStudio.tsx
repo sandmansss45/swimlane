@@ -28,7 +28,7 @@ import AddHierarchyShellModal, { HierarchyShellLevel } from './AddHierarchyShell
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
-type MainTab = 'flows' | 'employees';
+type MainTab = 'flows' | 'employees' | 'risks';
 
 // Single-level undo (the last destructive action only, not a full stack) -
 // covers the three actions that lose data outright: deleting a step,
@@ -61,7 +61,8 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   shapeOverride: '',
   riskLevelOverride: '',
   responsibleJobTitle: '',
-  dependsOnStepIds: []
+  dependsOnStepIds: [],
+  linkedRisks: []
 });
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
@@ -465,6 +466,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         isOpen={newProcessOpen}
         steps={steps}
         employees={employees}
+        riskStatements={riskStatements}
         selectedRegion={selectedRegion}
         dataService={dataService}
         processStepIdPrefix={newProcessPrefix}
@@ -541,14 +543,20 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         <Pivot
           className={styles.mainTabs}
           selectedKey={activeTab}
-          onLinkClick={(item?: PivotItem) => setActiveTab(item?.props.itemKey === 'employees' ? 'employees' : 'flows')}
+          onLinkClick={(item?: PivotItem) => {
+            const key = item?.props.itemKey;
+            setActiveTab(key === 'employees' || key === 'risks' ? key : 'flows');
+          }}
         >
           <PivotItem headerText="Process Flows" itemKey="flows" />
           <PivotItem headerText="Employees" itemKey="employees" />
+          <PivotItem headerText="Risk Register" itemKey="risks" />
         </Pivot>
 
         {activeTab === 'employees' ? (
           <EmployeesList employees={employees} />
+        ) : activeTab === 'risks' ? (
+          <RiskRegisterList riskStatements={riskStatements} steps={steps} />
         ) : (
           <>
             {!selectedCategoryId && (
@@ -656,6 +664,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     employees={employees}
                     selectedRegion={selectedRegion}
                     dependsOnOptions={addStepDependsOnOptions}
+                    riskStatements={riskStatements}
                   />
                   <PrimaryButton
                     text={saving ? 'Adding...' : 'Add step'}
@@ -665,8 +674,6 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 </div>
               </>
             )}
-
-            <RiskRegisterList riskStatements={riskStatements} />
           </>
         )}
       </section>

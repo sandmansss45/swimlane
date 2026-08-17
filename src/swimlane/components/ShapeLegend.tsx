@@ -45,6 +45,14 @@ const ShapeLegend: React.FC = () => (
         Low
       </span>
     </div>
+    <div className={styles.divider} />
+    <div className={styles.group}>
+      <span className={styles.groupLabel}>Linked risk</span>
+      <span className={styles.item}>
+        <span className={styles.markerSample}>!</span>
+        Linked risk - click the step for details
+      </span>
+    </div>
   </div>
 );
 

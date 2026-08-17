@@ -1,0 +1,102 @@
+.picker {
+  // flex: 1 1 250px is inherited from the parent form's own "> *" rule
+  // (see SwimlaneStudio.module.scss .addStepForm) - this field just needs
+  // to be allowed to grow full-width instead, since three dropdowns plus
+  // a button in the add-row need more room than one form column gives.
+  flex-basis: 100%;
+}
+
+// Matches Fluent's own default Label styling (14px/600) so this reads as
+// just another field in the same form, not a bolted-on custom widget.
+.label {
+  display: block;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.linkedList {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.linkedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.linkedText {
+  flex: 1;
+  font-size: var(--fs-base);
+  color: var(--text);
+
+  em {
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+}
+
+.removeButton {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.badge {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badgeHigh {
+  background: rgba(217, 45, 32, 0.12);
+  color: var(--risk-high);
+}
+
+.badgeMedium {
+  background: rgba(220, 104, 3, 0.12);
+  color: var(--risk-medium);
+}
+
+.badgeLow {
+  background: rgba(23, 128, 61, 0.12);
+  color: var(--risk-low);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.addRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.addField {
+  min-width: 180px;
+  flex: 1 1 200px;
+}
+
+.addFieldNarrow {
+  min-width: 110px;
+  flex: 0 1 110px;
+}

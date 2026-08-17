@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { TextField, Dropdown, IDropdownOption, ComboBox, IComboBoxOption } from '@fluentui/react';
 import { IEmployee } from '../models/IEmployee';
+import { IRiskStatement, IRiskLink } from '../models/IRiskStatement';
 import EmployeePicker from './EmployeePicker';
+import RiskLinkPicker from './RiskLinkPicker';
 
 // The full set of fields a process step actually has - shared by the
 // "Add a step" card and the shape edit panel so a step created here has
@@ -15,6 +17,7 @@ export interface IProcessStepFormValue {
   riskLevelOverride: string;
   responsibleJobTitle: string;
   dependsOnStepIds: string[];
+  linkedRisks: IRiskLink[];
 }
 
 export const SHAPE_OPTIONS: IDropdownOption[] = [
@@ -52,9 +55,10 @@ export interface IProcessStepFormProps {
   employees: IEmployee[];
   selectedRegion: string | undefined;
   dependsOnOptions: IDropdownOption[];
+  riskStatements: IRiskStatement[];
 }
 
-const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, employees, selectedRegion, dependsOnOptions }) => {
+const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, employees, selectedRegion, dependsOnOptions, riskStatements }) => {
   const set = <K extends keyof IProcessStepFormValue>(key: K, v: IProcessStepFormValue[K]): void => {
     onChange({ ...value, [key]: v });
   };
@@ -115,6 +119,11 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
             : value.dependsOnStepIds.filter(id => id !== option.key);
           set('dependsOnStepIds', ids);
         }}
+      />
+      <RiskLinkPicker
+        riskStatements={riskStatements}
+        value={value.linkedRisks}
+        onChange={links => set('linkedRisks', links)}
       />
     </>
   );

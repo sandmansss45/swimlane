@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Modal, PrimaryButton, DefaultButton, TextField, MessageBar, MessageBarType, Spinner } from '@fluentui/react';
 import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
+import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IDataService } from '../services/IDataService';
 import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName } from '../utils/apqcHierarchy';
@@ -14,6 +15,7 @@ export interface INewProcessModalProps {
   isOpen: boolean;
   steps: IProcessStep[];
   employees: IEmployee[];
+  riskStatements: IRiskStatement[];
   selectedRegion: string | undefined;
   dataService: IDataService;
   // Wherever the user opened this from (a category or process group
@@ -36,7 +38,8 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   shapeOverride: '',
   riskLevelOverride: '',
   responsibleJobTitle: '',
-  dependsOnStepIds: []
+  dependsOnStepIds: [],
+  linkedRisks: []
 });
 
 // Every other way of getting a step into the app (Add a step, CSV import)
@@ -46,7 +49,7 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 // new area needs (Process Step ID plus the two labels nothing else can
 // infer) and otherwise reuses the same ProcessStepForm as everywhere else.
 const NewProcessModal: React.FC<INewProcessModalProps> = ({
-  isOpen, steps, employees, selectedRegion, dataService, processStepIdPrefix, knownProcessGroupIds,
+  isOpen, steps, employees, riskStatements, selectedRegion, dataService, processStepIdPrefix, knownProcessGroupIds,
   onDismiss, onCreated, onGroupLabelCreated
 }) => {
   const [processStepId, setProcessStepId] = React.useState('');
@@ -178,6 +181,7 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
         employees={employees}
         selectedRegion={selectedRegion}
         dependsOnOptions={dependsOnOptions}
+        riskStatements={riskStatements}
       />
 
       <div className={styles.footer}>

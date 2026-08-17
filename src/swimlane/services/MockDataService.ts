@@ -1,7 +1,7 @@
 import { IDataService } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
-import { IRiskStatement } from '../models/IRiskStatement';
+import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 
@@ -13,12 +13,12 @@ import { IProgressIdLabel } from '../models/IProgressIdLabel';
 // so don't reorder these rows. Yes/No edgeLabels below are inferred from
 // which rows share a dependency token (not part of the source data, same
 // as the rest of the app - see IProcessStep.edgeLabels).
-const RAW_STEPS: Array<Omit<IProcessStep, 'id' | 'dependsOn'> & { dependsOnRaw: string }> = [
+const RAW_STEPS: Array<Omit<IProcessStep, 'id' | 'dependsOn' | 'linkedRisks'> & { dependsOnRaw: string; linkedRisksRaw?: string }> = [
   // 9.6.1.1 - Create Purchase Order
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Receive', actionDescription: 'Quote/order/Contract received from business', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Document', dependsOnRaw: '' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Review', actionDescription: 'Is vendor set up in netsuite?', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Set up vendor on NetSuite & submit for approval', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '9.6.1.1-3', edgeLabels: { '9.6.1.1-3': 'No' } },
-  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Approve (Non Threshold)', action: 'Approve', actionDescription: 'CFO approves new vendor set up', responsibleJobTitle: 'Chief Financial Officer / 7003 - Finance / United States', shapeOverride: 'Approval', dependsOnRaw: '9.6.1.1-4' },
+  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Approve (Non Threshold)', action: 'Approve', actionDescription: 'CFO approves new vendor set up', responsibleJobTitle: 'Chief Financial Officer / 7003 - Finance / United States', shapeOverride: 'Approval', dependsOnRaw: '9.6.1.1-4', linkedRisksRaw: 'r1:High' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Purchase Order created on NetSuite & routed for approval', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '9.6.1.1-3\n9.6.1.1-5', edgeLabels: { '9.6.1.1-3': 'Yes' } },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Review', actionDescription: 'Is PO value < $5,000 (or equivalent)', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '9.6.1.1-6' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.1', processStepName: 'Create Purchase Order', actionType: 'Execute (Within Limits)', action: 'Automated', actionDescription: 'NetSuite routes Purchase Order to CFO for approval', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'System workflow', dependsOnRaw: '9.6.1.1-7', edgeLabels: { '9.6.1.1-7': 'No' } },
@@ -28,7 +28,7 @@ const RAW_STEPS: Array<Omit<IProcessStep, 'id' | 'dependsOn'> & { dependsOnRaw: 
 
   // 9.6.1.2 - Process Vendor Bill/Invoice
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Submit', actionDescription: 'Vendor Bill/Invoice sent to invoices@qleapenergy.com', responsibleJobTitle: 'Vendor, Business, Finance Manager', shapeOverride: 'Process Step', dependsOnRaw: '' },
-  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Review', actionDescription: 'Is Bill/Invoice covered by a Purchase Order?', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '9.6.1.2-12' },
+  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Review', actionDescription: 'Is Bill/Invoice covered by a Purchase Order?', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '9.6.1.2-12', linkedRisksRaw: 'r3:Low' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Create Bill on NetSuite against relevant Purchase Order', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '9.6.1.2-13', edgeLabels: { '9.6.1.2-13': 'Yes' } },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Automated', actionDescription: 'NetSuite completes a 3 way match (3WM) on the Bill against the Purchase order', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'System workflow', dependsOnRaw: '9.6.1.2-14' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.2', processStepName: 'Process Vendor Bill/Invoice', actionType: 'Approve (Within Thresholds)', action: 'Automated', actionDescription: 'Are there varances, outside of tolerance, on the 3WM?', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '9.6.1.2-15' },
@@ -48,7 +48,7 @@ const RAW_STEPS: Array<Omit<IProcessStep, 'id' | 'dependsOn'> & { dependsOnRaw: 
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Run AP Aging Detail Report showing bills due for payment', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Download to Excel and prepare list of proposed payment.', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Document', dependsOnRaw: '9.6.1.3-28' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Endorse / Recommend', action: 'Recommend', actionDescription: 'Send list of recommended payments to CFO for approval', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '9.6.1.3-29' },
-  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Approve (Within Thresholds)', action: 'Approve', actionDescription: 'CFO approves proposed payment list', responsibleJobTitle: 'Chief Financial Officer / 7003 - Finance / United States', shapeOverride: 'Approval', dependsOnRaw: '9.6.1.3-30' },
+  { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Approve (Within Thresholds)', action: 'Approve', actionDescription: 'CFO approves proposed payment list', responsibleJobTitle: 'Chief Financial Officer / 7003 - Finance / United States', shapeOverride: 'Approval', dependsOnRaw: '9.6.1.3-30', linkedRisksRaw: 'r2:Medium' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Review', actionDescription: 'Has vendor been set up as a beneficiary on Banking System?', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Decision', dependsOnRaw: '9.6.1.3-31' },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Execute (Within Limits)', action: 'Create', actionDescription: 'Set up Beneficiary on Banking System and send to CFO for approval', responsibleJobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', shapeOverride: 'Process Step', dependsOnRaw: '9.6.1.3-32', edgeLabels: { '9.6.1.3-32': 'No' } },
   { apqcTitle: '9.6.1 - UK', processDescription: 'Process accounts payable', processStepId: '9.6.1.3', processStepName: 'Pay Vendor Bill/Invoice', actionType: 'Approve (Non Threshold)', action: 'Approve', actionDescription: 'CFO approves Beneficiary on Banking System', responsibleJobTitle: 'Chief Financial Officer / 7003 - Finance / United States', shapeOverride: 'Approval', dependsOnRaw: '9.6.1.3-33' },
@@ -63,11 +63,12 @@ const RAW_STEPS: Array<Omit<IProcessStep, 'id' | 'dependsOn'> & { dependsOnRaw: 
 
 function buildMockSteps(): IProcessStep[] {
   return RAW_STEPS.map((raw, index) => {
-    const { dependsOnRaw, ...rest } = raw;
+    const { dependsOnRaw, linkedRisksRaw, ...rest } = raw;
     return {
       ...rest,
       id: `mock-${index + 1}`,
-      dependsOn: parseDependsOn(dependsOnRaw)
+      dependsOn: parseDependsOn(dependsOnRaw),
+      linkedRisks: parseLinkedRisks(linkedRisksRaw)
     };
   });
 }
@@ -86,10 +87,31 @@ const MOCK_EMPLOYEES: IEmployee[] = [
   { id: 'e4', jobTitle: 'Procurement Manager', region: '6003 - Procurement' }
 ];
 
+// Shaped like the real "risk register data" list (see the schema comment
+// in models/IRiskStatement.ts) - same three AP-relevant risk concepts the
+// old mock data used, reshaped into the real columns. Two of these are
+// pre-linked to a step each (see linkedRisksRaw above) so the "add a real
+// risk to a step" flow has something to look at out of the box in mock
+// mode, not just an empty picker.
 const MOCK_RISKS: IRiskStatement[] = [
-  { id: 'r1', title: 'Segregation of duties - AP', riskStatement: 'Same person creates and approves a purchase order.', linkedProcessStepIds: ['9.6.1.1'], riskLevel: 'High' },
-  { id: 'r2', title: 'Unauthorized payment', riskStatement: 'Payment released without required approval threshold met.', linkedProcessStepIds: ['9.6.1.3'], riskLevel: 'Medium' },
-  { id: 'r3', title: 'Invoice processed without PO', riskStatement: 'Invoice approved without a matching Purchase Order on file.', linkedProcessStepIds: ['9.6.1.2'], riskLevel: 'Low' }
+  {
+    id: 'r1', riskId: 'OP-014', category: 'Operational / Financial Controls',
+    riskStatement: 'Same person creates and approves a purchase order.',
+    rootCause: "NetSuite's approval workflow doesn't enforce maker-checker separation for this role.",
+    likelihood: 0.4, materiality: 25, inherentRiskRating: 10, riskResponse: 'Mitigate'
+  },
+  {
+    id: 'r2', riskId: 'OP-021', category: 'Operational / Financial Controls',
+    riskStatement: 'Payment released without required approval threshold met.',
+    rootCause: 'Manual override of banking system approval limits.',
+    likelihood: 0.2, materiality: 50, inherentRiskRating: 10, riskResponse: 'Mitigate'
+  },
+  {
+    id: 'r3', riskId: 'OP-033', category: 'Operational / Financial Controls',
+    riskStatement: 'Invoice approved without a matching Purchase Order on file.',
+    rootCause: '3-way match exception queue not reviewed consistently.',
+    likelihood: 0.5, materiality: 10, inherentRiskRating: 5, riskResponse: 'Accept'
+  }
 ];
 
 export class MockDataService implements IDataService {

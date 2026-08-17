@@ -1,53 +1,95 @@
-import { IProcessStep } from './IProcessStep';
-
-/**
- * PLACEHOLDER MODEL. The "risk regnew" list's full column list was
- * explicitly flagged as not fully catalogued yet - only Title and Risk
- * Statement are confirmed. Everything else here is a reasonable guess at
- * what a risk register needs, not a confirmed schema - revisit once the
- * real list's internal field names are known.
- */
 export type RiskLevel = 'High' | 'Medium' | 'Low';
 
+/**
+ * The real "risk register data" SharePoint list - confirmed columns as of
+ * 2026-08-17 from a live screenshot of the list: Risk ID, Category, Risk
+ * Statement, Root Cause, Likelihood (P), Materiality ($Mn), Inherent Risk
+ * Rating, Risk Response. This is a standing enterprise register, not
+ * something this app owns - Risk ID is often blank in practice, so linking
+ * (see IRiskLink below) keys off the SharePoint item id instead, never the
+ * Risk ID text column.
+ */
 export interface IRiskStatement {
-  id: string;
-  title: string;
+  id: string; // SharePoint list item ID - the stable key used for linking
+  riskId: string; // the "Risk ID" text column - often blank in the real data, display only
+  category: string; // e.g. "External / Market / Reputational" - the grouping the risk-linking picker drills through
   riskStatement: string;
-  linkedProcessStepIds?: string[]; // guess: how a risk might link back to specific process steps
-  riskLevel?: RiskLevel; // guess: traffic-light severity, drives the step shape's fill color once linked
+  rootCause: string;
+  likelihood?: number; // "Likelihood (P)", e.g. 0.3
+  materiality?: number; // "Materiality ($Mn)", e.g. 150
+  inherentRiskRating?: number; // "Inherent Risk Rating" (Likelihood x Materiality) - informational only, does NOT drive severity/color, see IRiskLink
+  riskResponse: string; // e.g. "Mitigate", "Transfer"
+}
+
+/**
+ * A risk tied to one specific process step. Severity is chosen by hand by
+ * whoever ties it, not derived from the register's own numbers - confirmed
+ * design rule: the same register risk can reasonably read as more or less
+ * severe depending on which step it's attached to, and the person doing
+ * the tying is better placed to judge that in the moment than a fixed
+ * formula would be.
+ */
+export interface IRiskLink {
+  riskId: string; // IRiskStatement.id, NOT the Risk ID text column
+  severity: RiskLevel;
 }
 
 const SEVERITY_RANK: Record<RiskLevel, number> = { High: 3, Medium: 2, Low: 1 };
 
+function toRiskLevel(raw: string | undefined): RiskLevel | undefined {
+  const normalized = (raw || '').trim().toLowerCase();
+  if (normalized === 'high') return 'High';
+  if (normalized === 'medium') return 'Medium';
+  if (normalized === 'low') return 'Low';
+  return undefined;
+}
+
 /**
- * A process step's shape is colored by the WORST linked risk, not just
- * "any" risk - if a step carries both a Medium and a High risk, showing
- * amber instead of red would understate what someone looking at the
- * diagram needs to notice first.
+ * Raw column format is "riskId:severity" pairs, comma/newline separated
+ * (e.g. "42:High, 51:Medium") - same delimiter convention as DependsOn
+ * (see parseDependsOn in IProcessStep.ts). An entry with an unrecognized
+ * or missing severity defaults to Medium rather than being dropped, so a
+ * hand-edited cell missing the ":severity" part still shows up as linked
+ * instead of silently disappearing.
  */
-export function getRiskLevel(processStepId: string, riskStatements: IRiskStatement[]): RiskLevel | undefined {
+export function parseLinkedRisks(raw: string | undefined): IRiskLink[] {
+  return (raw || '')
+    .split(/[\n,]+/)
+    .map(token => token.trim())
+    .filter(token => token.length > 0)
+    .map(token => {
+      const [riskId, severityRaw] = token.split(':').map(part => (part || '').trim());
+      return { riskId, severity: toRiskLevel(severityRaw) || 'Medium' };
+    })
+    .filter(link => link.riskId.length > 0);
+}
+
+export function serializeLinkedRisks(links: IRiskLink[]): string {
+  return links.map(link => `${link.riskId}:${link.severity}`).join(', ');
+}
+
+/**
+ * A step's shape gets a small corner marker (not a full recolor - see
+ * ShapeNode/riskLevelOverride below) when it has at least one linked risk,
+ * colored by the WORST linked severity - same "worst wins" reasoning the
+ * rest of this app's risk coloring already uses.
+ */
+export function worstLinkedSeverity(links: IRiskLink[] | undefined): RiskLevel | undefined {
   let worst: RiskLevel | undefined;
-  riskStatements.forEach(risk => {
-    if (!risk.riskLevel) return;
-    if (!(risk.linkedProcessStepIds || []).includes(processStepId)) return;
-    if (!worst || SEVERITY_RANK[risk.riskLevel] > SEVERITY_RANK[worst]) worst = risk.riskLevel;
+  (links || []).forEach(link => {
+    if (!worst || SEVERITY_RANK[link.severity] > SEVERITY_RANK[worst]) worst = link.severity;
   });
   return worst;
 }
 
-function toRiskLevel(raw: string | undefined): RiskLevel | undefined {
-  return raw === 'High' || raw === 'Medium' || raw === 'Low' ? raw : undefined;
-}
-
 /**
- * The level a step's shape should actually render with - a manual pick
- * from the edit panel (step.riskLevelOverride) wins over whatever the
- * Risk Register would derive, so someone can flag or clear a risk
- * directly on a step without having to go author/edit a Risk Register
- * entry first.
+ * The level a step's shape FILL renders with - a separate, older concept
+ * from the linked-risk marker above. This is a manual, ad hoc flag
+ * (step.riskLevelOverride) someone can set directly from the edit panel
+ * without going through the formal Risk Register at all - kept exactly as
+ * it worked before the Risk Register was wired in for real, so existing
+ * flagged steps don't change appearance.
  */
-export function resolveRiskLevel(step: IProcessStep, riskStatements: IRiskStatement[]): RiskLevel | undefined {
-  const override = toRiskLevel(step.riskLevelOverride);
-  if (override) return override;
-  return getRiskLevel(step.processStepId, riskStatements);
+export function resolveRiskLevel(riskLevelOverride: string | undefined): RiskLevel | undefined {
+  return toRiskLevel(riskLevelOverride);
 }

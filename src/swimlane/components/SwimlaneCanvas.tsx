@@ -3,7 +3,7 @@ import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption } from
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
-import { IRiskStatement, resolveRiskLevel } from '../models/IRiskStatement';
+import { IRiskStatement, resolveRiskLevel, worstLinkedSeverity } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge, dependsOnTokensToStepIds, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups, computeDropOrder, dropKeepsDependencyOrder } from '../utils/columns';
@@ -470,7 +470,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       shapeOverride: step.shapeOverride || '',
       riskLevelOverride: step.riskLevelOverride || '',
       responsibleJobTitle: step.responsibleJobTitle,
-      dependsOnStepIds: dependsOnTokensToStepIds(allSteps, step.dependsOn)
+      dependsOnStepIds: dependsOnTokensToStepIds(allSteps, step.dependsOn),
+      linkedRisks: step.linkedRisks || []
     });
   };
 
@@ -658,7 +659,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                       <ShapeNode
                         label={step.actionDescription}
                         shape={getShapeType(step)}
-                        riskLevel={resolveRiskLevel(step, riskStatements)}
+                        riskLevel={resolveRiskLevel(step.riskLevelOverride)}
+                        linkedRiskSeverity={worstLinkedSeverity(step.linkedRisks)}
+                        linkedRiskCount={(step.linkedRisks || []).length}
                         selected={selectedNodeId === step.id}
                         onClick={() => handleNodeClick(step)}
                       />
@@ -690,6 +693,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                 employees={employees}
                 selectedRegion={selectedRegion}
                 dependsOnOptions={dependsOnOptions}
+                riskStatements={riskStatements}
               />
               <PrimaryButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
             </div>

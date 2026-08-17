@@ -2,7 +2,7 @@ import { IPublicClientApplication } from '@azure/msal-browser';
 import { IDataService } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
-import { IRiskStatement, RiskLevel } from '../models/IRiskStatement';
+import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { GraphClient } from '../auth/graphClient';
@@ -20,7 +20,12 @@ const PROCESS_LIST_TITLE = '9.6 tester';
 // Region/name comments in models/IEmployee.ts for why Display name isn't
 // mapped at all.
 const EMPLOYEES_LIST_TITLE = 'QLE Existing Organisation';
-const RISK_LIST_TITLE = 'risk regnew';
+// CONFIRMED 2026-08-17 against a live screenshot of the real list -
+// columns Risk ID, Category, Risk Statement, Root Cause, Likelihood (P),
+// Materiality ($Mn), Inherent Risk Rating, Risk Response. This is a
+// standing enterprise register the app reads from, not one it owns - see
+// the schema comment in models/IRiskStatement.ts.
+const RISK_LIST_TITLE = 'risk register data';
 // CONFIRMED 2026-08-17 - created on the real "Swimlane Studio" site with
 // the built-in Title column (group name) plus a single line of text
 // column "Group ID". Stores names for Process Groups the static
@@ -142,7 +147,13 @@ export class GraphDataService implements IDataService {
         const parsed = raw ? parseFloat(raw) : NaN;
         return isNaN(parsed) ? undefined : parsed;
       })(),
-      dependsOn: parseDependsOn(get(item, 'DependsOn'))
+      dependsOn: parseDependsOn(get(item, 'DependsOn')),
+      // TODO-CONFIRM: "Linked Risks" doesn't exist on the real "9.6
+      // tester" list yet - needs creating as a single line of text column,
+      // same as DependsOn - see the schema comment on
+      // IProcessStep.linkedRisks for the "riskId:severity" format it
+      // expects.
+      linkedRisks: parseLinkedRisks(get(item, 'Linked Risks'))
     }));
   }
 
@@ -168,25 +179,23 @@ export class GraphDataService implements IDataService {
     console.log(`[SwimlaneStudio] "${RISK_LIST_TITLE}" live row count: ${items.length} - confirm this matches the list in SharePoint.`);
 
     const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
-    const toRiskLevel = (raw: string): RiskLevel | undefined => {
-      const normalized = raw.trim().toLowerCase();
-      if (normalized === 'high') return 'High';
-      if (normalized === 'medium') return 'Medium';
-      if (normalized === 'low') return 'Low';
-      return undefined;
+    const getNumber = (item: GraphItem, displayName: string): number | undefined => {
+      const raw = get(item, displayName);
+      if (!raw) return undefined;
+      const parsed = parseFloat(raw);
+      return isNaN(parsed) ? undefined : parsed;
     };
 
-    // TODO-CONFIRM: "Risk Level" and "Linked Process Step IDs" are
-    // guessed display names, not verified against the real "risk regnew"
-    // list yet - same caveat as the rest of this list's field mapping
-    // (see the IRiskStatement model). Missing/unrecognized values just
-    // fall back to no risk coloring rather than throwing.
     return items.map((item): IRiskStatement => ({
       id: item.id,
-      title: get(item, 'Title'),
+      riskId: get(item, 'Risk ID'),
+      category: get(item, 'Category'),
       riskStatement: get(item, 'Risk Statement'),
-      riskLevel: toRiskLevel(get(item, 'Risk Level')),
-      linkedProcessStepIds: parseDependsOn(get(item, 'Linked Process Step IDs'))
+      rootCause: get(item, 'Root Cause'),
+      likelihood: getNumber(item, 'Likelihood (P)'),
+      materiality: getNumber(item, 'Materiality ($Mn)'),
+      inherentRiskRating: getNumber(item, 'Inherent Risk Rating'),
+      riskResponse: get(item, 'Risk Response')
     }));
   }
 
@@ -288,6 +297,7 @@ export class GraphDataService implements IDataService {
     set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
+    set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     return { ...step, id: created.id };
@@ -326,6 +336,7 @@ export class GraphDataService implements IDataService {
     set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
+    set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${step.id}/fields`, fields);
   }

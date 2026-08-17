@@ -1,3 +1,5 @@
+import { IRiskLink } from './IRiskStatement';
+
 export type ShapeType = 'process' | 'decision' | 'approval' | 'document';
 
 export interface IProcessStep {
@@ -36,6 +38,12 @@ export interface IProcessStep {
   // node. Every outgoing edge from a decision must have one; enforced in
   // the UI, not here.
   edgeLabels?: { [dependsOnToken: string]: string };
+  // Real Risk Register entries tied to this step, each with its own
+  // manually-chosen severity (see IRiskLink) - separate from
+  // riskLevelOverride above, which is an older, unrelated ad hoc flag that
+  // still drives the shape's fill color on its own. This instead drives a
+  // small corner marker (see ShapeNode) so the two don't visually collide.
+  linkedRisks?: IRiskLink[];
 }
 
 /**
