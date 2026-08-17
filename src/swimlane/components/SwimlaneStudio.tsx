@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {
-  Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, Pivot, PivotItem,
+  Spinner, MessageBar, MessageBarType, MessageBarButton, DefaultButton, PrimaryButton, Pivot, PivotItem,
   Dialog, DialogType, DialogFooter, TextField
 } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
@@ -27,6 +27,23 @@ import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
 type MainTab = 'flows' | 'employees';
+
+// Single-level undo (the last destructive action only, not a full stack) -
+// covers the three actions that lose data outright: deleting a step,
+// bulk-deleting a whole flow, and editing (which overwrites the previous
+// field values). Adding/moving a step isn't covered - a mistaken add is
+// trivial to just delete, and a mistaken drag is trivial to just drag
+// back. NOTE: undoing a delete re-creates the step via addProcessStep,
+// which appends it as a new row rather than reinserting it at its exact
+// original position - if another step's DependsOn token referenced it by
+// original row number (see dependencyResolution.ts), that link won't
+// perfectly restore. Pre-existing limitation of the row-number dependency
+// system, not something undo makes worse - deleting already shifts every
+// later row's number regardless of whether the delete is later undone.
+type UndoAction =
+  | { type: 'delete'; step: IProcessStep }
+  | { type: 'bulkDelete'; steps: IProcessStep[] }
+  | { type: 'edit'; previous: IProcessStep };
 
 // Promise.allSettled gives back whatever the rejection actually was, not
 // necessarily an Error instance - GraphDataService rejects with a real
@@ -72,7 +89,19 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [renameTarget, setRenameTarget] = React.useState<{ groupId: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
+  const [lastAction, setLastAction] = React.useState<UndoAction | undefined>(undefined);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
+
+  // The undo banner doesn't linger forever - clears itself a while after
+  // the action it's offering to undo, same as most "Undo" toasts. Resets
+  // on every new action (the effect re-runs since lastAction is a new
+  // object reference each time), so a fresh action always gets the full
+  // window rather than inheriting whatever was left of a previous one.
+  React.useEffect(() => {
+    if (!lastAction) return;
+    const timer = window.setTimeout(() => setLastAction(undefined), 10000);
+    return () => window.clearTimeout(timer);
+  }, [lastAction]);
 
   // Promise.allSettled, not Promise.all - the three sources are genuinely
   // independent (separate SharePoint lists, each with its own chance of
@@ -184,13 +213,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   const handleEditStep = (updated: IProcessStep): void => {
+    const previous = steps.find(s => s.id === updated.id);
     setSteps(prev => prev.map(s => (s.id === updated.id ? updated : s)));
     dataService.updateProcessStep(updated).catch((err: Error) => setError(err.message));
+    if (previous) setLastAction({ type: 'edit', previous });
   };
 
   const handleDeleteStep = (stepId: string): void => {
+    const step = steps.find(s => s.id === stepId);
     setSteps(prev => prev.filter(s => s.id !== stepId));
     dataService.deleteProcessStep(stepId).catch((err: Error) => setError(err.message));
+    if (step) setLastAction({ type: 'delete', step });
   };
 
   // Deletes every step currently visible - the whole selected Process Step
@@ -198,12 +231,36 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // visibleSteps) - so removing a whole mistaken flow doesn't mean
   // deleting each of its steps one at a time via the edit panel.
   const handleBulkDelete = (): void => {
-    const idsToDelete = visibleSteps.map(s => s.id);
+    const deleted = visibleSteps.slice();
+    const idsToDelete = deleted.map(s => s.id);
     setSteps(prev => prev.filter(s => !idsToDelete.includes(s.id)));
     idsToDelete.forEach(id => {
       dataService.deleteProcessStep(id).catch((err: Error) => setError(err.message));
     });
+    setLastAction({ type: 'bulkDelete', steps: deleted });
     setBulkDeleteOpen(false);
+  };
+
+  const handleUndo = (): void => {
+    if (!lastAction) return;
+    if (lastAction.type === 'edit') {
+      const { previous } = lastAction;
+      setSteps(prev => prev.map(s => (s.id === previous.id ? previous : s)));
+      dataService.updateProcessStep(previous).catch((err: Error) => setError(err.message));
+    } else if (lastAction.type === 'delete') {
+      const { id: _id, ...rest } = lastAction.step;
+      dataService.addProcessStep(rest)
+        .then(created => setSteps(prev => [...prev, created]))
+        .catch((err: Error) => setError(err.message));
+    } else {
+      lastAction.steps.forEach(step => {
+        const { id: _id, ...rest } = step;
+        dataService.addProcessStep(rest)
+          .then(created => setSteps(prev => [...prev, created]))
+          .catch((err: Error) => setError(err.message));
+      });
+    }
+    setLastAction(undefined);
   };
 
   const handleImported = (created: IProcessStep[]): void => {
@@ -384,7 +441,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         dialogContentProps={{
           type: DialogType.normal,
           title: 'Delete this flow?',
-          subText: `This removes all ${visibleSteps.length} step${visibleSteps.length === 1 ? '' : 's'} currently shown - not just one. This can't be undone.`
+          subText: `This removes all ${visibleSteps.length} step${visibleSteps.length === 1 ? '' : 's'} currently shown - not just one. You'll have a short window to undo it afterward.`
         }}
       >
         <DialogFooter>
@@ -418,6 +475,18 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
             {error}
+          </MessageBar>
+        )}
+
+        {lastAction && (
+          <MessageBar
+            messageBarType={MessageBarType.info}
+            onDismiss={() => setLastAction(undefined)}
+            actions={<MessageBarButton onClick={handleUndo}>Undo</MessageBarButton>}
+          >
+            {lastAction.type === 'delete' && `Deleted "${lastAction.step.actionDescription}".`}
+            {lastAction.type === 'bulkDelete' && `Deleted ${lastAction.steps.length} step${lastAction.steps.length === 1 ? '' : 's'}.`}
+            {lastAction.type === 'edit' && `Updated "${lastAction.previous.actionDescription}".`}
           </MessageBar>
         )}
 

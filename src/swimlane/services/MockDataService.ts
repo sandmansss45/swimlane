@@ -97,6 +97,13 @@ export class MockDataService implements IDataService {
   // apqcHierarchy.ts's static table; this only holds ones a user adds at
   // runtime via "+ Add new process" for a group that table doesn't cover.
   private _groupLabels: IProcessGroupLabel[] = [];
+  // A monotonic counter, not `_steps.length + 1` - length-based IDs looked
+  // fine until the first delete-then-add in the same session (e.g. undoing
+  // a delete): the array shrinks, so the next "length + 1" ID collides
+  // with a step that's still there, producing two React children with the
+  // same key. Seeded past the real seed data so it never collides with
+  // that on first use either.
+  private _nextStepId = this._steps.length + 1;
 
   public getProcessSteps(): Promise<IProcessStep[]> {
     return Promise.resolve(this._steps.slice());
@@ -127,14 +134,14 @@ export class MockDataService implements IDataService {
   }
 
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
-    const created: IProcessStep = { ...step, id: `mock-${this._steps.length + 1}` };
+    const created: IProcessStep = { ...step, id: `mock-${this._nextStepId++}` };
     this._steps.push(created);
     return Promise.resolve(created);
   }
 
   public addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
     const created = steps.map(step => {
-      const item: IProcessStep = { ...step, id: `mock-${this._steps.length + 1}` };
+      const item: IProcessStep = { ...step, id: `mock-${this._nextStepId++}` };
       this._steps.push(item);
       return item;
     });
