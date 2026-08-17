@@ -84,6 +84,11 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [editDraft, setEditDraft] = React.useState<IProcessStepFormValue | undefined>(undefined);
   const [draggingStepId, setDraggingStepId] = React.useState<string | undefined>(undefined);
   const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
+  // Latest pointer position during a drag, kept in a ref (not state) since
+  // it's read every animation frame by the auto-scroll loop below and
+  // doesn't need to trigger a re-render on its own - only the scroll
+  // position actually needs to move.
+  const dragPointerRef = React.useRef<{ x: number; y: number } | undefined>(undefined);
 
   const stepsById = React.useMemo(() => new Map(steps.map(s => [s.id, s])), [steps]);
 
@@ -127,6 +132,49 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const handleCellDragLeave = (lane: string, columnStep: IProcessStep) => (): void => {
     setDragOverCellId(prev => (prev === `${lane}-${columnStep.id}` ? undefined : prev));
   };
+
+  // Native drag-and-drop doesn't auto-scroll a nested scrollable container
+  // the way it scrolls the window - a real flow can run to 40 columns
+  // (several screens wide when viewing "All"), so without this, a target
+  // more than one screen away from the drag's starting point is simply
+  // unreachable: there's no way to get the pointer there while still
+  // holding the drag. Just tracks the latest pointer position here; the
+  // effect below reads it every frame and does the actual scrolling, so
+  // scrolling continues smoothly even while the pointer is held still
+  // right at the edge, not just each time it moves.
+  const handleCanvasDragOver = (e: React.DragEvent): void => {
+    if (!draggingStepId) return;
+    dragPointerRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  React.useEffect(() => {
+    if (!draggingStepId) return;
+    const EDGE = 70; // px from the canvas edge where auto-scroll kicks in
+    const MAX_SPEED = 16; // px/frame at the very edge, scaling down to 0 at EDGE
+    let frameId: number;
+
+    const tick = (): void => {
+      const canvas = canvasRef.current;
+      const pointer = dragPointerRef.current;
+      if (canvas && pointer) {
+        const rect = canvas.getBoundingClientRect();
+        const distLeft = pointer.x - rect.left;
+        const distRight = rect.right - pointer.x;
+        const distTop = pointer.y - rect.top;
+        const distBottom = rect.bottom - pointer.y;
+        if (distLeft < EDGE) canvas.scrollLeft -= MAX_SPEED * (1 - Math.max(0, distLeft) / EDGE);
+        else if (distRight < EDGE) canvas.scrollLeft += MAX_SPEED * (1 - Math.max(0, distRight) / EDGE);
+        if (distTop < EDGE) canvas.scrollTop -= MAX_SPEED * (1 - Math.max(0, distTop) / EDGE);
+        else if (distBottom < EDGE) canvas.scrollTop += MAX_SPEED * (1 - Math.max(0, distBottom) / EDGE);
+      }
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frameId);
+      dragPointerRef.current = undefined;
+    };
+  }, [draggingStepId]);
 
   const handleDrop = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
     e.preventDefault();
@@ -515,7 +563,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
           disabled={exporting}
         />
       </div>
-      <div className={styles.canvas} ref={canvasRef}>
+      <div className={styles.canvas} ref={canvasRef} onDragOver={handleCanvasDragOver}>
       <ShapeLegend />
       <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>
