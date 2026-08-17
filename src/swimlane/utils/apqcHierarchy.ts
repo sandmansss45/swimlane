@@ -15,13 +15,12 @@ export function getProcessGroupId(processStepId: string): string {
 // The 13 top-level categories are a fixed part of the published standard
 // (confirmed against APQC's own framework, not guessed) - safe to hard
 // code, since this doesn't vary by company or change often.
+// Only the categories that actually relate to this organization - confirmed
+// by the user against their own reference sheet (2 Develop/Manage Products,
+// 3 Market and Sell, 4 Supply Chain, 5 Deliver Services and 6 Manage
+// Customer Service don't apply here and are deliberately left out).
 export const APQC_CATEGORY_NAMES: Record<string, string> = {
   '1': 'Develop Vision and Strategy',
-  '2': 'Develop and Manage Products and Services',
-  '3': 'Market and Sell Products and Services',
-  '4': 'Manage Supply Chain for Physical Products',
-  '5': 'Deliver Services',
-  '6': 'Manage Customer Service',
   '7': 'Develop and Manage Human Capital',
   '8': 'Manage Information Technology',
   '9': 'Manage Financial Resources',
