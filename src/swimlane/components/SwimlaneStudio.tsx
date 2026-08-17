@@ -231,7 +231,24 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   if (loading) {
-    return <Spinner label="Loading process data..." />;
+    // Keeps the real header (logo, title) visible instead of a bare
+    // Spinner with no layout at all - on the real Graph data path this can
+    // sit on screen for a couple of seconds, long enough that an unstyled
+    // corner spinner reads as the app being broken rather than loading.
+    return (
+      <div className={styles.page}>
+        <header className={styles.appBar}>
+          <img src={qleLogo} className={styles.appBarLogo} alt="Quantum Leap Energy" />
+          <div>
+            <h2 className={styles.title}>Swimlane Studio</h2>
+            <p className={styles.breadcrumb}>Finance process visualization</p>
+          </div>
+        </header>
+        <div className={styles.loadingState}>
+          <Spinner label="Loading process data..." />
+        </div>
+      </div>
+    );
   }
 
   return (

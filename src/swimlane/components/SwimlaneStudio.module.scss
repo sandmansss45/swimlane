@@ -55,6 +55,13 @@
   padding: 0 28px 40px;
 }
 
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
 .mainTabs {
   margin-bottom: 16px;
   border-bottom: 1px solid var(--border);
