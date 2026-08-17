@@ -545,7 +545,17 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         })}
       </svg>
 
-      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(170px, 1fr))` }}>
+      {/*
+        1fr used to let each column stretch to fill whatever width the
+        canvas happened to have available - fine with a full flow of 10+
+        steps (they fill the space naturally), but with only 1-2 steps in a
+        wide viewport it stretched each column to hundreds of pixels,
+        leaving directly-connected boxes looking randomly far apart for no
+        reason. Capped so a column only ever grows as far as its own
+        content needs, not to fill leftover space - a short flow now just
+        leaves empty canvas to the right instead of stretching.
+      */}
+      <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(170px, 260px))` }}>
         <div className={styles.corner} />
         {columnGroups.map(group => (
           <div
