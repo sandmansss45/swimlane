@@ -1,5 +1,8 @@
 import * as React from 'react';
-import { Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, Pivot, PivotItem } from '@fluentui/react';
+import {
+  Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, Pivot, PivotItem,
+  Dialog, DialogType, DialogFooter
+} from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
 import { IProcessStep, getProgressId } from '../models/IProcessStep';
@@ -66,6 +69,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [newProcessOpen, setNewProcessOpen] = React.useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
   // Promise.allSettled, not Promise.all - the three sources are genuinely
@@ -185,6 +189,19 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const handleDeleteStep = (stepId: string): void => {
     setSteps(prev => prev.filter(s => s.id !== stepId));
     dataService.deleteProcessStep(stepId).catch((err: Error) => setError(err.message));
+  };
+
+  // Deletes every step currently visible - the whole selected Process Step
+  // ID group's flow, or the whole Progress ID if "All" is selected (see
+  // visibleSteps) - so removing a whole mistaken flow doesn't mean
+  // deleting each of its steps one at a time via the edit panel.
+  const handleBulkDelete = (): void => {
+    const idsToDelete = visibleSteps.map(s => s.id);
+    setSteps(prev => prev.filter(s => !idsToDelete.includes(s.id)));
+    idsToDelete.forEach(id => {
+      dataService.deleteProcessStep(id).catch((err: Error) => setError(err.message));
+    });
+    setBulkDeleteOpen(false);
   };
 
   const handleImported = (created: IProcessStep[]): void => {
@@ -333,6 +350,25 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onGroupLabelCreated={handleGroupLabelCreated}
       />
 
+      <Dialog
+        hidden={!bulkDeleteOpen}
+        onDismiss={() => setBulkDeleteOpen(false)}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Delete this flow?',
+          subText: `This removes all ${visibleSteps.length} step${visibleSteps.length === 1 ? '' : 's'} currently shown - not just one. This can't be undone.`
+        }}
+      >
+        <DialogFooter>
+          <DefaultButton text="Cancel" onClick={() => setBulkDeleteOpen(false)} />
+          <PrimaryButton
+            text={`Delete ${visibleSteps.length} step${visibleSteps.length === 1 ? '' : 's'}`}
+            onClick={handleBulkDelete}
+            styles={{ root: { background: 'var(--risk-high)', border: 'none' }, rootHovered: { background: '#b02419' } }}
+          />
+        </DialogFooter>
+      </Dialog>
+
       <section className={styles.swimlaneStudio}>
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -411,6 +447,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
                   <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
+                  <DefaultButton
+                    text={`Delete flow (${visibleSteps.length})`}
+                    iconProps={{ iconName: 'Delete' }}
+                    onClick={() => setBulkDeleteOpen(true)}
+                    disabled={visibleSteps.length === 0}
+                    styles={{ root: { borderColor: 'var(--risk-high)' }, label: { color: 'var(--risk-high)' }, icon: { color: 'var(--risk-high)' } }}
+                  />
                   <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
                   <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
                 </div>
