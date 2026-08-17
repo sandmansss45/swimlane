@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pivot, PivotItem } from '@fluentui/react';
+import styles from './RegionFilter.module.scss';
 
 export interface IRegionFilterProps {
   // Distinct values present in the employee list's "region" field - as of
@@ -13,25 +13,38 @@ export interface IRegionFilterProps {
   onChange: (region: string | undefined) => void;
 }
 
-const ALL_KEY = '__all__';
-
-// Narrows the employee picker before showing options - confirmed design
-// rule (see the regions prop comment above for what "region" actually
-// means for the real data).
+// Narrows the "Responsible" job-title picker (see ProcessStepForm) to one
+// region/department at a time - confirmed design rule (see the regions
+// prop comment above for what "region" actually means for the real data).
+// Same pill styling as ProcessStepTabs, not Fluent's default Pivot look -
+// this row sits directly under that one in the toolbar, so a mismatched
+// tab style there read as an unrelated, unfinished-looking component.
 const RegionFilter: React.FC<IRegionFilterProps> = ({ regions, selectedRegion, onChange }) => {
+  if (regions.length === 0) return null;
+
   return (
-    <Pivot
-      selectedKey={selectedRegion || ALL_KEY}
-      onLinkClick={(item?: PivotItem) => {
-        if (!item) return;
-        onChange(item.props.itemKey === ALL_KEY ? undefined : item.props.itemKey);
-      }}
-    >
-      <PivotItem headerText="All" itemKey={ALL_KEY} />
-      {regions.map(region => (
-        <PivotItem headerText={region} itemKey={region} key={region} />
-      ))}
-    </Pivot>
+    <div className={styles.row}>
+      <span className={styles.label}>Region</span>
+      <div className={styles.tabs}>
+        <button
+          type="button"
+          className={`${styles.tab} ${selectedRegion === undefined ? styles.active : ''}`}
+          onClick={() => onChange(undefined)}
+        >
+          All
+        </button>
+        {regions.map(region => (
+          <button
+            type="button"
+            key={region}
+            className={`${styles.tab} ${selectedRegion === region ? styles.active : ''}`}
+            onClick={() => onChange(region)}
+          >
+            {region}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 };
 
