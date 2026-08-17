@@ -203,7 +203,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setSelectedCategoryId(getCategoryId(created.processStepId));
     setSelectedProcessGroupId(getProcessGroupId(created.processStepId));
     setSelectedProgressId(getProgressId(created.processStepId));
-    setDrilledDownStepId(undefined);
+    // Selects the new step's own Process Step ID tab, not "All" - without
+    // this, "Add a step" right afterward defaulted to the bare Progress ID
+    // as its processStepId (drilledDownStepId || selectedProgressId, with
+    // drilledDownStepId unset), landing new steps in a second, separate
+    // column group instead of continuing the one the user just started.
+    setDrilledDownStepId(created.processStepId);
     setNewProcessOpen(false);
   };
 
