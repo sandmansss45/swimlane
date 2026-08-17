@@ -6,7 +6,7 @@ import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
-import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName } from '../utils/apqcHierarchy';
+import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, APQC_CATEGORY_NAMES } from '../utils/apqcHierarchy';
 import HierarchyPicker from './HierarchyPicker';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
@@ -14,6 +14,7 @@ import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
+import NewProcessModal from './NewProcessModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
@@ -58,6 +59,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [newStepDraft, setNewStepDraft] = React.useState<IProcessStepFormValue>(emptyStepDraft());
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
+  const [newProcessOpen, setNewProcessOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
   // Promise.allSettled, not Promise.all - the three sources are genuinely
@@ -159,6 +161,21 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setSteps(prev => [...prev, ...created]);
   };
 
+  // Lands the user straight in the swimlane they just created, the same
+  // place they'd be if they'd clicked all the way down through an
+  // already-populated area - drilling back through empty pickers to find
+  // what was just added would be a pointless extra step.
+  const handleProcessCreated = (created: IProcessStep): void => {
+    setSteps(prev => [...prev, created]);
+    setSelectedCategoryId(getCategoryId(created.processStepId));
+    setSelectedProcessGroupId(getProcessGroupId(created.processStepId));
+    setSelectedProgressId(getProgressId(created.processStepId));
+    setDrilledDownStepId(undefined);
+    setNewProcessOpen(false);
+  };
+
+  const newProcessPrefix = selectedProcessGroupId ? `${selectedProcessGroupId}.` : selectedCategoryId ? `${selectedCategoryId}.` : '';
+
   const handleAddStep = (): void => {
     if (!selectedProgressId || !newStepDraft.actionDescription.trim()) return;
     const referenceStep = stepsInProgressId[0];
@@ -248,6 +265,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onImported={handleImported}
       />
 
+      <NewProcessModal
+        isOpen={newProcessOpen}
+        steps={steps}
+        employees={employees}
+        selectedRegion={selectedRegion}
+        dataService={dataService}
+        processStepIdPrefix={newProcessPrefix}
+        onDismiss={() => setNewProcessOpen(false)}
+        onCreated={handleProcessCreated}
+      />
+
       <section className={styles.swimlaneStudio}>
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -276,34 +304,44 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             )}
 
             {!selectedCategoryId ? (
-              <HierarchyPicker
-                steps={steps}
-                getGroupId={getCategoryId}
-                getLabel={id => getCategoryName(id)}
-                onSelect={setSelectedCategoryId}
-              />
+              <>
+                <div className={styles.toolbar}>
+                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
+                </div>
+                <HierarchyPicker
+                  steps={steps}
+                  getGroupId={getCategoryId}
+                  getLabel={id => getCategoryName(id)}
+                  onSelect={setSelectedCategoryId}
+                  allGroupIds={Object.keys(APQC_CATEGORY_NAMES)}
+                />
+              </>
             ) : !selectedProcessGroupId ? (
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Categories" onClick={() => setSelectedCategoryId(undefined)} />
+                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInCategory}
                   getGroupId={getProcessGroupId}
                   getLabel={id => getProcessGroupName(id)}
                   onSelect={setSelectedProcessGroupId}
+                  emptyMessage="No processes in this category yet - use “+ Add new process” above to start one."
                 />
               </>
             ) : !selectedProgressId ? (
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
+                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
                   getGroupId={getProgressId}
-                  getLabel={(_id, sampleStep) => sampleStep.processDescription}
+                  getLabel={(id, sampleStep) => sampleStep?.processDescription || id}
                   onSelect={setSelectedProgressId}
+                  emptyMessage="No processes in this group yet - use “+ Add new process” above to start one."
                 />
               </>
             ) : (
