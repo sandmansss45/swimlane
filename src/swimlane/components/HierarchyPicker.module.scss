@@ -11,6 +11,7 @@
 }
 
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -35,6 +36,33 @@
     margin: 0;
     font-size: var(--fs-base);
     color: var(--text-secondary);
+  }
+}
+
+// Only shown when the caller passes onRename (Process Group level) -
+// stays out of the way of the card's own click-to-open behavior via
+// stopPropagation in HierarchyPicker.tsx.
+.renameButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: var(--blue-light);
+    border-color: var(--blue);
+    color: var(--blue);
   }
 }
 

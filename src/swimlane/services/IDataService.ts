@@ -9,6 +9,10 @@ export interface IDataService {
   getRiskStatements(): Promise<IRiskStatement[]>;
   getProcessGroupLabels(): Promise<IProcessGroupLabel[]>;
   addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel>;
+  // Renaming an existing custom label (one previously created via
+  // addProcessGroupLabel) - not for the static, confirmed-real names in
+  // apqcHierarchy.ts, which live in code rather than a list.
+  updateProcessGroupLabel(id: string, name: string): Promise<void>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**
    * Adds several steps in one call, in array order - used by CSV import.

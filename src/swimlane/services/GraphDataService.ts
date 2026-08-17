@@ -211,6 +211,15 @@ export class GraphDataService implements IDataService {
     return { id: created.id, groupId, name };
   }
 
+  public async updateProcessGroupLabel(id: string, name: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const titleField = fieldMap['Title'];
+    if (!titleField) return;
+    await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });
+  }
+
   public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
     const fieldMap = await this._resolveFieldMap(PROCESS_LIST_TITLE);
     const siteId = await this._resolveSiteId();

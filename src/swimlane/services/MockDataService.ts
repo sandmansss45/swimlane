@@ -120,6 +120,12 @@ export class MockDataService implements IDataService {
     return Promise.resolve(created);
   }
 
+  public updateProcessGroupLabel(id: string, name: string): Promise<void> {
+    const index = this._groupLabels.findIndex(l => l.id === id);
+    if (index >= 0) this._groupLabels[index] = { ...this._groupLabels[index], name };
+    return Promise.resolve();
+  }
+
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
     const created: IProcessStep = { ...step, id: `mock-${this._steps.length + 1}` };
     this._steps.push(created);

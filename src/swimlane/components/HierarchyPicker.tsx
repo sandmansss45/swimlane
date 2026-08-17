@@ -21,6 +21,12 @@ export interface IHierarchyPickerProps {
   // already are instead of only up in a separate toolbar button.
   onAddNew?: () => void;
   addNewLabel?: string;
+  // Small edit affordance on each real card (not the "+ Add new" tile) -
+  // only wired in at the Process Group level, since that's the only level
+  // with a name that can actually be changed (Categories are the fixed
+  // APQC standard; Progress ID/Activity names come from real step data,
+  // not a label someone assigns).
+  onRename?: (groupId: string, currentLabel: string) => void;
 }
 
 // Generic drill-down level: groups steps by whatever ID prefix the caller
@@ -29,7 +35,7 @@ export interface IHierarchyPickerProps {
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.
 const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
-  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel
+  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename
 }) => {
   const groups = React.useMemo(() => {
     const byGroupId = new Map<string, { groupId: string; label: string; count: number }>();
@@ -52,6 +58,16 @@ const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
     <div className={styles.grid}>
       {groups.map(group => (
         <div className={styles.card} key={group.groupId} onClick={() => onSelect(group.groupId)}>
+          {onRename && (
+            <button
+              type="button"
+              className={styles.renameButton}
+              title="Rename"
+              onClick={e => { e.stopPropagation(); onRename(group.groupId, group.label); }}
+            >
+              ✎
+            </button>
+          )}
           <span className={styles.code}>{group.groupId}</span>
           <h3>{group.label}</h3>
           <p>{group.count} step{group.count === 1 ? '' : 's'}</p>

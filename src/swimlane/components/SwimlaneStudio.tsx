@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
   Spinner, MessageBar, MessageBarType, DefaultButton, PrimaryButton, Pivot, PivotItem,
-  Dialog, DialogType, DialogFooter
+  Dialog, DialogType, DialogFooter, TextField
 } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
@@ -70,6 +70,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [importOpen, setImportOpen] = React.useState(false);
   const [newProcessOpen, setNewProcessOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+  const [renameTarget, setRenameTarget] = React.useState<{ groupId: string; currentLabel: string } | undefined>(undefined);
+  const [renameValue, setRenameValue] = React.useState('');
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
   // Promise.allSettled, not Promise.all - the three sources are genuinely
@@ -210,6 +212,32 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleGroupLabelCreated = (created: IProcessGroupLabel): void => {
     setProcessGroupLabels(prev => [...prev, created]);
+  };
+
+  const openRename = (groupId: string, currentLabel: string): void => {
+    setRenameTarget({ groupId, currentLabel });
+    setRenameValue(currentLabel);
+  };
+
+  // Renaming a group that already has a custom label updates that same
+  // record; renaming one that's still showing its static apqcHierarchy.ts
+  // name (or the generic "Process Group X.Y" fallback) creates a new
+  // custom label instead, which then wins over the static name the same
+  // way it already does for a brand-new group (see customGroupNames).
+  const handleRenameSave = (): void => {
+    if (!renameTarget) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    const existingLabel = processGroupLabels.find(l => l.groupId === renameTarget.groupId);
+    if (existingLabel) {
+      setProcessGroupLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
+      dataService.updateProcessGroupLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+    } else {
+      dataService.addProcessGroupLabel(renameTarget.groupId, trimmed)
+        .then(created => setProcessGroupLabels(prev => [...prev, created]))
+        .catch((err: Error) => setError(err.message));
+    }
+    setRenameTarget(undefined);
   };
 
   // Lands the user straight in the swimlane they just created, the same
@@ -369,6 +397,23 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </DialogFooter>
       </Dialog>
 
+      <Dialog
+        hidden={!renameTarget}
+        onDismiss={() => setRenameTarget(undefined)}
+        dialogContentProps={{ type: DialogType.normal, title: `Rename ${renameTarget?.groupId || ''}` }}
+      >
+        <TextField
+          label="Process Group name"
+          value={renameValue}
+          onChange={(_e, v) => setRenameValue(v || '')}
+          onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(); }}
+        />
+        <DialogFooter>
+          <DefaultButton text="Cancel" onClick={() => setRenameTarget(undefined)} />
+          <PrimaryButton text="Save" onClick={handleRenameSave} disabled={!renameValue.trim()} />
+        </DialogFooter>
+      </Dialog>
+
       <section className={styles.swimlaneStudio}>
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -423,6 +468,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   allGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
                   onAddNew={() => setNewProcessOpen(true)}
                   addNewLabel="+ Add new process group"
+                  onRename={openRename}
                 />
               </>
             ) : !selectedProgressId ? (
