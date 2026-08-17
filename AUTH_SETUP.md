@@ -5,9 +5,9 @@
 - App registration exists: **Swimlane Studio**, client ID `b654eeeb-7451-49cf-94e4-d089592de6e5`.
 - Site created: **qleapenergy.sharepoint.com/sites/SwimlaneStudio** - confirmed
   and filled into `authConfig.ts`.
-- Steps 1 and 2 below (permission set to `Sites.Selected` + site-specific
-  access grant) - reported done by Method Group, not yet verified end to end
-  with a real sign-in.
+- **CONFIRMED 2026-08-17**: real Microsoft sign-in works end to end
+  against the live GitHub Pages site - steps 1, 2 and 4 below are all
+  functioning correctly.
 - **DONE 2026-08-17**: `EMPLOYEES_LIST_TITLE` - real list "QLE Existing
   Organisation" found on the site (Display name, Department, Job title,
   Reports to, Start date, Hobbies) and wired into `GraphDataService.ts`.
