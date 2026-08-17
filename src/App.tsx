@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { IPublicClientApplication } from '@azure/msal-browser';
+import { IPublicClientApplication, InteractionStatus } from '@azure/msal-browser';
 import { MsalProvider, AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from '@azure/msal-react';
-import { ThemeProvider, PrimaryButton, MessageBar, MessageBarType } from '@fluentui/react';
+import { ThemeProvider, PrimaryButton, MessageBar, MessageBarType, Spinner } from '@fluentui/react';
 import SwimlaneStudio from './swimlane/components/SwimlaneStudio';
 import { MockDataService } from './swimlane/services/MockDataService';
 import { GraphDataService } from './swimlane/services/GraphDataService';
@@ -29,6 +29,28 @@ const SignedInApp: React.FC = () => {
       onSignOut={() => instance.logoutRedirect()}
     />
   );
+};
+
+// AuthenticatedTemplate/UnauthenticatedTemplate both render nothing while
+// MSAL is still figuring out the auth state (inProgress !== 'none') - most
+// visibly right after landing back from the Microsoft sign-in redirect,
+// exactly the moment someone's watching for "did that work?" - which
+// without this was a blank white flash instead of any feedback at all.
+const AuthStatusGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { inProgress } = useMsal();
+  if (inProgress !== InteractionStatus.None) {
+    return (
+      <ThemeProvider theme={signInTheme} className={styles.signInScreen}>
+        <div className={styles.card}>
+          <img src={qleLogo} className={styles.mark} alt="Quantum Leap Energy" />
+          <h2 className={styles.title}>Swimlane Studio</h2>
+          <Spinner label="Signing you in..." styles={{ label: { color: '#9fb0cc' } }} />
+        </div>
+      </ThemeProvider>
+    );
+  }
+  // eslint-disable-next-line react/jsx-no-useless-fragment
+  return <>{children}</>;
 };
 
 const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
@@ -90,12 +112,14 @@ function App({ msalInstance }: IAppProps) {
         />
       ) : (
         <MsalProvider instance={msalInstance}>
-          <AuthenticatedTemplate>
-            <SignedInApp />
-          </AuthenticatedTemplate>
-          <UnauthenticatedTemplate>
-            <SignInGate onUseMock={() => setUseMock(true)} />
-          </UnauthenticatedTemplate>
+          <AuthStatusGate>
+            <AuthenticatedTemplate>
+              <SignedInApp />
+            </AuthenticatedTemplate>
+            <UnauthenticatedTemplate>
+              <SignInGate onUseMock={() => setUseMock(true)} />
+            </UnauthenticatedTemplate>
+          </AuthStatusGate>
         </MsalProvider>
       )}
     </ThemeProvider>
