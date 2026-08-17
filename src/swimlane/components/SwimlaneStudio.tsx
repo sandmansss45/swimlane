@@ -146,9 +146,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [steps, selectedProgressId]
   );
 
-  // No excludeStepId - a brand-new step has no "self" to leave out, unlike
+  // Scoped to the current swimlane (this Progress ID's own steps), not the
+  // full cross-progress-ID dataset - a step realistically only ever
+  // depends on something in its own flow, and listing all ~40 steps from
+  // every unrelated flow made the real option buried in noise. No
+  // excludeStepId - a brand-new step has no "self" to leave out, unlike
   // the edit panel's version of this same list.
-  const addStepDependsOnOptions = React.useMemo(() => buildDependsOnOptions(steps), [steps]);
+  const addStepDependsOnOptions = React.useMemo(() => buildDependsOnOptions(stepsInProgressId), [stepsInProgressId]);
 
   const visibleSteps = React.useMemo(
     () => drilledDownStepId ? stepsInProgressId.filter(s => s.processStepId === drilledDownStepId) : stepsInProgressId,
@@ -393,6 +397,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <SwimlaneCanvas
                   steps={visibleSteps}
                   allSteps={steps}
+                  swimlaneSteps={stepsInProgressId}
                   edges={edges}
                   riskStatements={riskStatements}
                   drilledDownStepId={drilledDownStepId}

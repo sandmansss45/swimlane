@@ -15,7 +15,12 @@ import styles from './SwimlaneCanvas.module.scss';
 
 export interface ISwimlaneCanvasProps {
   steps: IProcessStep[]; // already filtered to the current Progress ID (and Process Step ID, if drilled down) - for display
-  allSteps: IProcessStep[]; // FULL, unfiltered, original-order dataset - needed to compute row-number DependsOn tokens and to offer every step as a "depends on" option regardless of what's currently filtered into view
+  allSteps: IProcessStep[]; // FULL, unfiltered, original-order dataset - needed to compute row-number DependsOn tokens, which only make sense against original load order
+  // This Progress ID's own steps, NOT narrowed further by drilledDownStepId
+  // the way `steps` is - the "Depends on" picker's option list, since a
+  // step only ever realistically depends on something in its own swimlane,
+  // not one of the ~40 unrelated steps from every other flow in allSteps.
+  swimlaneSteps: IProcessStep[];
   edges: IResolvedEdge[]; // resolved against the FULL, unfiltered dataset (row numbers only make sense that way) - this component only draws the ones whose endpoints are currently rendered
   riskStatements: IRiskStatement[]; // drives each shape's traffic-light fill when linked to a step
   drilledDownStepId: string | undefined;
@@ -61,7 +66,7 @@ function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
 // each box actually faces the other node, so lines don't cut diagonally
 // through unrelated boxes between them).
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
+  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -138,9 +143,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     setDraggingStepId(undefined);
   };
 
+  // Scoped to this swimlane's own steps, not every step across every
+  // Progress ID (allSteps) - a step only ever realistically depends on
+  // something in its own flow, and offering ~40 mostly-unrelated options
+  // just buried the real one in noise.
   const dependsOnOptions: IDropdownOption[] = React.useMemo(
-    () => buildDependsOnOptions(allSteps, selectedNodeId),
-    [allSteps, selectedNodeId]
+    () => buildDependsOnOptions(swimlaneSteps, selectedNodeId),
+    [swimlaneSteps, selectedNodeId]
   );
 
   const lanes = React.useMemo(
