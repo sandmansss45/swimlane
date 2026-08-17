@@ -17,10 +17,19 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
 
   const sorted = React.useMemo(() => {
     const filtered = selectedRegion ? employees.filter(e => e.region === selectedRegion) : employees;
-    // Grouped by job title first, same as how lanes are always job titles
-    // - lets someone scan straight to "who else holds this title" without
-    // hunting through an alphabetical-by-name list.
-    return [...filtered].sort((a, b) => a.jobTitle.localeCompare(b.jobTitle) || a.name.localeCompare(b.name));
+    // Employee names aren't pulled into the app at all (explicit user
+    // choice - see models/IEmployee.ts), so several people holding the
+    // same title in the same department would otherwise render as
+    // identical-looking duplicate rows. Dedupe down to one row per
+    // distinct title+region pair instead.
+    const seen = new Set<string>();
+    const distinct = filtered.filter(e => {
+      const key = `${e.jobTitle}|${e.region || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return distinct.sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
   }, [employees, selectedRegion]);
 
   return (
@@ -37,7 +46,6 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Name</th>
                 <th>Job Title</th>
                 <th>Region</th>
               </tr>
@@ -45,7 +53,6 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
             <tbody>
               {sorted.map(e => (
                 <tr key={e.id}>
-                  <td>{e.name}</td>
                   <td>{e.jobTitle}</td>
                   <td>{e.region || <span className={styles.muted}>—</span>}</td>
                 </tr>

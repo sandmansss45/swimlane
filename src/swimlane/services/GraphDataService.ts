@@ -13,9 +13,12 @@ import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConf
 // Action Type, Action, Action Description, ResponsibleJobTitle,
 // ShapeOverride, DependsOn), already populated with real data.
 const PROCESS_LIST_TITLE = '9.6 tester';
-// TODO - CONFIRM: not yet seen on the real site - only "9.6 tester" and
-// the default "Documents" library exist there so far.
-const EMPLOYEES_LIST_TITLE = 'TODO-CONFIRM-EMPLOYEES-LIST-TITLE';
+// CONFIRMED 2026-08-17 - real list on the site, columns Display name,
+// Department, Job title, Reports to, Start date, Hobbies. Only Job title
+// and Department (as the region-equivalent grouping) are used - see the
+// Region/name comments in models/IEmployee.ts for why Display name isn't
+// mapped at all.
+const EMPLOYEES_LIST_TITLE = 'QLE Existing Organisation';
 const RISK_LIST_TITLE = 'risk regnew';
 // CONFIRMED 2026-08-17 - created on the real "Swimlane Studio" site with
 // the built-in Title column (group name) plus a single line of text
@@ -145,9 +148,8 @@ export class GraphDataService implements IDataService {
 
     return items.map((item): IEmployee => ({
       id: item.id,
-      name: get(item, 'Title'),
-      jobTitle: get(item, 'Position'),
-      region: get(item, 'Region') || undefined
+      jobTitle: get(item, 'Job title'),
+      region: get(item, 'Department') || undefined
     }));
   }
 

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Dropdown, IDropdownOption } from '@fluentui/react';
-import { IEmployee, formatEmployeeLabel } from '../models/IEmployee';
+import { IEmployee } from '../models/IEmployee';
 import { AuthorityTier, getAuthorityTier } from '../models/IProcessStep';
 import { matchesAuthorityTier } from '../utils/authoritySuggestion';
 
@@ -12,9 +12,10 @@ export interface IEmployeePickerProps {
   onChange: (jobTitle: string) => void;
 }
 
-// Lanes are always job titles, never a person's name - the picker itself
-// still shows "Title — Name" so a human can tell people with the same
-// title apart, but onChange only ever passes back the job title.
+// Lanes are always job titles, never a person's name - and by explicit
+// user choice, employee names aren't pulled into the app at all (see
+// models/IEmployee.ts), so several people holding the same title collapse
+// into one option here rather than one row per person.
 const EmployeePicker: React.FC<IEmployeePickerProps> = ({ employees, selectedRegion, actionType, value, onChange }) => {
   const tier: AuthorityTier = getAuthorityTier(actionType);
 
@@ -28,12 +29,13 @@ const EmployeePicker: React.FC<IEmployeePickerProps> = ({ employees, selectedReg
   // Endorse -> manager, Approve -> senior/chief). This is a heuristic
   // ordering, not a real AI call - see utils/authoritySuggestion.ts for why.
   const options: IDropdownOption[] = React.useMemo(() => {
-    const sorted = narrowed.slice().sort((a, b) => {
-      const aMatches = matchesAuthorityTier(a.jobTitle, tier) ? 0 : 1;
-      const bMatches = matchesAuthorityTier(b.jobTitle, tier) ? 0 : 1;
+    const distinctTitles = Array.from(new Set(narrowed.map(e => e.jobTitle)));
+    const sorted = distinctTitles.slice().sort((a, b) => {
+      const aMatches = matchesAuthorityTier(a, tier) ? 0 : 1;
+      const bMatches = matchesAuthorityTier(b, tier) ? 0 : 1;
       return aMatches - bMatches;
     });
-    return sorted.map(e => ({ key: e.jobTitle, text: formatEmployeeLabel(e) }));
+    return sorted.map(jobTitle => ({ key: jobTitle, text: jobTitle }));
   }, [narrowed, tier]);
 
   return (

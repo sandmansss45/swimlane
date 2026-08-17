@@ -8,12 +8,13 @@
 - Steps 1 and 2 below (permission set to `Sites.Selected` + site-specific
   access grant) - reported done by Method Group, not yet verified end to end
   with a real sign-in.
-- **Still outstanding, separate from auth**: `EMPLOYEES_LIST_TITLE` in
-  `src/swimlane/services/GraphDataService.ts` is still a literal placeholder
-  string. Even with sign-in working, the app will fail to load real
-  Employees data until that actual SharePoint **List** (not the default
-  Documents library) exists in this site and its real title is filled in
-  there.
+- **DONE 2026-08-17**: `EMPLOYEES_LIST_TITLE` - real list "QLE Existing
+  Organisation" found on the site (Display name, Department, Job title,
+  Reports to, Start date, Hobbies) and wired into `GraphDataService.ts`.
+  By explicit user choice: Display name is NOT mapped (employee names
+  aren't used anywhere in the app - see models/IEmployee.ts), and the
+  region filter is sourced from Department instead, since this list has
+  no dedicated region column.
 - **DONE 2026-08-17**: `PROCESS_GROUP_LABELS_LIST_TITLE` - list "Process
   Group labels" created on the real site (Title + "Group ID" text column,
   as specified) and wired into `GraphDataService.ts`.

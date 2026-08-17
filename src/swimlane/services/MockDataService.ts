@@ -74,12 +74,15 @@ function buildMockSteps(): IProcessStep[] {
 // Names stay fictional (no real employee data available yet), but job
 // titles match the real ResponsibleJobTitle values above so the
 // Responsible picker and region filter behave meaningfully against them.
+// Shaped like the real "QLE Existing Organisation" list (Job title and
+// Department as separate clean fields, no name) rather than the old
+// composite-string/fictional-name mock, now that the real schema is
+// confirmed.
 const MOCK_EMPLOYEES: IEmployee[] = [
-  { id: 'e1', name: 'Riley Example', jobTitle: 'Finance Manager / 6002 - Finance / United Kingdom', region: 'United Kingdom' },
-  { id: 'e2', name: 'Sam Placeholder', jobTitle: 'Finance Manager / 6002 - Finance / United States', region: 'United States' },
-  { id: 'e3', name: 'Taylor Fixture', jobTitle: 'Chief Financial Officer / 7003 - Finance / United States', region: 'United States' },
-  { id: 'e4', name: 'Morgan Testcase', jobTitle: 'Chief Financial Officer - ASPI', region: 'ASPI' },
-  { id: 'e5', name: 'Jordan Sample', jobTitle: 'Vendor, Business, Finance Manager', region: 'United Kingdom' }
+  { id: 'e1', jobTitle: 'Finance Manager', region: '6002 - Finance' },
+  { id: 'e2', jobTitle: 'Chief Financial Officer', region: '7003 - Finance' },
+  { id: 'e3', jobTitle: 'Accounts Payable Analyst', region: '6002 - Finance' },
+  { id: 'e4', jobTitle: 'Procurement Manager', region: '6003 - Procurement' }
 ];
 
 const MOCK_RISKS: IRiskStatement[] = [
