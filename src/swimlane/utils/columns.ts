@@ -93,6 +93,43 @@ export function computeDropOrder(allSteps: IProcessStep[], draggedStepId: string
 }
 
 /**
+ * Whether dropping `draggedStepId` right after `targetStepId` (i.e. at
+ * whatever order computeDropOrder would give it) keeps every direct
+ * DependsOn relationship inside the group pointing forward - confirmed
+ * design rule is that arrows must keep moving in chronological order, so
+ * a step can't be dragged to sit before something it depends on, or after
+ * something that depends on it. Only edges where BOTH ends share the
+ * dragged step's Process Step ID group can even be affected by an
+ * intra-group reorder - a cross-group dependency's relative order never
+ * changes, since groups themselves always stay in Process Step ID order
+ * regardless of manualOrder within one of them.
+ */
+export function dropKeepsDependencyOrder(
+  allSteps: IProcessStep[],
+  edges: Array<{ fromRowId: string; toRowId: string }>,
+  draggedStepId: string,
+  targetStepId: string
+): boolean {
+  const dragged = allSteps.find(s => s.id === draggedStepId);
+  const newOrder = computeDropOrder(allSteps, draggedStepId, targetStepId);
+  if (!dragged || newOrder === undefined) return false;
+
+  return edges.every(edge => {
+    if (edge.fromRowId === draggedStepId) {
+      const successor = allSteps.find(s => s.id === edge.toRowId);
+      if (!successor || successor.processStepId !== dragged.processStepId) return true;
+      return getEffectiveOrder(successor, allSteps) > newOrder;
+    }
+    if (edge.toRowId === draggedStepId) {
+      const predecessor = allSteps.find(s => s.id === edge.fromRowId);
+      if (!predecessor || predecessor.processStepId !== dragged.processStepId) return true;
+      return getEffectiveOrder(predecessor, allSteps) < newOrder;
+    }
+    return true;
+  });
+}
+
+/**
  * Groups consecutive same-Process-Step-ID columns for the header row,
  * so "9.6.1.1" still reads as one labeled zone spanning its own steps'
  * columns, the way a merged header cell would, without forcing every row

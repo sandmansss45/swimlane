@@ -6,7 +6,7 @@ import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IRiskStatement, resolveRiskLevel } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge, dependsOnTokensToStepIds, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
-import { orderStepsForTimeline, buildColumnGroups, computeDropOrder } from '../utils/columns';
+import { orderStepsForTimeline, buildColumnGroups, computeDropOrder, dropKeepsDependencyOrder } from '../utils/columns';
 import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } from '../utils/arrowRouting';
 import ShapeNode from './shapes/ShapeNode';
 import ShapeLegend from './ShapeLegend';
@@ -92,7 +92,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const isValidDropTarget = (columnStep: IProcessStep): boolean => {
     if (!draggingStepId || draggingStepId === columnStep.id) return false;
     const dragged = stepsById.get(draggingStepId);
-    return !!dragged && dragged.processStepId === columnStep.processStepId;
+    if (!dragged || dragged.processStepId !== columnStep.processStepId) return false;
+    // Confirmed design rule: dragging can reorder within the group, but
+    // never to a position that would put the step before something it
+    // depends on, or after something that depends on it - that's what
+    // produced backward-pointing arrows before this check existed.
+    return dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id);
   };
 
   const handleDragStart = (step: IProcessStep) => (e: React.DragEvent): void => {
@@ -188,7 +193,17 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     // any edge past the initially-visible width/height would silently
     // fall outside the SVG's own box and get clipped by its default
     // overflow:hidden. Force it to the real scrollable size instead.
+    //
+    // The SVG is itself one of the things contributing to canvas.scrollWidth
+    // (it's a real child, not removed from flow), so reading that value
+    // without resetting the SVG first picks up ITS OWN previous size -
+    // switching from a wide filtered view (e.g. "All") to a narrower one
+    // (e.g. a single Progress ID) would otherwise never shrink back down,
+    // stuck forever at the widest size ever rendered this session. Collapse
+    // it first so the measurement reflects only the grid's real content.
     if (svgRef.current) {
+      svgRef.current.style.width = '0px';
+      svgRef.current.style.height = '0px';
       svgRef.current.style.width = `${canvas.scrollWidth}px`;
       svgRef.current.style.height = `${canvas.scrollHeight}px`;
     }
