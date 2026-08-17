@@ -16,6 +16,11 @@ export interface IHierarchyPickerProps {
   // new process via "+ Add new process" instead of it only being
   // reachable once a step already exists there.
   allGroupIds?: string[];
+  // Renders one more same-sized card at the end of the grid, styled to
+  // stand out, that opens the "add new" flow right where the other cards
+  // already are instead of only up in a separate toolbar button.
+  onAddNew?: () => void;
+  addNewLabel?: string;
 }
 
 // Generic drill-down level: groups steps by whatever ID prefix the caller
@@ -23,7 +28,9 @@ export interface IHierarchyPickerProps {
 // hierarchy comment in utils/apqcHierarchy.ts) and shows one card per
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.
-const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({ steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds }) => {
+const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
+  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel
+}) => {
   const groups = React.useMemo(() => {
     const byGroupId = new Map<string, { groupId: string; label: string; count: number }>();
     steps.forEach(step => {
@@ -50,7 +57,13 @@ const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({ steps, getGroupId, g
           <p>{group.count} step{group.count === 1 ? '' : 's'}</p>
         </div>
       ))}
-      {groups.length === 0 && <p>{emptyMessage || 'No process data loaded yet.'}</p>}
+      {onAddNew && (
+        <div className={styles.addCard} onClick={onAddNew}>
+          <span className={styles.addIcon}>+</span>
+          <h3>{addNewLabel || 'Add new'}</h3>
+        </div>
+      )}
+      {groups.length === 0 && !onAddNew && <p>{emptyMessage || 'No process data loaded yet.'}</p>}
     </div>
   );
 };

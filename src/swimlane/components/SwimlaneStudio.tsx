@@ -337,7 +337,6 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             {!selectedCategoryId ? (
               <>
                 <div className={styles.toolbar}>
-                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
@@ -352,7 +351,6 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Categories" onClick={() => setSelectedCategoryId(undefined)} />
-                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
@@ -361,14 +359,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   getLabel={id => customGroupNames[id] || getProcessGroupName(id)}
                   onSelect={setSelectedProcessGroupId}
                   allGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
-                  emptyMessage="No processes in this category yet - use “+ Add new process” above to start one."
+                  onAddNew={() => setNewProcessOpen(true)}
+                  addNewLabel="+ Add new process group"
                 />
               </>
             ) : !selectedProgressId ? (
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
-                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
@@ -377,7 +375,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   getLabel={(id, sampleStep) => sampleStep?.processDescription || getProgressIdName(id)}
                   onSelect={setSelectedProgressId}
                   allGroupIds={Object.keys(APQC_PROGRESS_ID_NAMES).filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
-                  emptyMessage="No processes in this group yet - use “+ Add new process” above to start one."
+                  onAddNew={() => setNewProcessOpen(true)}
+                  addNewLabel="+ Add new progress ID"
                 />
               </>
             ) : (
