@@ -267,22 +267,6 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               }}
             />
           )}
-          <DefaultButton
-            text="Import CSV"
-            iconProps={{ iconName: 'Upload' }}
-            onClick={() => setImportOpen(true)}
-            styles={{
-              root: {
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: 8
-              },
-              rootHovered: { background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.45)' },
-              rootPressed: { background: 'rgba(255,255,255,0.24)' },
-              label: { color: '#fff', fontWeight: 600 },
-              icon: { color: '#fff' }
-            }}
-          />
         </div>
       </header>
 

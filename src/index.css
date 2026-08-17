@@ -37,7 +37,13 @@ body {
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
   color: var(--text);
-  background: var(--canvas);
+  /* Not --canvas (the pale blue swimlane diagram background) - that color
+     is meant to live only inside the diagram itself
+     (SwimlaneCanvas.module.scss sets it explicitly there), not as the
+     whole app's backdrop. Using it here too meant any page shorter than
+     the viewport trailed off into a big blank blue void below its real
+     content. */
+  background: var(--surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

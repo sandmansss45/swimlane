@@ -76,15 +76,17 @@
 }
 
 // Job-title column - given its own louder treatment (bigger, bolder,
-// tinted background, a full green border) rather than sharing the
-// header row's quieter grey styling, since this is the label someone's
-// eye has to land on repeatedly while tracing a lane across the whole
-// diagram.
+// tinted background, a full border) rather than sharing the header row's
+// quieter grey styling, since this is the label someone's eye has to land
+// on repeatedly while tracing a lane across the whole diagram. Blue, not
+// green - green here was an unrelated coincidence (reusing the Approval
+// shape's color), while blue ties it to the same brand palette as the
+// header, buttons and hierarchy-picker badges everywhere else.
 .laneLabel {
   left: 0;
   text-align: left;
-  background: var(--green-light);
-  border: 1px solid var(--approval);
+  background: var(--blue-light);
+  border: 1px solid var(--blue);
   padding: 12px 14px;
   position: sticky;
   z-index: 2;
@@ -98,7 +100,7 @@
   font-weight: 700;
   font-size: 14.5px;
   letter-spacing: 0.01em;
-  color: var(--approval);
+  color: var(--navy);
 }
 
 .laneLabelSecondary {
