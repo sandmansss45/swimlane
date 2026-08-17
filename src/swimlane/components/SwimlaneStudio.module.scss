@@ -90,6 +90,16 @@
   }
 }
 
+// Groups buttons that belong on the same line (e.g. "Back" + the overflow
+// menu) - the toolbar itself stays a column of these rows/rows-of-controls
+// stacked vertically, but a row no longer forces every button in it to
+// stretch full-width the way a bare flex column would.
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .toolbar {
   display: flex;
   flex-direction: column;
@@ -112,21 +122,33 @@
   color: var(--navy);
 }
 
+// Was a single fixed-width (480px) column - on a wide screen that left a
+// large dead gap of empty canvas to its right with nothing in it. Each
+// field (ProcessStepForm renders them as plain siblings, not its own
+// wrapper) now flexes to fill the available width and wraps into however
+// many columns fit, instead of stacking one per row indefinitely - reads
+// as a deliberate multi-column form instead of an orphaned narrow strip.
 .addStepForm {
   margin-top: 20px;
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  max-width: 480px;
+  max-width: 900px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 20px;
 
-  > * {
-    margin-bottom: 12px;
+  > h3 {
+    flex-basis: 100%;
+    margin: 0 0 4px;
   }
 
-  > *:last-child {
-    margin-bottom: 0;
+  > * {
+    flex: 1 1 250px;
+    margin-bottom: 12px;
   }
 }
 

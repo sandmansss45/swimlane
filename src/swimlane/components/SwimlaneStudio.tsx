@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {
-  Spinner, MessageBar, MessageBarType, MessageBarButton, DefaultButton, PrimaryButton, Pivot, PivotItem,
+  Spinner, MessageBar, MessageBarType, MessageBarButton, DefaultButton, PrimaryButton, IconButton, Pivot, PivotItem,
   Dialog, DialogType, DialogFooter, TextField
 } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
@@ -559,16 +559,28 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             ) : (
               <>
                 <div className={styles.toolbar}>
-                  <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
-                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
-                  <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
-                  <DefaultButton
-                    text={`Delete flow (${visibleSteps.length})`}
-                    iconProps={{ iconName: 'Delete' }}
-                    onClick={() => setBulkDeleteOpen(true)}
-                    disabled={visibleSteps.length === 0}
-                    styles={{ root: { borderColor: 'var(--risk-high)' }, label: { color: 'var(--risk-high)' }, icon: { color: 'var(--risk-high)' } }}
-                  />
+                  <div className={styles.toolbarRow}>
+                    <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+                    <IconButton
+                      menuIconProps={{ iconName: 'More' }}
+                      title="More actions"
+                      ariaLabel="More actions"
+                      styles={{ root: { border: '1px solid var(--border)', borderRadius: 4 } }}
+                      menuProps={{
+                        items: [
+                          { key: 'addNew', text: '+ Add new process', iconProps: { iconName: 'Add' }, onClick: () => { setNewProcessOpen(true); } },
+                          { key: 'importCsv', text: 'Import CSV', iconProps: { iconName: 'Upload' }, onClick: () => { setImportOpen(true); } },
+                          {
+                            key: 'deleteFlow',
+                            text: `Delete flow (${visibleSteps.length})`,
+                            iconProps: { iconName: 'Delete', styles: { root: { color: 'var(--risk-high)' } } },
+                            disabled: visibleSteps.length === 0,
+                            onClick: () => { setBulkDeleteOpen(true); }
+                          }
+                        ]
+                      }}
+                    />
+                  </div>
                   <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
                   <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
                 </div>
