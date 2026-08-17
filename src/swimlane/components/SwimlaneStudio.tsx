@@ -310,6 +310,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               <>
                 <div className={styles.toolbar}>
                   <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
+                  <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
                   steps={steps}
@@ -324,6 +325,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Categories" onClick={() => setSelectedCategoryId(undefined)} />
                   <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
+                  <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInCategory}
@@ -339,6 +341,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
                   <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
+                  <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
@@ -353,6 +356,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+                  <PrimaryButton text="+ Add new process" onClick={() => setNewProcessOpen(true)} />
+                  <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
                   <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
                   <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
                 </div>
