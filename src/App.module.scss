@@ -31,13 +31,13 @@
 .title {
   margin: 0 0 4px;
   color: #fff;
-  font-size: 22px;
+  font-size: var(--fs-xxl);
 }
 
 .subtitle {
   margin: 0 0 28px;
   color: #9fb0cc;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
 }
 
 .actions {
@@ -51,7 +51,7 @@
   background: none;
   border: none;
   color: #9fb0cc;
-  font-size: 13px;
+  font-size: var(--fs-base);
   cursor: pointer;
   text-decoration: underline;
   padding: 4px;

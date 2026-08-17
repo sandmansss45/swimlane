@@ -27,7 +27,10 @@
 }
 
 .edgeLabel {
-  font-size: 11px;
+  // Bumped from 11px alongside the extra column-gap breathing room above -
+  // this text sits directly on the diagram with no card/background behind
+  // it, so it needs to read clearly at a glance, not just fit in the gap.
+  font-size: var(--fs-sm);
   font-weight: 600;
   fill: var(--navy);
 }
@@ -63,7 +66,7 @@
   // them look deliberate instead of like something's missing.
   border: 1px solid var(--border);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 10px 8px;
   text-align: center;
   position: sticky;
@@ -98,7 +101,7 @@
 // instead of running together with the title in one dense line.
 .laneLabelPrimary {
   font-weight: 700;
-  font-size: 14.5px;
+  font-size: var(--fs-md);
   letter-spacing: 0.01em;
   color: var(--navy);
 }
@@ -106,7 +109,7 @@
 .laneLabelSecondary {
   margin-top: 2px;
   font-weight: 500;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -208,7 +211,7 @@
 
 .connectionsPanel {
   padding: 24px;
-  font-size: 12.5px;
+  font-size: var(--fs-base);
   max-height: 80vh;
   overflow-y: auto;
 
@@ -252,7 +255,7 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     font-family: inherit;
-    font-size: 12.5px;
+    font-size: var(--fs-base);
 
     &:focus {
       outline: none;

@@ -39,7 +39,7 @@
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   // Overrides the global h2 { color: var(--navy) } rule - navy text on
   // this bar's now-navy background would be invisible.
   color: #fff;
@@ -47,7 +47,7 @@
 
 .breadcrumb {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: #a9bbdb;
 }
 
@@ -72,7 +72,9 @@
 
   h3 {
     margin: 0 0 4px;
-    font-size: 17px;
+    // The main question on this screen, so it gets the same weight as the
+    // app title in the header above, not a step down from it.
+    font-size: var(--fs-xl);
   }
 
   p {
@@ -99,7 +101,7 @@
 
 .cardTitle {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--navy);
 }
 

@@ -17,7 +17,7 @@
 
   p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--fs-base);
     color: var(--text-secondary);
   }
 }
@@ -28,7 +28,7 @@
 
 .preview {
   margin: -4px 0 12px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--blue);
 }
 

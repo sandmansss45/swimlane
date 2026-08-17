@@ -1,6 +1,10 @@
 .shapeNode {
   cursor: pointer;
-  font-size: 12px;
+  // The most-read text in the whole app (the actual process step
+  // descriptions) - bumped from 12px so it's comfortably legible at a
+  // glance instead of squinting-small on a diagram someone's scanning
+  // across a wide screen.
+  font-size: var(--fs-base);
   display: flex;
   align-items: center;
   justify-content: center;

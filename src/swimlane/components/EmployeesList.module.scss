@@ -17,7 +17,7 @@
 
 .title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--navy);
 }
 
@@ -36,7 +36,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-base);
 
   th {
     position: sticky;

@@ -15,12 +15,12 @@
 
   p {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--fs-base);
     color: var(--text-secondary);
     max-width: 620px;
 
     code {
-      font-size: 12px;
+      font-size: var(--fs-sm);
       background: var(--canvas);
       border-radius: 4px;
       padding: 1px 4px;
@@ -40,7 +40,7 @@
 }
 
 .fileName {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--text);
 }
 
@@ -49,7 +49,7 @@
 }
 
 .summary {
-  font-size: 13px;
+  font-size: var(--fs-base);
   color: var(--text);
   margin: 4px 0 10px;
 }
@@ -65,7 +65,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-base);
 
   th {
     position: sticky;
@@ -97,7 +97,7 @@
 .autoTag {
   display: inline-block;
   margin-left: 6px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
 .moreRows {
   margin: 0;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: var(--canvas);
 }
