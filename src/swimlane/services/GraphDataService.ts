@@ -17,13 +17,11 @@ const PROCESS_LIST_TITLE = '9.6 tester';
 // the default "Documents" library exist there so far.
 const EMPLOYEES_LIST_TITLE = 'TODO-CONFIRM-EMPLOYEES-LIST-TITLE';
 const RISK_LIST_TITLE = 'risk regnew';
-// TODO - CONFIRM: doesn't exist on the real site yet - needs creating.
-// Stores names for Process Groups the static APQC_PROCESS_GROUP_NAMES
-// table (apqcHierarchy.ts) doesn't already cover, e.g. a brand-new "9.6.4"
-// the business adds later. Suggested columns: the built-in Title field
-// (holds the group's name, e.g. "Manage petty cash") plus a single line
-// of text column called "Group ID" (holds the ID, e.g. "9.6.4").
-const PROCESS_GROUP_LABELS_LIST_TITLE = 'TODO-CONFIRM-PROCESS-GROUP-LABELS-LIST-TITLE';
+// CONFIRMED 2026-08-17 - created on the real "Swimlane Studio" site with
+// the built-in Title column (group name) plus a single line of text
+// column "Group ID". Stores names for Process Groups the static
+// APQC_PROCESS_GROUP_NAMES table (apqcHierarchy.ts) doesn't already cover.
+const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
 
 type FieldMap = { [displayName: string]: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
