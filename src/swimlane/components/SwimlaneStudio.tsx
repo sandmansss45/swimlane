@@ -6,7 +6,10 @@ import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
-import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, APQC_CATEGORY_NAMES } from '../utils/apqcHierarchy';
+import {
+  getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
+  APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
+} from '../utils/apqcHierarchy';
 import HierarchyPicker from './HierarchyPicker';
 import ProcessStepTabs from './ProcessStepTabs';
 import RegionFilter from './RegionFilter';
@@ -327,6 +330,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   getGroupId={getProcessGroupId}
                   getLabel={id => getProcessGroupName(id)}
                   onSelect={setSelectedProcessGroupId}
+                  allGroupIds={Object.keys(APQC_PROCESS_GROUP_NAMES).filter(id => getCategoryId(id) === selectedCategoryId)}
                   emptyMessage="No processes in this category yet - use “+ Add new process” above to start one."
                 />
               </>
@@ -339,8 +343,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
                   getGroupId={getProgressId}
-                  getLabel={(id, sampleStep) => sampleStep?.processDescription || id}
+                  getLabel={(id, sampleStep) => sampleStep?.processDescription || getProgressIdName(id)}
                   onSelect={setSelectedProgressId}
+                  allGroupIds={Object.keys(APQC_PROGRESS_ID_NAMES).filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
                   emptyMessage="No processes in this group yet - use “+ Add new process” above to start one."
                 />
               </>
