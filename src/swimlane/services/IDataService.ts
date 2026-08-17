@@ -2,6 +2,7 @@ import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { IProgressIdLabel } from '../models/IProgressIdLabel';
 
 export interface IDataService {
   getProcessSteps(): Promise<IProcessStep[]>;
@@ -13,6 +14,9 @@ export interface IDataService {
   // addProcessGroupLabel) - not for the static, confirmed-real names in
   // apqcHierarchy.ts, which live in code rather than a list.
   updateProcessGroupLabel(id: string, name: string): Promise<void>;
+  getProgressIdLabels(): Promise<IProgressIdLabel[]>;
+  addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel>;
+  updateProgressIdLabel(id: string, name: string): Promise<void>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**
    * Adds several steps in one call, in array order - used by CSV import.

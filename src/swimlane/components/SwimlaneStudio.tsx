@@ -9,6 +9,7 @@ import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
@@ -23,6 +24,7 @@ import RiskRegisterList from './RiskRegisterList';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
+import AddHierarchyShellModal, { HierarchyShellLevel } from './AddHierarchyShellModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
@@ -69,6 +71,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [employees, setEmployees] = React.useState<IEmployee[]>([]);
   const [riskStatements, setRiskStatements] = React.useState<IRiskStatement[]>([]);
   const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
+  const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
@@ -86,6 +89,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [newProcessOpen, setNewProcessOpen] = React.useState(false);
+  // The lightweight "just name and reserve an ID" flow (see
+  // AddHierarchyShellModal) - separate from newProcessOpen, which is the
+  // full "create a complete step" flow. idPrefix is the parent ID plus a
+  // trailing dot (e.g. "13." when adding a Process Group under Category
+  // 13), computed fresh each time it's opened rather than reusing
+  // newProcessPrefix so the two flows stay independent.
+  const [addShellState, setAddShellState] = React.useState<{ level: HierarchyShellLevel; idPrefix: string } | undefined>(undefined);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [renameTarget, setRenameTarget] = React.useState<{ groupId: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
@@ -115,9 +125,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setError(undefined);
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
-      dataService.getProcessGroupLabels()
+      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels()
     ])
-      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -147,6 +157,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           setProcessGroupLabels(groupLabelsResult.value);
         }
 
+        if (progressIdLabelsResult.status === 'fulfilled') {
+          setProgressIdLabels(progressIdLabelsResult.value);
+        }
+
         setError(errors.length > 0 ? errors.join(' | ') : undefined);
         setLoading(false);
       });
@@ -165,6 +179,15 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const customGroupNames = React.useMemo(
     () => Object.fromEntries(processGroupLabels.map(l => [l.groupId, l.name])) as Record<string, string>,
     [processGroupLabels]
+  );
+
+  // Same idea as customGroupNames, one level down - a name for a Progress
+  // ID that has no real steps yet to derive one from (see getLabel on the
+  // Progress ID HierarchyPicker below, which otherwise falls back to a
+  // real step's processDescription or the static APQC table).
+  const customProgressIdNames = React.useMemo(
+    () => Object.fromEntries(progressIdLabels.map(l => [l.progressId, l.name])) as Record<string, string>,
+    [progressIdLabels]
   );
 
   const stepsInCategory = React.useMemo(
@@ -269,6 +292,22 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleGroupLabelCreated = (created: IProcessGroupLabel): void => {
     setProcessGroupLabels(prev => [...prev, created]);
+  };
+
+  // Lands the user straight in the empty Process Group or Progress ID
+  // they just named, same "go straight to what you made" treatment as
+  // handleProcessCreated gets for a full step - the difference here is
+  // there's no step to select underneath it, so drilling in shows an
+  // empty picker/canvas ready for "Add a step".
+  const handleShellCreated = (created: IProcessGroupLabel | IProgressIdLabel): void => {
+    if ('groupId' in created) {
+      setProcessGroupLabels(prev => [...prev, created]);
+      setSelectedProcessGroupId(created.groupId);
+    } else {
+      setProgressIdLabels(prev => [...prev, created]);
+      setSelectedProgressId(created.progressId);
+    }
+    setAddShellState(undefined);
   };
 
   const openRename = (groupId: string, currentLabel: string): void => {
@@ -435,6 +474,15 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onGroupLabelCreated={handleGroupLabelCreated}
       />
 
+      <AddHierarchyShellModal
+        isOpen={!!addShellState}
+        level={addShellState?.level || 'processGroup'}
+        idPrefix={addShellState?.idPrefix || ''}
+        dataService={dataService}
+        onDismiss={() => setAddShellState(undefined)}
+        onCreated={handleShellCreated}
+      />
+
       <Dialog
         hidden={!bulkDeleteOpen}
         onDismiss={() => setBulkDeleteOpen(false)}
@@ -535,7 +583,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   getLabel={id => customGroupNames[id] || getProcessGroupName(id)}
                   onSelect={setSelectedProcessGroupId}
                   allGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
-                  onAddNew={() => setNewProcessOpen(true)}
+                  onAddNew={() => setAddShellState({ level: 'processGroup', idPrefix: `${selectedCategoryId}.` })}
                   addNewLabel="+ Add new process group"
                   onRename={openRename}
                 />
@@ -549,10 +597,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
                   getGroupId={getProgressId}
-                  getLabel={(id, sampleStep) => sampleStep?.processDescription || getProgressIdName(id)}
+                  getLabel={(id, sampleStep) => sampleStep?.processDescription || customProgressIdNames[id] || getProgressIdName(id)}
                   onSelect={setSelectedProgressId}
-                  allGroupIds={Object.keys(APQC_PROGRESS_ID_NAMES).filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
-                  onAddNew={() => setNewProcessOpen(true)}
+                  allGroupIds={[...Object.keys(APQC_PROGRESS_ID_NAMES), ...Object.keys(customProgressIdNames)].filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
+                  onAddNew={() => setAddShellState({ level: 'progressId', idPrefix: `${selectedProcessGroupId}.` })}
                   addNewLabel="+ Add new progress ID"
                 />
               </>

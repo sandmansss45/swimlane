@@ -1,0 +1,35 @@
+.modal {
+  max-width: 440px;
+  width: 90vw;
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0 0 6px;
+    color: var(--navy);
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--fs-base);
+    color: var(--text-secondary);
+  }
+}
+
+.error {
+  margin: 0 0 12px;
+  font-size: var(--fs-sm);
+  color: var(--risk-high);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}

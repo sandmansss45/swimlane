@@ -4,6 +4,7 @@ import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, RiskLevel } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -25,6 +26,13 @@ const RISK_LIST_TITLE = 'risk regnew';
 // column "Group ID". Stores names for Process Groups the static
 // APQC_PROCESS_GROUP_NAMES table (apqcHierarchy.ts) doesn't already cover.
 const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
+// TODO - CONFIRM: doesn't exist on the real site yet - needs creating,
+// same shape as "Process Group labels": the built-in Title column (the
+// Progress ID's name) plus a single line of text column "Progress ID".
+// Stores names for a Progress ID created as an empty shell (see "+ Add
+// new progress ID") before it has any real steps of its own to derive a
+// name from.
+const PROGRESS_ID_LABELS_LIST_TITLE = 'TODO-CONFIRM-PROGRESS-ID-LABELS-LIST-TITLE';
 
 type FieldMap = { [displayName: string]: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -215,6 +223,44 @@ export class GraphDataService implements IDataService {
     const fieldMap = await this._resolveFieldMap(PROCESS_GROUP_LABELS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(PROCESS_GROUP_LABELS_LIST_TITLE);
+    const titleField = fieldMap['Title'];
+    if (!titleField) return;
+    await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });
+  }
+
+  public async getProgressIdLabels(): Promise<IProgressIdLabel[]> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
+    const items = await this._getItems(PROGRESS_ID_LABELS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): IProgressIdLabel => ({
+      id: item.id,
+      progressId: get(item, 'Progress ID'),
+      name: get(item, 'Title')
+    }));
+  }
+
+  public async addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROGRESS_ID_LABELS_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Progress ID', progressId);
+    set('Title', name);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, progressId, name };
+  }
+
+  public async updateProgressIdLabel(id: string, name: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROGRESS_ID_LABELS_LIST_TITLE);
     const titleField = fieldMap['Title'];
     if (!titleField) return;
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });

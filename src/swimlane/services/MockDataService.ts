@@ -3,6 +3,7 @@ import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { IProgressIdLabel } from '../models/IProgressIdLabel';
 
 // Real accounts-payable process data from the "9.6 tester" SharePoint list
 // (QLE UK) - used deliberately instead of placeholder data, at the user's
@@ -97,6 +98,9 @@ export class MockDataService implements IDataService {
   // apqcHierarchy.ts's static table; this only holds ones a user adds at
   // runtime via "+ Add new process" for a group that table doesn't cover.
   private _groupLabels: IProcessGroupLabel[] = [];
+  // Same idea, one level down - names for an empty Progress ID shell
+  // created via "+ Add new progress ID" before it has any real steps.
+  private _progressIdLabels: IProgressIdLabel[] = [];
   // A monotonic counter, not `_steps.length + 1` - length-based IDs looked
   // fine until the first delete-then-add in the same session (e.g. undoing
   // a delete): the array shrinks, so the next "length + 1" ID collides
@@ -130,6 +134,22 @@ export class MockDataService implements IDataService {
   public updateProcessGroupLabel(id: string, name: string): Promise<void> {
     const index = this._groupLabels.findIndex(l => l.id === id);
     if (index >= 0) this._groupLabels[index] = { ...this._groupLabels[index], name };
+    return Promise.resolve();
+  }
+
+  public getProgressIdLabels(): Promise<IProgressIdLabel[]> {
+    return Promise.resolve(this._progressIdLabels.slice());
+  }
+
+  public addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel> {
+    const created: IProgressIdLabel = { id: `mock-progress-${this._progressIdLabels.length + 1}`, progressId, name };
+    this._progressIdLabels.push(created);
+    return Promise.resolve(created);
+  }
+
+  public updateProgressIdLabel(id: string, name: string): Promise<void> {
+    const index = this._progressIdLabels.findIndex(l => l.id === id);
+    if (index >= 0) this._progressIdLabels[index] = { ...this._progressIdLabels[index], name };
     return Promise.resolve();
   }
 
