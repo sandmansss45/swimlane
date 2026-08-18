@@ -4,18 +4,24 @@ import { createTheme, ITheme } from '@fluentui/react';
 // component (buttons, dropdowns, tabs, message bars) picks these up
 // automatically via ThemeProvider, so hand-styled pieces (ShapeNode,
 // SwimlaneCanvas, the picker cards) just need to match these by eye
-// rather than every component needing its own override.
+// rather than every component needing its own override. navy/blue/
+// approval/decision/riskHigh/riskMedium/riskLow/brightBlue below are
+// CONFIRMED 2026-08-19 against the real QLE brand color sheet ("QLE
+// Colors.pdf") - see the matching comment in index.css, which these
+// must stay in lockstep with (two files maintaining the same palette by
+// hand, not by shared reference, since Fluent's theme and plain CSS
+// custom properties don't share a token system).
 export const BRAND = {
-  navy: '#0b2148',
-  blue: '#1f4fa3',
+  navy: '#142d50',
+  blue: '#1441b9',
   blueLight: '#e6f0ff',
-  approval: '#146c43',
+  approval: '#00ce69',
   greenLight: '#e0f5ea',
-  decision: '#c96a1f',
+  decision: '#f59e0b',
   document: '#5b6478',
-  riskHigh: '#d92d20',
-  riskMedium: '#dc6803',
-  riskLow: '#17803d',
+  riskHigh: '#dc152c',
+  riskMedium: '#f59e0b',
+  riskLow: '#065f46',
   textPrimary: '#16233d',
   textSecondary: '#5b6b84',
   border: '#dde3ea',
@@ -29,7 +35,7 @@ export const BRAND = {
   // with green's actual meaning there (Approval shapes).
   darkBg: '#0a1420',
   darkSurface: '#111d33',
-  brightBlue: '#3f6fe0',
+  brightBlue: '#007fff',
   accentGreen: '#4ade80'
 };
 
@@ -80,7 +86,7 @@ export const signInTheme: ITheme = createTheme({
     themeLighterAlt: '#0a1420',
     themeLighter: '#152a4f',
     themeLight: '#274e9e',
-    themeTertiary: '#3f6fe0',
+    themeTertiary: '#007fff',
     themeSecondary: '#5a86e8',
     themeDarkAlt: '#5a86e8',
     themeDark: '#7ea0ed',

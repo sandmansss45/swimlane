@@ -1,22 +1,33 @@
 :root {
-  --navy: #0b2148;
-  --blue: #1f4fa3;
+  /* CONFIRMED 2026-08-19 against the real QLE brand color sheet ("QLE
+     Colors.pdf") - navy/blue/bright-blue below are the sheet's own
+     Primary Colors (#142d50, #1441b9, #007fff), same source for the risk
+     and shape-type colors further down. Previous values here were
+     hand-picked approximations made before this sheet existed. */
+  --navy: #142d50;
+  --blue: #1441b9;
   --blue-light: #e6f0ff;
   /* Linked-risk severity - the small corner marker a step gets once it's
      linked to a real Risk Register entry (see ShapeNode's riskMarker).
      Does NOT fill the shape itself - that used to be a separate manual
      "risk level" override, retired in favor of the linked-register marker
-     being the one real risk indicator. */
-  --risk-high: #d92d20;
-  --risk-medium: #dc6803;
-  --risk-low: #17803d;
+     being the one real risk indicator. High/Medium use the brand sheet's
+     Secondary red/orange; Low uses Secondary dark green rather than
+     Primary neon green, which is reserved for Approval shapes below - two
+     different UI elements sharing the exact same green would read as
+     more related than they are. */
+  --risk-high: #dc152c;
+  --risk-medium: #f59e0b;
+  --risk-low: #065f46;
   /* Shape-type fill colors - Decision and Approval get their own color so
      they read at a glance among a sea of default-blue process/document
-     shapes; Process and Document keep the plain default blue. Matches
-     BRAND.decision/BRAND.approval in theme.ts, which already reserved
-     these exact values for this purpose. */
-  --shape-decision: #c96a1f;
-  --shape-approval: #146c43;
+     shapes; Process and Document keep the plain default blue. Decision
+     uses the brand sheet's Secondary orange, Approval its Primary neon
+     green - both by explicit user request. Matches BRAND.decision/
+     BRAND.approval in theme.ts, which already reserved these exact
+     values for this purpose. */
+  --shape-decision: #f59e0b;
+  --shape-approval: #00ce69;
   --text: #16233d;
   --text-secondary: #5b6b84;
   --border: #dde3ea;
@@ -24,7 +35,7 @@
   --surface: #ffffff;
   --dark-bg: #0a1420;
   --dark-surface: #111d33;
-  --bright-blue: #3f6fe0;
+  --bright-blue: #007fff;
 
   /* Type scale - one consistent set of steps instead of dozens of
      one-off px values (11, 11.5, 12, 12.5, 13, 13.5, 14.5... accumulated

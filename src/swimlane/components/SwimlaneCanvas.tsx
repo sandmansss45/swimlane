@@ -576,7 +576,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             <path d="M0,0 L9,4.5 L0,9 Z" fill="#3c4a63" />
           </marker>
           <marker id="swimlaneArrowheadHighlighted" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
-            <path d="M0,0 L9,4.5 L0,9 Z" fill="#1f4fa3" />
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#1441b9" />
           </marker>
         </defs>
         {edgeGeometry.map(({ edge, path, labelX, labelY }) => {
@@ -585,7 +585,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             <g key={`${edge.fromRowId}-${edge.toRowId}-${edge.token}`}>
               <path
                 d={path}
-                stroke={highlighted ? '#1f4fa3' : '#3c4a63'}
+                stroke={highlighted ? '#1441b9' : '#3c4a63'}
                 strokeWidth={highlighted ? 2.5 : 1.5}
                 fill="none"
                 markerEnd={highlighted ? 'url(#swimlaneArrowheadHighlighted)' : 'url(#swimlaneArrowhead)'}

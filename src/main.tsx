@@ -34,7 +34,7 @@ initMsal()
     const escaped = message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     root.innerHTML = `
       <div style="font-family: system-ui, sans-serif; max-width: 640px; margin: 80px auto; padding: 24px; border: 1px solid #dde3ea; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(16,24,40,0.06);">
-        <h2 style="color: #0b2148; margin: 0 0 8px;">Swimlane Studio failed to start</h2>
+        <h2 style="color: #142d50; margin: 0 0 8px;">Swimlane Studio failed to start</h2>
         <p style="color: #16233d; margin: 0 0 12px;">Something went wrong during startup, before the app could render anything - almost always a sign-in (MSAL) configuration issue.</p>
         <pre style="background: #eaf2fd; padding: 12px; border-radius: 8px; overflow: auto; color: #16233d; white-space: pre-wrap; margin: 0 0 12px;">${escaped}</pre>
         <p style="color: #5b6b84; font-size: 13px; margin: 0;">Open DevTools (F12) → Console for the full error and stack trace.</p>
