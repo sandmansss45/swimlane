@@ -50,10 +50,10 @@ const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
 // for why this is never edited in place except to fill in the three
 // Unlocked* columns once, on unlock.
 const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
-// TODO-CONFIRM: needs creating on the real site, same shape as "Progress
-// ID locks" above - the built-in Title column (unused - left blank) plus
-// single line of text columns "Progress ID", "Region", "Author",
-// "Comment", "Posted At". Append-only feedback log - see
+// CONFIRMED 2026-08-19 - created on the real site, same shape as
+// "Progress ID locks" above - the built-in Title column (unused - left
+// blank) plus single line of text columns "Progress ID", "Region",
+// "Author", "Comment", "Posted At". Append-only feedback log - see
 // models/ISwimlaneComment - never edited or deleted once posted, so
 // there's no update/delete method here at all, unlike the locks list.
 const SWIMLANE_COMMENTS_LIST_TITLE = 'Swimlane comments';
