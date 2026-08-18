@@ -31,13 +31,13 @@ const RISK_LIST_TITLE = 'risk register data';
 // column "Group ID". Stores names for Process Groups the static
 // APQC_PROCESS_GROUP_NAMES table (apqcHierarchy.ts) doesn't already cover.
 const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
-// TODO - CONFIRM: doesn't exist on the real site yet - needs creating,
-// same shape as "Process Group labels": the built-in Title column (the
+// CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, same
+// shape as "Process Group labels": the built-in Title column (the
 // Progress ID's name) plus a single line of text column "Progress ID".
 // Stores names for a Progress ID created as an empty shell (see "+ Add
 // new progress ID") before it has any real steps of its own to derive a
 // name from.
-const PROGRESS_ID_LABELS_LIST_TITLE = 'TODO-CONFIRM-PROGRESS-ID-LABELS-LIST-TITLE';
+const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
 
 type FieldMap = { [displayName: string]: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
