@@ -144,7 +144,17 @@ export function connectorPath(a: IRect, b: IRect, aOffset = 0, bOffset = 0): IPa
     const x2 = goRight ? b.left : b.right;
     const y1 = a.cy + aOffset;
     const y2 = b.cy + bOffset;
-    return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
+    // Same row doesn't mean same Y once per-edge spread offsets are
+    // applied (see the attachGroups comment above) - two boxes dead level
+    // with each other still end up connected by a visibly slanted line if
+    // one end's offset differs from the other's. Only draw the plain
+    // straight line when both ends actually land on the same Y; otherwise
+    // bend through the gap like any other offset pair does, instead of
+    // cutting diagonally across the row.
+    if (aOffset === bOffset) {
+      return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
+    }
+    return hBendPath(x1, y1, x2, y2);
   }
   if (Math.abs(dx) < 6) {
     const goDown = dy >= 0;
@@ -152,7 +162,12 @@ export function connectorPath(a: IRect, b: IRect, aOffset = 0, bOffset = 0): IPa
     const y2 = goDown ? b.top : b.bottom;
     const x1 = a.cx + aOffset;
     const x2 = b.cx + bOffset;
-    return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
+    // Same reasoning as the same-row case above, mirrored for a same-
+    // column pair whose X ends up different once offsets are applied.
+    if (aOffset === bOffset) {
+      return { d: `M ${x1} ${y1} L ${x2} ${y2}`, labelX: (x1 + x2) / 2, labelY: (y1 + y2) / 2 };
+    }
+    return vBendPath(x1, y1, x2, y2);
   }
   if (onXAxis) {
     const goDown = dy >= 0;

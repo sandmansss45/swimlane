@@ -64,6 +64,7 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
       />
       <ComboBox
         label="Action"
+        placeholder="Choose from the list, or type your own..."
         text={value.action}
         allowFreeform
         autoComplete="on"
@@ -72,6 +73,7 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
       />
       <ComboBox
         label="Action type"
+        placeholder="Choose from the list, or type your own..."
         text={value.actionType}
         allowFreeform
         autoComplete="on"
