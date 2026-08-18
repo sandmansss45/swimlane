@@ -799,6 +799,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   allGroupIds={Object.keys(APQC_CATEGORY_NAMES)}
                   countBy={getProcessGroupId}
                   countLabel="process group"
+                  allSubGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)]}
                 />
               </>
             ) : !selectedProcessGroupId ? (

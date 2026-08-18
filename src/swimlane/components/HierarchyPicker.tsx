@@ -37,6 +37,14 @@ export interface IHierarchyPickerProps {
   // showing their own step counts.
   countBy?: (processStepId: string) => string;
   countLabel?: string; // singular noun for the count, e.g. "process group" - defaults to "step"
+  // The full static universe of countBy's sub-group IDs (e.g. every known
+  // Process Group ID from APQC_PROCESS_GROUP_NAMES), same reasoning as
+  // allGroupIds above but one level deeper - without this, a category
+  // with zero steps loaded yet (all its process groups still empty)
+  // showed "0 process groups" even though the APQC standard defines
+  // several for it, since counting only ran over steps that actually
+  // exist. Ignored unless countBy is also set.
+  allSubGroupIds?: string[];
 }
 
 // Generic drill-down level: groups steps by whatever ID prefix the caller
@@ -45,7 +53,7 @@ export interface IHierarchyPickerProps {
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.
 const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
-  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename, countBy, countLabel
+  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename, countBy, countLabel, allSubGroupIds
 }) => {
   const groups = React.useMemo(() => {
     const byGroupId = new Map<string, { groupId: string; label: string; count: number; subIds: Set<string> }>();
@@ -65,8 +73,22 @@ const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
     (allGroupIds || []).forEach(groupId => {
       if (!byGroupId.has(groupId)) byGroupId.set(groupId, { groupId, label: getLabel(groupId), count: 0, subIds: new Set() });
     });
+    // Same static-universe fallback as allGroupIds, one level deeper - a
+    // sub-group ID that's part of the APQC standard counts toward its
+    // parent's card even if no step has landed in it yet.
+    if (countBy) {
+      (allSubGroupIds || []).forEach(subId => {
+        const groupId = getGroupId(subId);
+        const existing = byGroupId.get(groupId);
+        if (existing) {
+          existing.subIds.add(subId);
+        } else {
+          byGroupId.set(groupId, { groupId, label: getLabel(groupId), count: 0, subIds: new Set([subId]) });
+        }
+      });
+    }
     return Array.from(byGroupId.values()).sort((a, b) => compareProcessStepIds(a.groupId, b.groupId));
-  }, [steps, getGroupId, getLabel, allGroupIds, countBy]);
+  }, [steps, getGroupId, getLabel, allGroupIds, countBy, allSubGroupIds]);
 
   return (
     <div className={styles.grid}>
