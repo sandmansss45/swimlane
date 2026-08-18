@@ -53,12 +53,11 @@ export interface IProcessStepFormProps {
   value: IProcessStepFormValue;
   onChange: (value: IProcessStepFormValue) => void;
   employees: IEmployee[];
-  selectedDepartment: string | undefined;
   dependsOnOptions: IDropdownOption[];
   riskStatements: IRiskStatement[];
 }
 
-const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, employees, selectedDepartment, dependsOnOptions, riskStatements }) => {
+const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, employees, dependsOnOptions, riskStatements }) => {
   const set = <K extends keyof IProcessStepFormValue>(key: K, v: IProcessStepFormValue[K]): void => {
     onChange({ ...value, [key]: v });
   };
@@ -101,7 +100,6 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
       />
       <EmployeePicker
         employees={employees}
-        selectedDepartment={selectedDepartment}
         actionType={value.actionType}
         value={value.responsibleJobTitle}
         onChange={jobTitle => set('responsibleJobTitle', jobTitle)}

@@ -1,7 +1,6 @@
-// Identical pill styling to ProcessStepTabs (navy active state) rather
-// than DepartmentFilter's blue - this is a primary "which swimlane am I
-// even looking at" choice like Process Step ID tabs are, not a secondary
-// filter like Department, so it gets the same visual weight.
+// Identical pill styling to ProcessStepTabs (navy active state) - this is
+// a primary "which swimlane am I even looking at" choice, same weight as
+// Process Step ID tabs immediately below it.
 .tabs {
   display: flex;
   gap: 6px;
