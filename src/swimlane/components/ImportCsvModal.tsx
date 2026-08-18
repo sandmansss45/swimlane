@@ -81,8 +81,10 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
         <h3>Import from CSV</h3>
         <p>
           Upload a process export - <code>APQC Title, Process Description, Process Step ID, Process Step Name,
-          Action Type, Action, Action Description, ResponsibleJobTitle, ShapeOverride, DependsOn</code>. Column
-          order doesn&apos;t matter; each is matched by its heading.
+          Action Type, Action, Action Description, ResponsibleJobTitle, ShapeOverride, DependsOn, Region</code>.
+          Column order doesn&apos;t matter; each is matched by its heading. Region is optional - if the file
+          doesn&apos;t have that column but APQC Title already ends "- UK" (or "- US"/"- SA"), that's picked up
+          automatically.
         </p>
       </div>
 
@@ -120,6 +122,14 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
         </MessageBar>
       )}
 
+      {preview && preview.autoRegionedCount > 0 && (
+        <MessageBar messageBarType={MessageBarType.info} className={styles.banner}>
+          {preview.autoRegionedCount} row{preview.autoRegionedCount === 1 ? '' : 's'} had no Region column, so
+          {preview.autoRegionedCount === 1 ? " it's" : " they've"} been tagged automatically from the "- UK" /
+          "- US" / "- SA" suffix already on APQC Title.
+        </MessageBar>
+      )}
+
       {preview && preview.rows.length > 0 && (
         <>
           <p className={styles.summary}>
@@ -135,6 +145,7 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
                   <th>Step Name</th>
                   <th>Action</th>
                   <th>Responsible</th>
+                  <th>Region</th>
                   <th>Depends On</th>
                 </tr>
               </thead>
@@ -145,6 +156,10 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
                     <td>{row.step.processStepName}</td>
                     <td>{row.step.action}</td>
                     <td>{row.step.responsibleJobTitle}</td>
+                    <td>
+                      {row.step.region || <span className={styles.muted}>-</span>}
+                      {row.autoRegioned && <span className={styles.autoTag}>auto</span>}
+                    </td>
                     <td>
                       {row.step.dependsOn.join(', ') || <span className={styles.muted}>-</span>}
                       {row.autoLinked && <span className={styles.autoTag}>auto</span>}

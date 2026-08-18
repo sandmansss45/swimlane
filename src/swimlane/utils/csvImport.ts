@@ -1,4 +1,4 @@
-import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
+import { IProcessStep, parseDependsOn, extractRegionFromApqcTitle } from '../models/IProcessStep';
 
 /**
  * Minimal RFC4180 CSV parser (no external dependency): handles quoted
@@ -42,19 +42,21 @@ export function parseCsvText(text: string): string[][] {
 const REQUIRED_HEADERS = ['Process Step ID', 'Process Step Name', 'Action Description'];
 const KNOWN_HEADERS = [
   'APQC Title', 'Process Description', 'Process Step ID', 'Process Step Name',
-  'Action Type', 'Action', 'Action Description', 'ResponsibleJobTitle', 'ShapeOverride', 'DependsOn'
+  'Action Type', 'Action', 'Action Description', 'ResponsibleJobTitle', 'ShapeOverride', 'DependsOn', 'Region'
 ];
 
 export interface IParsedCsvRow {
   step: Omit<IProcessStep, 'id'>;
   csvRowNumber: number; // position in the source file, header counted as row 1
   autoLinked: boolean; // true if DependsOn was blank and got a default chain
+  autoRegioned: boolean; // true if Region was blank and got detected from the APQC Title's own "- UK" suffix
 }
 
 export interface ICsvImportPreview {
   rows: IParsedCsvRow[];
   warnings: string[];
   autoLinkedCount: number;
+  autoRegionedCount: number;
 }
 
 /**
@@ -127,7 +129,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
   const warnings: string[] = [];
 
   if (rawRows.length === 0) {
-    return { rows: [], warnings: ['The file is empty.'], autoLinkedCount: 0 };
+    return { rows: [], warnings: ['The file is empty.'], autoLinkedCount: 0, autoRegionedCount: 0 };
   }
 
   const header = rawRows[0].map(h => h.trim());
@@ -137,7 +139,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
   const missing = REQUIRED_HEADERS.filter(h => !headerIndex.has(h.toLowerCase()));
   if (missing.length > 0) {
     warnings.push(`Missing required column(s): ${missing.join(', ')}. Check the file matches the expected export format.`);
-    return { rows: [], warnings, autoLinkedCount: 0 };
+    return { rows: [], warnings, autoLinkedCount: 0, autoRegionedCount: 0 };
   }
 
   const unknownColumns = header.filter(h => h && !KNOWN_HEADERS.some(k => k.toLowerCase() === h.toLowerCase()));
@@ -160,6 +162,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
 
     const processStepId = get(cells, 'Process Step ID');
     const action = get(cells, 'Action');
+    const apqcTitle = get(cells, 'APQC Title');
     let dependsOn = parseDependsOn(get(cells, 'DependsOn'));
     let autoLinked = false;
 
@@ -168,6 +171,21 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
       if (predecessorRow !== undefined) {
         dependsOn = [`${processStepId || 'row'}-${predecessorRow}`];
         autoLinked = true;
+      }
+    }
+
+    // An explicit Region column (if the file has one) always wins; failing
+    // that, the real export's own naming convention already bakes the
+    // region into APQC Title (e.g. "9.6.1 - UK") - detected here so a file
+    // that already follows that convention lands its rows in the right
+    // swimlane without needing a separate column added at all.
+    let region = get(cells, 'Region');
+    let autoRegioned = false;
+    if (!region) {
+      const detected = extractRegionFromApqcTitle(apqcTitle);
+      if (detected) {
+        region = detected;
+        autoRegioned = true;
       }
     }
 
@@ -180,8 +198,9 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
     parsedRows.push({
       csvRowNumber,
       autoLinked,
+      autoRegioned,
       step: {
-        apqcTitle: get(cells, 'APQC Title'),
+        apqcTitle,
         processDescription: get(cells, 'Process Description'),
         processStepId,
         processStepName: get(cells, 'Process Step Name'),
@@ -190,6 +209,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
         actionDescription: get(cells, 'Action Description'),
         responsibleJobTitle: get(cells, 'ResponsibleJobTitle'),
         shapeOverride: get(cells, 'ShapeOverride'),
+        region,
         dependsOn
       }
     });
@@ -199,7 +219,12 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
     warnings.push('No data rows found.');
   }
 
-  return { rows: parsedRows, warnings, autoLinkedCount: parsedRows.filter(r => r.autoLinked).length };
+  return {
+    rows: parsedRows,
+    warnings,
+    autoLinkedCount: parsedRows.filter(r => r.autoLinked).length,
+    autoRegionedCount: parsedRows.filter(r => r.autoRegioned).length
+  };
 }
 
 /**

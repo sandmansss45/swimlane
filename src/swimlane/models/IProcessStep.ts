@@ -66,6 +66,31 @@ export function getProgressId(processStepId: string): string {
   return (processStepId || '').split('.').slice(0, 3).join('.');
 }
 
+// The three regions always offered by FlowRegionTabs even before any step
+// exists for them yet, and also what CSV import (see utils/csvImport.ts)
+// recognizes when auto-detecting a region from an APQC Title's own
+// trailing "- UK" suffix - shared here, in one place, rather than
+// duplicated, so both only ever need updating once if a real 4th region
+// shows up.
+export const KNOWN_FLOW_REGIONS = ['UK', 'US', 'SA'];
+
+/**
+ * Real APQC Title values already carry their region as a trailing suffix
+ * (e.g. "9.6.1 - UK") - confirmed against real data, predating the region
+ * field itself. CSV import uses this so a file with that convention
+ * already baked in lands its rows in the right swimlane without needing
+ * a separate Region column at all. Deliberately restricted to
+ * KNOWN_FLOW_REGIONS rather than matching any trailing "- XX" text, so an
+ * unrelated abbreviation (e.g. a title genuinely ending "- AP") can't get
+ * misread as a region.
+ */
+export function extractRegionFromApqcTitle(apqcTitle: string): string | undefined {
+  const match = (apqcTitle || '').match(/-\s*([A-Za-z]+)\s*$/);
+  if (!match) return undefined;
+  const code = match[1].toUpperCase();
+  return KNOWN_FLOW_REGIONS.includes(code) ? code : undefined;
+}
+
 /**
  * Parses a DependsOn cell into individual raw tokens (e.g. "9.6.1.1-3").
  * The real export uses embedded newlines for multiple values within one

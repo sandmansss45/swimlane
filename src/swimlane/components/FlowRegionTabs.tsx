@@ -1,14 +1,6 @@
 import * as React from 'react';
-import { IProcessStep } from '../models/IProcessStep';
+import { IProcessStep, KNOWN_FLOW_REGIONS } from '../models/IProcessStep';
 import styles from './FlowRegionTabs.module.scss';
-
-// The three known regions always offered, even before any step exists for
-// them yet - same reasoning as HierarchyPicker's allGroupIds (a category
-// always shows a card so there's somewhere to land a brand-new one, not
-// just whichever ones happen to already have data). Plain strings, not a
-// closed union, since a real 4th region showing up in the data should
-// still just work (see the union with actual step values below).
-const KNOWN_FLOW_REGIONS = ['UK', 'US', 'SA'];
 
 export interface IFlowRegionTabsProps {
   steps: IProcessStep[]; // all steps for the currently selected Progress ID, UNFILTERED by region - the tab list needs to see every region present, not just the selected one
