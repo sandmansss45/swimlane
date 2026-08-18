@@ -117,6 +117,36 @@ export function parseDependsOn(raw: string | undefined): string[] {
 }
 
 /**
+ * Parses an Edge Labels cell into a token -> label map (a decision node's
+ * Yes/No branch labels, set by clicking an edge on the canvas - see
+ * handleLabelEdge in SwimlaneStudio.tsx). Same "token:value" pair format
+ * as Linked Risks (see parseLinkedRisks in IRiskStatement.ts), comma/
+ * newline separated - one pair per DependsOn token that has a label, e.g.
+ * "9.6.1.1-3:Yes, 9.6.1.1-7:No". Unlike Linked Risks, a pair missing its
+ * ":label" half is dropped rather than defaulted - there's no sensible
+ * default for a branch label the way "Medium" is for a missing severity.
+ */
+export function parseEdgeLabels(raw: string | undefined): { [dependsOnToken: string]: string } {
+  const result: { [dependsOnToken: string]: string } = {};
+  (raw || '')
+    .split(/[\n,]+/)
+    .map(entry => entry.trim())
+    .filter(entry => entry.length > 0)
+    .forEach(entry => {
+      const separatorIndex = entry.indexOf(':');
+      if (separatorIndex <= 0) return;
+      const token = entry.slice(0, separatorIndex).trim();
+      const label = entry.slice(separatorIndex + 1).trim();
+      if (token && label) result[token] = label;
+    });
+  return result;
+}
+
+export function serializeEdgeLabels(edgeLabels: { [dependsOnToken: string]: string } | undefined): string {
+  return Object.entries(edgeLabels || {}).map(([token, label]) => `${token}:${label}`).join(', ');
+}
+
+/**
  * Shapes: Approval-type = circles, Decision-type = diamonds, ordinary
  * process steps = rounded rectangles, physical/system artifacts
  * (purchase orders, invoices, remittances) = the document shape -

@@ -1,6 +1,6 @@
 import { IPublicClientApplication } from '@azure/msal-browser';
 import { IDataService } from './IDataService';
-import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
+import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
@@ -213,6 +213,18 @@ export class GraphDataService implements IDataService {
       // IProcessStep.linkedRisks for the "riskId:severity" format it
       // expects.
       linkedRisks: parseLinkedRisks(get(item, 'Linked Risks')),
+      // TODO-CONFIRM: "Edge Labels" doesn't exist on the real "9.6 tester"
+      // list yet either - needs creating as a single line of text column,
+      // same as DependsOn/Linked Risks - see parseEdgeLabels in
+      // IProcessStep.ts for the "token:label" format it expects. Until
+      // that column exists, a decision's Yes/No branch labels only last
+      // for the current browser session - they're never actually blank on
+      // screen (see handleLabelEdge's optimistic local update), just not
+      // yet durable across a reload.
+      edgeLabels: (() => {
+        const parsed = parseEdgeLabels(get(item, 'Edge Labels'));
+        return Object.keys(parsed).length > 0 ? parsed : undefined;
+      })(),
       // Native SharePoint item metadata, not a custom column - see the
       // GraphItem type comment and IProcessStep.createdBy for why.
       createdBy: GraphDataService._identityName(item.createdBy),
@@ -420,6 +432,7 @@ export class GraphDataService implements IDataService {
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
+    set('Edge Labels', serializeEdgeLabels(step.edgeLabels));
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     const now = new Date().toISOString();
@@ -465,6 +478,7 @@ export class GraphDataService implements IDataService {
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
+    set('Edge Labels', serializeEdgeLabels(step.edgeLabels));
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${step.id}/fields`, fields);
   }
