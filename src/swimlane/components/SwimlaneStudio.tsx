@@ -872,6 +872,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   onAddNew={() => setAddShellState({ level: 'processGroup', idPrefix: `${selectedCategoryId}.` })}
                   addNewLabel="+ Add new process group"
                   onRename={(id, label) => openRename('processGroup', id, label)}
+                  countBy={getProgressId}
+                  countLabel="process"
+                  countLabelPlural="processes"
+                  allSubGroupIds={[...Object.keys(APQC_PROGRESS_ID_NAMES), ...Object.keys(customProgressIdNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
                 />
               </>
             ) : !selectedProgressId ? (

@@ -30,7 +30,19 @@ const EmployeePicker: React.FC<IEmployeePickerProps> = ({ employees, value, onCh
     <ComboBox
       label="Responsible"
       placeholder="Search job titles..."
-      selectedKey={value}
+      // `text`, not `selectedKey` - a step's real responsibleJobTitle is
+      // often a richer 3-part string ("Title / Code - Dept / Region", see
+      // formatLaneLabel in SwimlaneCanvas.tsx) than anything this list of
+      // options can offer, since IEmployee only ever carries a bare job
+      // title (no region field exists in the real Employees list at all -
+      // see IEmployee.ts). selectedKey only displays text when it exactly
+      // matches an option's key, so it showed BLANK for every step with
+      // one of these richer values - not just after a drag, on every
+      // single edit-panel open, which is what actually made a drag look
+      // like it "didn't change the job title" in the box. `text` instead
+      // just displays whatever the step's current value literally is,
+      // matching how the Action/Action type fields already work.
+      text={value}
       options={options}
       autoComplete="on"
       onChange={(_e, option) => {

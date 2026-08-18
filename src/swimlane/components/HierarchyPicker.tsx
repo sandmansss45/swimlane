@@ -37,6 +37,10 @@ export interface IHierarchyPickerProps {
   // showing their own step counts.
   countBy?: (processStepId: string) => string;
   countLabel?: string; // singular noun for the count, e.g. "process group" - defaults to "step"
+  // Plural form, for nouns a trailing "s" doesn't work for (e.g. "process"
+  // -> "processes", not "processs") - defaults to countLabel + "s" when
+  // that's actually correct (e.g. "step"/"process group").
+  countLabelPlural?: string;
   // The full static universe of countBy's sub-group IDs (e.g. every known
   // Process Group ID from APQC_PROCESS_GROUP_NAMES), same reasoning as
   // allGroupIds above but one level deeper - without this, a category
@@ -53,7 +57,8 @@ export interface IHierarchyPickerProps {
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.
 const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
-  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename, countBy, countLabel, allSubGroupIds
+  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename,
+  countBy, countLabel, countLabelPlural, allSubGroupIds
 }) => {
   const groups = React.useMemo(() => {
     const byGroupId = new Map<string, { groupId: string; label: string; count: number; subIds: Set<string> }>();
@@ -94,7 +99,8 @@ const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
     <div className={styles.grid}>
       {groups.map(group => {
         const displayCount = countBy ? group.subIds.size : group.count;
-        const noun = countLabel || 'step';
+        const singular = countLabel || 'step';
+        const plural = countLabelPlural || `${singular}s`;
         return (
           <div className={styles.card} key={group.groupId} onClick={() => onSelect(group.groupId)}>
             {onRename && (
@@ -109,7 +115,7 @@ const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
             )}
             <span className={styles.code}>{group.groupId}</span>
             <h3>{group.label}</h3>
-            <p>{displayCount} {noun}{displayCount === 1 ? '' : 's'}</p>
+            <p>{displayCount} {displayCount === 1 ? singular : plural}</p>
           </div>
         );
       })}
