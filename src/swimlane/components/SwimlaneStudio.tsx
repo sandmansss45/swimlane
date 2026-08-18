@@ -13,7 +13,7 @@ import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
-import { computeInsertOrderAfter } from '../utils/columns';
+import { computeInsertOrderBefore } from '../utils/columns';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
   APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
@@ -625,10 +625,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // SwimlaneCanvas's onCreateStep) - unlike handleAddStep above, there's
   // no form to fill in first. The step is created immediately, positioned
   // right where it was dropped (columnStep's Process Step ID/group, the
-  // lane it landed in, ordered right after columnStep - see
-  // computeInsertOrderAfter), with a placeholder description, and its
-  // edit panel opens automatically right after (see autoOpenStepId) so
-  // the real details get filled in on the spot - the same "drop a shape,
+  // lane it landed in, taking over columnStep's own column and shifting
+  // it one place right - see computeInsertOrderBefore), with a
+  // placeholder description, and its edit panel opens automatically right
+  // after (see autoOpenStepId) so the real details get filled in on the
+  // spot - the same "drop a shape,
   // then type into it" flow a real diagramming tool would give you.
   // apqcTitle/processDescription/processStepName/region are inherited
   // straight from columnStep, the concrete step actually sitting at the
@@ -648,7 +649,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
       actionDescription: 'New step',
       shapeOverride,
       responsibleJobTitle: lane === 'Unassigned' ? '' : lane,
-      manualOrder: computeInsertOrderAfter(steps, columnStep.id),
+      manualOrder: computeInsertOrderBefore(steps, columnStep.id),
       dependsOn: [],
       linkedRisks: []
     })

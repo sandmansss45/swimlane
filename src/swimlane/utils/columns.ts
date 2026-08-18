@@ -96,22 +96,25 @@ export function computeDropOrder(allSteps: IProcessStep[], draggedStepId: string
  * Same fractional-midpoint technique as computeDropOrder, for a step that
  * doesn't exist yet - dropping a shape from the legend onto an existing
  * column (see SwimlaneCanvas's onCreateStep) creates a brand new step
- * positioned right after that column, rather than appending it to the
- * very end of its group the way the plain "Add a step" form does. No
- * dragged step to exclude from the group here, unlike computeDropOrder -
- * that's the only real difference between the two.
+ * that takes over that column, shifting the column it was dropped onto
+ * one place to the right - not appended after it, which would itself
+ * render one column to the right of wherever the shape was actually
+ * dropped (confirmed wrong against a real drop: the new step landed
+ * "one square to the right" of the target instead of at it). No dragged
+ * step to exclude from the group here, unlike computeDropOrder - that's
+ * the only real difference between the two.
  */
-export function computeInsertOrderAfter(allSteps: IProcessStep[], targetStepId: string): number | undefined {
+export function computeInsertOrderBefore(allSteps: IProcessStep[], targetStepId: string): number | undefined {
   const target = allSteps.find(s => s.id === targetStepId);
   if (!target) return undefined;
   const groupSteps = orderStepsForTimeline(allSteps.filter(s => s.processStepId === target.processStepId));
   const targetIdx = groupSteps.findIndex(s => s.id === targetStepId);
   if (targetIdx === -1) return undefined;
   const targetOrder = getEffectiveOrder(groupSteps[targetIdx], allSteps);
-  const nextOrder = targetIdx + 1 < groupSteps.length
-    ? getEffectiveOrder(groupSteps[targetIdx + 1], allSteps)
-    : targetOrder + 1;
-  return (targetOrder + nextOrder) / 2;
+  const prevOrder = targetIdx > 0
+    ? getEffectiveOrder(groupSteps[targetIdx - 1], allSteps)
+    : targetOrder - 1;
+  return (prevOrder + targetOrder) / 2;
 }
 
 /**
