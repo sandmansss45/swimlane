@@ -151,11 +151,11 @@ export class GraphDataService implements IDataService {
       action: get(item, 'Action'),
       actionDescription: get(item, 'Action Description'),
       responsibleJobTitle: get(item, 'ResponsibleJobTitle'),
-      // TODO-CONFIRM: "Region" doesn't exist on the real "9.6 tester" list
-      // yet - needs creating as a single line of text column, values like
-      // "UK"/"US"/"SA" (see FlowRegionTabs and the schema comment on
-      // IProcessStep.region for why this is a separate concept from the
-      // employee Department field).
+      // CONFIRMED 2026-08-18 - "Region" column created on the real "9.6
+      // tester" list (single line of text, values like "UK"/"US"/"SA") -
+      // see FlowRegionTabs and the schema comment on IProcessStep.region
+      // for why this is a separate concept from the employee Department
+      // field.
       region: get(item, 'Region') || undefined,
       shapeOverride: get(item, 'ShapeOverride'),
       // TODO-CONFIRM: guessed display names, not verified against the real
