@@ -18,7 +18,7 @@ import {
 import HierarchyPicker from './HierarchyPicker';
 import GlobalSearch from './GlobalSearch';
 import ProcessStepTabs from './ProcessStepTabs';
-import RegionFilter from './RegionFilter';
+import DepartmentFilter from './DepartmentFilter';
 import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
 import SwimlaneCanvas from './SwimlaneCanvas';
@@ -84,7 +84,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [selectedProcessGroupId, setSelectedProcessGroupId] = React.useState<string | undefined>(undefined);
   const [selectedProgressId, setSelectedProgressId] = React.useState<string | undefined>(undefined);
   const [drilledDownStepId, setDrilledDownStepId] = React.useState<string | undefined>(undefined);
-  const [selectedRegion, setSelectedRegion] = React.useState<string | undefined>(undefined);
+  const [selectedDepartment, setSelectedDepartment] = React.useState<string | undefined>(undefined);
 
   const [newStepDraft, setNewStepDraft] = React.useState<IProcessStepFormValue>(emptyStepDraft());
   const [saving, setSaving] = React.useState(false);
@@ -169,8 +169,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   React.useEffect(() => { loadAll(); }, [loadAll]);
 
-  const regions = React.useMemo(
-    () => Array.from(new Set(employees.map(e => e.region).filter((r): r is string => !!r))),
+  const departments = React.useMemo(
+    () => Array.from(new Set(employees.map(e => e.department).filter((d): d is string => !!d))),
     [employees]
   );
 
@@ -424,7 +424,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           {selectedCategoryId ? (
             <p className={styles.breadcrumb}>
               {[selectedCategoryId, selectedProcessGroupId, selectedProgressId, drilledDownStepId].filter(Boolean).join(' / ')}
-              {selectedRegion ? ` — ${selectedRegion}` : ''}
+              {selectedDepartment ? ` — ${selectedDepartment}` : ''}
             </p>
           ) : (
             <p className={styles.breadcrumb}>Finance process visualization</p>
@@ -467,7 +467,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         steps={steps}
         employees={employees}
         riskStatements={riskStatements}
-        selectedRegion={selectedRegion}
+        selectedDepartment={selectedDepartment}
         dataService={dataService}
         processStepIdPrefix={newProcessPrefix}
         knownProcessGroupIds={new Set([...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)])}
@@ -638,7 +638,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     />
                   </div>
                   <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
-                  <RegionFilter regions={regions} selectedRegion={selectedRegion} onChange={setSelectedRegion} />
+                  <DepartmentFilter departments={departments} selectedDepartment={selectedDepartment} onChange={setSelectedDepartment} />
                 </div>
 
                 <SwimlaneCanvas
@@ -649,7 +649,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   riskStatements={riskStatements}
                   drilledDownStepId={drilledDownStepId}
                   employees={employees}
-                  selectedRegion={selectedRegion}
+                  selectedDepartment={selectedDepartment}
                   onLabelEdge={handleLabelEdge}
                   onEditStep={handleEditStep}
                   onDeleteStep={handleDeleteStep}
@@ -662,7 +662,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     value={newStepDraft}
                     onChange={setNewStepDraft}
                     employees={employees}
-                    selectedRegion={selectedRegion}
+                    selectedDepartment={selectedDepartment}
                     dependsOnOptions={addStepDependsOnOptions}
                     riskStatements={riskStatements}
                   />

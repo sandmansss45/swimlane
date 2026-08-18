@@ -16,7 +16,7 @@ export interface INewProcessModalProps {
   steps: IProcessStep[];
   employees: IEmployee[];
   riskStatements: IRiskStatement[];
-  selectedRegion: string | undefined;
+  selectedDepartment: string | undefined;
   dataService: IDataService;
   // Wherever the user opened this from (a category or process group
   // already drilled into) - prefills the Process Step ID so continuing
@@ -49,7 +49,7 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 // new area needs (Process Step ID plus the two labels nothing else can
 // infer) and otherwise reuses the same ProcessStepForm as everywhere else.
 const NewProcessModal: React.FC<INewProcessModalProps> = ({
-  isOpen, steps, employees, riskStatements, selectedRegion, dataService, processStepIdPrefix, knownProcessGroupIds,
+  isOpen, steps, employees, riskStatements, selectedDepartment, dataService, processStepIdPrefix, knownProcessGroupIds,
   onDismiss, onCreated, onGroupLabelCreated
 }) => {
   const [processStepId, setProcessStepId] = React.useState('');
@@ -179,7 +179,7 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
         value={stepValue}
         onChange={setStepValue}
         employees={employees}
-        selectedRegion={selectedRegion}
+        selectedDepartment={selectedDepartment}
         dependsOnOptions={dependsOnOptions}
         riskStatements={riskStatements}
       />

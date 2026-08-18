@@ -1,14 +1,14 @@
-// Region values as they should appear in the region filter (All / South
-// Africa / UK / US). Kept as plain strings rather than a closed union
-// since the real list's actual values aren't confirmed yet - narrowing
-// this later is a one-line change once we know.
+// Department values as they should appear in the department filter (All /
+// 3101 - Security and Safety / 6002 - Finance / ...). Kept as plain
+// strings rather than a closed union since the real list's actual values
+// aren't a fixed set.
 // CONFIRMED 2026-08-17: the real "QLE Existing Organisation" list has no
-// dedicated region column - this is sourced from Department instead (e.g.
-// "3101 - Security and Safety"), by explicit user choice. Kept the field
-// name "region" rather than renaming it throughout the app, since nothing
-// user-facing ever renders the literal word "region" - RegionFilter just
-// shows "All" plus whatever distinct values are actually present.
-export type Region = string;
+// dedicated region/geography column at all - Department (e.g. "3101 -
+// Security and Safety") is the only grouping field available, by explicit
+// user choice. This was originally modeled as "region" throughout the app,
+// which read as actual geography and confused real users looking at real
+// department codes - renamed to match what the data actually is.
+export type Department = string;
 
 // Lanes are always job titles, never a person's name - confirmed design
 // rule, and by explicit user choice this list's real employee names
@@ -19,5 +19,5 @@ export type Region = string;
 export interface IEmployee {
   id: string;
   jobTitle: string;
-  region?: Region;
+  department?: Department;
 }

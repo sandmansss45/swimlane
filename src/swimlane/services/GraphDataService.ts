@@ -16,9 +16,8 @@ import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConf
 const PROCESS_LIST_TITLE = '9.6 tester';
 // CONFIRMED 2026-08-17 - real list on the site, columns Display name,
 // Department, Job title, Reports to, Start date, Hobbies. Only Job title
-// and Department (as the region-equivalent grouping) are used - see the
-// Region/name comments in models/IEmployee.ts for why Display name isn't
-// mapped at all.
+// and Department are used - see the comments in models/IEmployee.ts for
+// why Display name isn't mapped at all.
 const EMPLOYEES_LIST_TITLE = 'QLE Existing Organisation';
 // CONFIRMED 2026-08-17 against a live screenshot of the real list -
 // columns Risk ID, Category, Risk Statement, Root Cause, Likelihood (P),
@@ -182,7 +181,7 @@ export class GraphDataService implements IDataService {
     return items.map((item): IEmployee => ({
       id: item.id,
       jobTitle: get(item, 'Job title'),
-      region: get(item, 'Department') || undefined
+      department: get(item, 'Department') || undefined
     }));
   }
 

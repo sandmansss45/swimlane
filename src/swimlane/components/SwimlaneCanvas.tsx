@@ -25,7 +25,7 @@ export interface ISwimlaneCanvasProps {
   riskStatements: IRiskStatement[]; // drives each shape's traffic-light fill when linked to a step
   drilledDownStepId: string | undefined;
   employees: IEmployee[];
-  selectedRegion: string | undefined;
+  selectedDepartment: string | undefined;
   onLabelEdge: (toRowId: string, token: string, label: string) => void;
   onEditStep: (step: IProcessStep) => void;
   onDeleteStep: (stepId: string) => void;
@@ -66,7 +66,7 @@ function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
 // each box actually faces the other node, so lines don't cut diagonally
 // through unrelated boxes between them).
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, selectedRegion, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
+  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, selectedDepartment, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -691,7 +691,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                 value={editDraft}
                 onChange={setEditDraft}
                 employees={employees}
-                selectedRegion={selectedRegion}
+                selectedDepartment={selectedDepartment}
                 dependsOnOptions={dependsOnOptions}
                 riskStatements={riskStatements}
               />

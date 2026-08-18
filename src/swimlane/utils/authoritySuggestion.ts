@@ -1,9 +1,9 @@
 import { AuthorityTier } from '../models/IProcessStep';
 
 /**
- * Confirmed rule: job-title suggestions respect the active region filter
- * and differentiate by authority tier (Execute -> analyst, Endorse ->
- * manager, Approve -> senior/chief).
+ * Confirmed rule: job-title suggestions respect the active department
+ * filter and differentiate by authority tier (Execute -> analyst, Endorse
+ * -> manager, Approve -> senior/chief).
  *
  * IMPORTANT: this is a keyword heuristic, not a real AI call. An SPFx web
  * part runs entirely in the browser, so it can't safely hold an API key

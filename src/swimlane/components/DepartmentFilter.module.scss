@@ -1,10 +1,8 @@
 // Mirrors ProcessStepTabs' pill styling so the two filter rows read as one
 // consistent pair instead of two different tab languages stacked on top of
-// each other (this one used to be a bare Fluent Pivot, with its own
-// underline-link look completely unrelated to the pills above it). Blue
-// active fill instead of navy - close enough to feel like the same family,
-// different enough that it's obvious at a glance which row you're looking
-// at when jumping between them.
+// each other. Blue active fill instead of navy - close enough to feel like
+// the same family, different enough that it's obvious at a glance which
+// row you're looking at when jumping between them.
 .row {
   display: flex;
   align-items: center;

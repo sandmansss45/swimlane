@@ -6,22 +6,22 @@ export interface IEmployeesListProps {
   employees: IEmployee[];
 }
 
-// No region/department filter here (deliberately removed) - the real
-// Employees list has dozens of granular departments (e.g. "3602 - Quantum
+// No department filter here (deliberately removed) - the real Employees
+// list has dozens of granular departments (e.g. "3602 - Quantum
 // Enrichment"), which as filter tabs overflowed the header entirely and
-// made the tab bar unusable. The swimlane's own region filter (narrowing
-// the Responsible picker for one step) is unaffected - this only touches
-// the standalone directory view.
+// made the tab bar unusable. The swimlane's own department filter
+// (narrowing the Responsible picker for one step) is unaffected - this
+// only touches the standalone directory view.
 const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
   const sorted = React.useMemo(() => {
     // Employee names aren't pulled into the app at all (explicit user
     // choice - see models/IEmployee.ts), so several people holding the
     // same title in the same department would otherwise render as
     // identical-looking duplicate rows. Dedupe down to one row per
-    // distinct title+region pair instead.
+    // distinct title+department pair instead.
     const seen = new Set<string>();
     const distinct = employees.filter(e => {
-      const key = `${e.jobTitle}|${e.region || ''}`;
+      const key = `${e.jobTitle}|${e.department || ''}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -43,14 +43,14 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
             <thead>
               <tr>
                 <th>Job Title</th>
-                <th>Region</th>
+                <th>Department</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(e => (
                 <tr key={e.id}>
                   <td>{e.jobTitle || <span className={styles.muted}>—</span>}</td>
-                  <td>{e.region || <span className={styles.muted}>—</span>}</td>
+                  <td>{e.department || <span className={styles.muted}>—</span>}</td>
                 </tr>
               ))}
             </tbody>
