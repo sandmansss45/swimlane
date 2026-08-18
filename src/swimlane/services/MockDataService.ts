@@ -6,8 +6,9 @@ import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 
-// Real accounts-payable process data from the "9.6 tester" SharePoint list
-// (QLE UK) - used deliberately instead of placeholder data, at the user's
+// Real accounts-payable process data from the real Master File SharePoint
+// list (QLE UK; called "9.6 tester" until 2026-08-19) - used deliberately
+// instead of placeholder data, at the user's
 // explicit request, so "Use mock data" previews the same real flow while
 // SharePoint sign-in is still being debugged. Row order matters: DependsOn
 // tokens (e.g. "9.6.1.1-7") are resolved by row number (header = row 1),

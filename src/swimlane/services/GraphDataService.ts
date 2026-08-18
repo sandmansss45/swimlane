@@ -10,11 +10,14 @@ import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
 // CONFIRMED 2026-08-13 against the real "Swimlane Studio" site - a list
-// named "9.6 tester" exists there with exactly the expected columns
-// (APQC Title, Process Description, Process Step ID, Process Step Name,
-// Action Type, Action, Action Description, ResponsibleJobTitle,
-// ShapeOverride, DependsOn), already populated with real data.
-const PROCESS_LIST_TITLE = '9.6 tester';
+// with exactly the expected columns (APQC Title, Process Description,
+// Process Step ID, Process Step Name, Action Type, Action, Action
+// Description, ResponsibleJobTitle, ShapeOverride, DependsOn), already
+// populated with real data. Renamed from "9.6 tester" to "Master File"
+// 2026-08-19 - list resolution is by exact display name (see
+// _resolveListId below), so this constant has to be kept in lockstep
+// with whatever the real list is actually called on the site right now.
+const PROCESS_LIST_TITLE = 'Master File';
 // CONFIRMED 2026-08-17 - real list on the site, columns Display name,
 // Department, Job title, Reports to, Start date, Hobbies. Only Job title
 // and Department are used - see the comments in models/IEmployee.ts for
@@ -207,20 +210,15 @@ export class GraphDataService implements IDataService {
         return isNaN(parsed) ? undefined : parsed;
       })(),
       dependsOn: parseDependsOn(get(item, 'DependsOn')),
-      // TODO-CONFIRM: "Linked Risks" doesn't exist on the real "9.6
-      // tester" list yet - needs creating as a single line of text column,
-      // same as DependsOn - see the schema comment on
-      // IProcessStep.linkedRisks for the "riskId:severity" format it
-      // expects.
+      // TODO-CONFIRM: "Linked Risks" doesn't exist on the real Master File
+      // list yet - needs creating as a single line of text column, same as
+      // DependsOn - see the schema comment on IProcessStep.linkedRisks for
+      // the "riskId:severity" format it expects.
       linkedRisks: parseLinkedRisks(get(item, 'Linked Risks')),
-      // TODO-CONFIRM: "Edge Labels" doesn't exist on the real "9.6 tester"
-      // list yet either - needs creating as a single line of text column,
-      // same as DependsOn/Linked Risks - see parseEdgeLabels in
-      // IProcessStep.ts for the "token:label" format it expects. Until
-      // that column exists, a decision's Yes/No branch labels only last
-      // for the current browser session - they're never actually blank on
-      // screen (see handleLabelEdge's optimistic local update), just not
-      // yet durable across a reload.
+      // CONFIRMED 2026-08-19 - "Edge Labels" column created on the real
+      // Master File list (single line of text), same format as DependsOn/
+      // Linked Risks - see parseEdgeLabels in IProcessStep.ts for the
+      // "token:label" format it expects.
       edgeLabels: (() => {
         const parsed = parseEdgeLabels(get(item, 'Edge Labels'));
         return Object.keys(parsed).length > 0 ? parsed : undefined;
