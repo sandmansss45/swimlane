@@ -53,6 +53,21 @@ export interface IProcessStep {
   // still drives the shape's fill color on its own. This instead drives a
   // small corner marker (see ShapeNode) so the two don't visually collide.
   linkedRisks?: IRiskLink[];
+  // Who created/last touched this step, and when - confirmed 2026-08-19,
+  // part of the same audit-trail thread as swimlane locking
+  // (IProgressIdLock). In real (Graph) usage these are read straight from
+  // SharePoint's own native, system-managed item metadata (createdBy/
+  // lastModifiedBy/createdDateTime/lastModifiedDateTime) - the app never
+  // writes them as a custom column, since SharePoint already tracks this
+  // accurately for every list item for free. In mock mode, and as an
+  // optimistic same-session stamp in real mode (before the next reload
+  // re-syncs with SharePoint's true values), the data services set these
+  // themselves from whoever's actually signed in - see
+  // MockDataService/GraphDataService constructors.
+  createdBy?: string;
+  createdAt?: string; // ISO date string
+  modifiedBy?: string;
+  modifiedAt?: string; // ISO date string
 }
 
 /**

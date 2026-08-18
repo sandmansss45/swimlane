@@ -135,6 +135,15 @@ export class MockDataService implements IDataService {
   // that on first use either.
   private _nextStepId = this._steps.length + 1;
 
+  // Who to stamp new/edited steps' createdBy/modifiedBy with - see the
+  // schema comment on IProcessStep for why this mirrors what
+  // GraphDataService does for real usage instead of leaving these blank.
+  private _currentUserName: string;
+
+  constructor(currentUserName: string) {
+    this._currentUserName = currentUserName;
+  }
+
   public getProcessSteps(): Promise<IProcessStep[]> {
     return Promise.resolve(this._steps.slice());
   }
@@ -208,14 +217,26 @@ export class MockDataService implements IDataService {
   }
 
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
-    const created: IProcessStep = { ...step, id: `mock-${this._nextStepId++}` };
+    const now = new Date().toISOString();
+    const created: IProcessStep = {
+      ...step,
+      id: `mock-${this._nextStepId++}`,
+      createdBy: this._currentUserName, createdAt: now,
+      modifiedBy: this._currentUserName, modifiedAt: now
+    };
     this._steps.push(created);
     return Promise.resolve(created);
   }
 
   public addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
+    const now = new Date().toISOString();
     const created = steps.map(step => {
-      const item: IProcessStep = { ...step, id: `mock-${this._nextStepId++}` };
+      const item: IProcessStep = {
+        ...step,
+        id: `mock-${this._nextStepId++}`,
+        createdBy: this._currentUserName, createdAt: now,
+        modifiedBy: this._currentUserName, modifiedAt: now
+      };
       this._steps.push(item);
       return item;
     });

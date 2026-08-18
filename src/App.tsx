@@ -14,6 +14,11 @@ interface IAppProps {
   msalInstance: IPublicClientApplication;
 }
 
+// No real signed-in session to read a name from in mock mode - a fixed
+// stand-in so createdBy/modifiedBy stamps (see MockDataService) still
+// have something meaningful to show instead of blank/undefined.
+const MOCK_USER_NAME = 'Mock User';
+
 // Sign-in gate: real usage talks to the live SharePoint lists via Graph
 // and needs a signed-in account, but there's no reason local development
 // or a quick look at the UI should be blocked on the Entra app
@@ -21,14 +26,15 @@ interface IAppProps {
 // renders against the same fixture data used during the SPFx build.
 const SignedInApp: React.FC = () => {
   const { instance } = useMsal();
-  const dataService = useMemo(() => new GraphDataService(instance), [instance]);
   const account = instance.getActiveAccount();
+  const currentUserName = account?.name || account?.username || 'Unknown user';
+  const dataService = useMemo(() => new GraphDataService(instance, currentUserName), [instance, currentUserName]);
   return (
     <SwimlaneStudio
       dataService={dataService}
       signOutLabel="Sign out"
       onSignOut={() => instance.logoutRedirect()}
-      currentUserName={account?.name || account?.username || 'Unknown user'}
+      currentUserName={currentUserName}
     />
   );
 };
@@ -102,7 +108,7 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
 
 function App({ msalInstance }: IAppProps) {
   const [useMock, setUseMock] = useState(false);
-  const mockService = useMemo(() => new MockDataService(), []);
+  const mockService = useMemo(() => new MockDataService(MOCK_USER_NAME), []);
 
   return (
     <ThemeProvider theme={swimlaneTheme}>
@@ -111,7 +117,7 @@ function App({ msalInstance }: IAppProps) {
           dataService={mockService}
           signOutLabel="Back to sign-in"
           onSignOut={() => setUseMock(false)}
-          currentUserName="Mock User"
+          currentUserName={MOCK_USER_NAME}
         />
       ) : (
         <MsalProvider instance={msalInstance}>

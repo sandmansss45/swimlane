@@ -246,6 +246,12 @@
   color: var(--risk-medium);
 }
 
+.auditNotice {
+  margin: 10px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
 .editForm {
   display: flex;
   flex-direction: column;

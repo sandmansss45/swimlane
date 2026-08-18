@@ -48,8 +48,21 @@ const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
 const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
 
 type FieldMap = { [displayName: string]: string };
+// createdBy/lastModifiedBy/createdDateTime/lastModifiedDateTime are
+// SharePoint's own native, system-managed item metadata - always present
+// on a real list item, distinct from the custom `fields` object. Never
+// written by this app (see the schema comment on IProcessStep.createdBy)
+// - only ever read.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type GraphItem = { id: string; fields: Record<string, any> };
+type GraphItem = {
+  id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fields: Record<string, any>;
+  createdBy?: { user?: { displayName?: string; email?: string } };
+  lastModifiedBy?: { user?: { displayName?: string; email?: string } };
+  createdDateTime?: string;
+  lastModifiedDateTime?: string;
+};
 
 export class GraphDataService implements IDataService {
   private _graph: GraphClient;
@@ -57,8 +70,18 @@ export class GraphDataService implements IDataService {
   private _listIdCache = new Map<string, string>();
   private _fieldMapCache = new Map<string, FieldMap>();
 
-  constructor(msal: IPublicClientApplication) {
+  // Only used for the same-session OPTIMISTIC stamp on newly-created steps
+  // (see addProcessStep) - never written to SharePoint as a real column,
+  // since createdBy/lastModifiedBy above are already accurate, system-
+  // managed native fields. Purely so a step someone just added shows
+  // "created by [them]" immediately, without waiting for the next reload
+  // to re-fetch the true native value SharePoint independently records
+  // anyway.
+  private _currentUserName: string;
+
+  constructor(msal: IPublicClientApplication, currentUserName: string) {
     this._graph = new GraphClient(msal);
+    this._currentUserName = currentUserName;
   }
 
   private async _resolveSiteId(): Promise<string> {
@@ -129,6 +152,14 @@ export class GraphDataService implements IDataService {
     return value === null || value === undefined ? '' : String(value);
   }
 
+  // Graph's identitySet shape for createdBy/lastModifiedBy - falls back to
+  // email when displayName isn't populated (rare, but seen for some
+  // service-principal-driven writes), and to '' (never shown) rather than
+  // throwing when neither is present.
+  private static _identityName(identity: { user?: { displayName?: string; email?: string } } | undefined): string {
+    return identity?.user?.displayName || identity?.user?.email || '';
+  }
+
   private async _getItems(listTitle: string): Promise<GraphItem[]> {
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(listTitle);
@@ -181,7 +212,13 @@ export class GraphDataService implements IDataService {
       // same as DependsOn - see the schema comment on
       // IProcessStep.linkedRisks for the "riskId:severity" format it
       // expects.
-      linkedRisks: parseLinkedRisks(get(item, 'Linked Risks'))
+      linkedRisks: parseLinkedRisks(get(item, 'Linked Risks')),
+      // Native SharePoint item metadata, not a custom column - see the
+      // GraphItem type comment and IProcessStep.createdBy for why.
+      createdBy: GraphDataService._identityName(item.createdBy),
+      createdAt: item.createdDateTime,
+      modifiedBy: GraphDataService._identityName(item.lastModifiedBy),
+      modifiedAt: item.lastModifiedDateTime
     }));
   }
 
@@ -385,7 +422,12 @@ export class GraphDataService implements IDataService {
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
-    return { ...step, id: created.id };
+    const now = new Date().toISOString();
+    return {
+      ...step, id: created.id,
+      createdBy: this._currentUserName, createdAt: now,
+      modifiedBy: this._currentUserName, modifiedAt: now
+    };
   }
 
   public async addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {

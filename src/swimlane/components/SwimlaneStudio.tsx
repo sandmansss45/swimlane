@@ -22,6 +22,7 @@ import ProcessStepTabs from './ProcessStepTabs';
 import FlowRegionTabs from './FlowRegionTabs';
 import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
+import AuditView from './AuditView';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
@@ -30,7 +31,7 @@ import AddStepSectionModal from './AddStepSectionModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
-type MainTab = 'flows' | 'employees' | 'risks';
+type MainTab = 'flows' | 'employees' | 'risks' | 'audit';
 
 // Single-level undo (the last destructive action only, not a full stack) -
 // covers the three actions that lose data outright: deleting a step,
@@ -308,11 +309,24 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     dataService.updateProcessStep(updated).catch((err: Error) => setError(err.message));
   };
 
+  // updateProcessStep returns void (unlike addProcessStep, which hands
+  // back a freshly-stamped object) - GraphDataService can't know the true
+  // native lastModifiedBy/lastModifiedDateTime until the next reload
+  // re-fetches it, so the caller has to stamp its own optimistic
+  // modifiedBy/modifiedAt here instead. Never touches createdBy/createdAt
+  // - only who/when CREATED a step changes that, not an edit.
+  const withModifiedStamp = (step: IProcessStep): IProcessStep => ({
+    ...step,
+    modifiedBy: currentUserName,
+    modifiedAt: new Date().toISOString()
+  });
+
   const handleEditStep = (updated: IProcessStep): void => {
     if (activeLock) return; // defense in depth - SwimlaneCanvas's isLocked prop already keeps its Save button from calling this
     const previous = steps.find(s => s.id === updated.id);
-    setSteps(prev => prev.map(s => (s.id === updated.id ? updated : s)));
-    dataService.updateProcessStep(updated).catch((err: Error) => setError(err.message));
+    const stamped = withModifiedStamp(updated);
+    setSteps(prev => prev.map(s => (s.id === stamped.id ? stamped : s)));
+    dataService.updateProcessStep(stamped).catch((err: Error) => setError(err.message));
     if (previous) setLastAction({ type: 'edit', previous });
   };
 
@@ -343,9 +357,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const handleUndo = (): void => {
     if (!lastAction) return;
     if (lastAction.type === 'edit') {
-      const { previous } = lastAction;
-      setSteps(prev => prev.map(s => (s.id === previous.id ? previous : s)));
-      dataService.updateProcessStep(previous).catch((err: Error) => setError(err.message));
+      // Undoing IS itself a real modification event (someone just acted,
+      // right now) even though the CONTENT reverts to old values - so this
+      // gets a fresh modifiedBy/modifiedAt too, same as any other edit,
+      // rather than silently reverting the audit trail along with the
+      // content.
+      const stamped = withModifiedStamp(lastAction.previous);
+      setSteps(prev => prev.map(s => (s.id === stamped.id ? stamped : s)));
+      dataService.updateProcessStep(stamped).catch((err: Error) => setError(err.message));
     } else if (lastAction.type === 'delete') {
       const { id: _id, ...rest } = lastAction.step;
       dataService.addProcessStep(rest)
@@ -742,18 +761,21 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           selectedKey={activeTab}
           onLinkClick={(item?: PivotItem) => {
             const key = item?.props.itemKey;
-            setActiveTab(key === 'employees' || key === 'risks' ? key : 'flows');
+            setActiveTab(key === 'employees' || key === 'risks' || key === 'audit' ? key : 'flows');
           }}
         >
           <PivotItem headerText="Process Flows" itemKey="flows" />
           <PivotItem headerText="Employees" itemKey="employees" />
           <PivotItem headerText="Risk Register" itemKey="risks" />
+          <PivotItem headerText="Audit" itemKey="audit" />
         </Pivot>
 
         {activeTab === 'employees' ? (
           <EmployeesList employees={employees} />
         ) : activeTab === 'risks' ? (
           <RiskRegisterList riskStatements={riskStatements} steps={steps} />
+        ) : activeTab === 'audit' ? (
+          <AuditView steps={steps} progressIdLocks={progressIdLocks} />
         ) : (
           <>
             {!selectedCategoryId && (

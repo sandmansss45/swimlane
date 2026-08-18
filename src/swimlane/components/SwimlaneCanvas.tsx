@@ -693,6 +693,18 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
 
             {isLocked && <p className={styles.lockedNotice}>This swimlane is locked - viewing only.</p>}
 
+            {(() => {
+              const original = selectedNodeId ? stepsById.get(selectedNodeId) : undefined;
+              if (!original || (!original.createdBy && !original.modifiedBy)) return null;
+              return (
+                <p className={styles.auditNotice}>
+                  {original.createdBy && `Created by ${original.createdBy}${original.createdAt ? ` on ${new Date(original.createdAt).toLocaleString()}` : ''}`}
+                  {original.createdBy && original.modifiedBy && ' · '}
+                  {original.modifiedBy && `Last modified by ${original.modifiedBy}${original.modifiedAt ? ` on ${new Date(original.modifiedAt).toLocaleString()}` : ''}`}
+                </p>
+              );
+            })()}
+
             <div className={styles.editForm}>
               <ProcessStepForm
                 value={editDraft}
