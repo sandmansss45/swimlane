@@ -12,17 +12,36 @@ export function getProcessGroupId(processStepId: string): string {
   return (processStepId || '').split('.').slice(0, 2).join('.');
 }
 
-// Only the categories, process groups and processes that actually relate
-// to this organization - transcribed directly from the user's own
+// Two different confidence levels living in the same table - kept
+// distinct here rather than pretending they're equivalent:
+//
+// 1, 7, 8, 9, 11, 12, 13: transcribed directly from the user's own
 // reference sheet (Category/Process Group/Process, PDF text extracted
-// verbatim, not OCR'd off a screenshot), covering Categories 1, 7, 8, 9,
-// 11, 12 and 13. Category 10 isn't in their reference sheet either, so
-// it's deliberately left out alongside 2-6.
+// verbatim, not OCR'd off a screenshot) - see APQC_PROCESS_GROUP_NAMES/
+// APQC_PROGRESS_ID_NAMES below for the full verified breakdown of these.
+//
+// 2, 3, 4, 5, 6, 10: added 2026-08-19 from the standard published APQC
+// Cross-Industry Process Classification Framework, NOT from a QLE-
+// specific reference document the way the others were - there isn't one
+// for these categories yet. Category-level names only; deliberately no
+// Process Group/Progress ID entries added underneath them, since
+// fabricating that level of sub-classification from general knowledge
+// risks presenting made-up detail as if it were verified reference data
+// (exactly the kind of thing that already caused a real bug once - see
+// the precedence-fix commit from 2026-08-18). Build these out for real
+// via "+ Add new process group"/"+ Add new progress ID" as needed, or
+// swap this comment out once a real reference sheet exists for them.
 export const APQC_CATEGORY_NAMES: Record<string, string> = {
   '1': 'Develop Vision and Strategy',
+  '2': 'Develop and Manage Products and Services',
+  '3': 'Market and Sell Products and Services',
+  '4': 'Deliver Physical Products',
+  '5': 'Deliver Services',
+  '6': 'Manage Customer Service',
   '7': 'Develop and Manage Human Resources',
   '8': 'Manage Information Technology (IT)',
   '9': 'Manage Financial Resources',
+  '10': 'Acquire, Construct, and Manage Assets',
   '11': 'Manage Enterprise Risk, Compliance, Remediation, and Resiliency',
   '12': 'Manage External Relationships',
   '13': 'Develop and Manage Business Capabilities'
