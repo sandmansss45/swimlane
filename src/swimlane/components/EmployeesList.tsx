@@ -13,6 +13,8 @@ export interface IEmployeesListProps {
 // (narrowing the Responsible picker for one step) is unaffected - this
 // only touches the standalone directory view.
 const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
+  const [query, setQuery] = React.useState('');
+
   const sorted = React.useMemo(() => {
     // Employee names aren't pulled into the app at all (explicit user
     // choice - see models/IEmployee.ts), so several people holding the
@@ -29,14 +31,33 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
     return distinct.sort((a, b) => a.jobTitle.localeCompare(b.jobTitle));
   }, [employees]);
 
+  // A plain scroll-and-squint list stopped being enough once the real
+  // directory grew past a couple dozen distinct job titles - matches
+  // either column so "quantum" finds both a job title and a department
+  // without needing to know which one the word lives in.
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter(e => e.jobTitle.toLowerCase().includes(q) || (e.department || '').toLowerCase().includes(q));
+  }, [sorted, query]);
+
   return (
     <div className={styles.card}>
       <div className={styles.toolbar}>
         <h3 className={styles.title}>Employees ({sorted.length})</h3>
+        <input
+          className={styles.searchInput}
+          type="text"
+          placeholder="Search job title or department..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
       </div>
 
       {sorted.length === 0 ? (
         <p className={styles.empty}>No employees loaded yet.</p>
+      ) : filtered.length === 0 ? (
+        <p className={styles.empty}>No job titles or departments match "{query}".</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -47,7 +68,7 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(e => (
+              {filtered.map(e => (
                 <tr key={e.id}>
                   <td>{e.jobTitle || <span className={styles.muted}>—</span>}</td>
                   <td>{e.department || <span className={styles.muted}>—</span>}</td>

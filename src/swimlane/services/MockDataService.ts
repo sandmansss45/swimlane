@@ -5,6 +5,7 @@ import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
+import { ISwimlaneComment } from '../models/ISwimlaneComment';
 
 // Real accounts-payable process data from the real Master File SharePoint
 // list (QLE UK; called "9.6 tester" until 2026-08-19) - used deliberately
@@ -128,6 +129,8 @@ export class MockDataService implements IDataService {
   // Append-only audit trail - see IProgressIdLock. Starts empty; nothing
   // is locked until someone explicitly locks it.
   private _progressIdLocks: IProgressIdLock[] = [];
+  // Append-only feedback log - see ISwimlaneComment. Starts empty.
+  private _swimlaneComments: ISwimlaneComment[] = [];
   // A monotonic counter, not `_steps.length + 1` - length-based IDs looked
   // fine until the first delete-then-add in the same session (e.g. undoing
   // a delete): the array shrinks, so the next "length + 1" ID collides
@@ -215,6 +218,20 @@ export class MockDataService implements IDataService {
       };
     }
     return Promise.resolve();
+  }
+
+  public getSwimlaneComments(): Promise<ISwimlaneComment[]> {
+    return Promise.resolve(this._swimlaneComments.slice());
+  }
+
+  public addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
+    const created: ISwimlaneComment = {
+      id: `mock-comment-${this._swimlaneComments.length + 1}`,
+      progressId, region, author, comment,
+      postedAt: new Date().toISOString()
+    };
+    this._swimlaneComments.push(created);
+    return Promise.resolve(created);
   }
 
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {

@@ -6,6 +6,7 @@ import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../model
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
+import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -49,6 +50,13 @@ const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
 // for why this is never edited in place except to fill in the three
 // Unlocked* columns once, on unlock.
 const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
+// TODO-CONFIRM: needs creating on the real site, same shape as "Progress
+// ID locks" above - the built-in Title column (unused - left blank) plus
+// single line of text columns "Progress ID", "Region", "Author",
+// "Comment", "Posted At". Append-only feedback log - see
+// models/ISwimlaneComment - never edited or deleted once posted, so
+// there's no update/delete method here at all, unlike the locks list.
+const SWIMLANE_COMMENTS_LIST_TITLE = 'Swimlane comments';
 
 type FieldMap = { [displayName: string]: string };
 // createdBy/lastModifiedBy/createdDateTime/lastModifiedDateTime are
@@ -404,6 +412,42 @@ export class GraphDataService implements IDataService {
     set('Unlock Reason', reason);
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, fields);
+  }
+
+  public async getSwimlaneComments(): Promise<ISwimlaneComment[]> {
+    const fieldMap = await this._resolveFieldMap(SWIMLANE_COMMENTS_LIST_TITLE);
+    const items = await this._getItems(SWIMLANE_COMMENTS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): ISwimlaneComment => ({
+      id: item.id,
+      progressId: get(item, 'Progress ID'),
+      region: get(item, 'Region'),
+      author: get(item, 'Author'),
+      comment: get(item, 'Comment'),
+      postedAt: get(item, 'Posted At')
+    }));
+  }
+
+  public async addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
+    const fieldMap = await this._resolveFieldMap(SWIMLANE_COMMENTS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(SWIMLANE_COMMENTS_LIST_TITLE);
+    const postedAt = new Date().toISOString();
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Progress ID', progressId);
+    set('Region', region);
+    set('Author', author);
+    set('Comment', comment);
+    set('Posted At', postedAt);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, progressId, region, author, comment, postedAt };
   }
 
   public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {

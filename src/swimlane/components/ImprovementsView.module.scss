@@ -6,41 +6,10 @@
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
 .title {
-  margin: 0;
+  margin: 0 0 14px;
   font-size: var(--fs-lg);
   color: var(--navy);
-}
-
-.searchInput {
-  width: 280px;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: var(--fs-base);
-
-  &::placeholder {
-    color: var(--text-secondary);
-  }
-
-  &:focus {
-    outline: none;
-    border-color: var(--blue);
-  }
 }
 
 .empty {
@@ -52,7 +21,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: auto;
-  max-height: 60vh;
+  max-height: 70vh;
 }
 
 .table {
@@ -75,6 +44,8 @@
     padding: 9px 14px;
     border-bottom: 1px solid var(--border);
     color: var(--text);
+    vertical-align: top;
+    white-space: nowrap;
   }
 
   tr:last-child td {
@@ -84,6 +55,16 @@
   tr:hover td {
     background: var(--blue-light);
   }
+}
+
+// Free text, unlike every other column here - unlike the others, wrapping
+// (not truncating to one line) is what actually keeps a real comment
+// readable, so this is the one cell that opts back out of the table's
+// default nowrap.
+.commentCell {
+  white-space: normal;
+  min-width: 280px;
+  max-width: 480px;
 }
 
 .muted {

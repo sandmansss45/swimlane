@@ -4,6 +4,7 @@ import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
+import { ISwimlaneComment } from '../models/ISwimlaneComment';
 
 export interface IDataService {
   getProcessSteps(): Promise<IProcessStep[]>;
@@ -26,6 +27,10 @@ export interface IDataService {
   // the one and only mutation this list ever gets, and even then only
   // ever fills in previously-blank fields, never overwrites what's there.
   unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void>;
+  getSwimlaneComments(): Promise<ISwimlaneComment[]>;
+  // Always creates a NEW record (see ISwimlaneComment - append-only,
+  // never edited or deleted once posted).
+  addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**
    * Adds several steps in one call, in array order - used by CSV import.

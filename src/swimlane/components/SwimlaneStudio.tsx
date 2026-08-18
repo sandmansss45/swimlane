@@ -11,6 +11,7 @@ import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
+import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
@@ -23,6 +24,7 @@ import FlowRegionTabs from './FlowRegionTabs';
 import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
 import AuditView from './AuditView';
+import ImprovementsView from './ImprovementsView';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
@@ -31,7 +33,7 @@ import AddStepSectionModal from './AddStepSectionModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
-type MainTab = 'flows' | 'employees' | 'risks' | 'audit';
+type MainTab = 'flows' | 'employees' | 'risks' | 'audit' | 'improvements';
 
 // Single-level undo (the last destructive action only, not a full stack) -
 // covers the three actions that lose data outright: deleting a step,
@@ -76,6 +78,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
   const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
   const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
+  const [swimlaneComments, setSwimlaneComments] = React.useState<ISwimlaneComment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
@@ -117,6 +120,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // they're never open at the same time.
   const [lockDialogMode, setLockDialogMode] = React.useState<'lock' | 'unlock' | undefined>(undefined);
   const [lockReasonValue, setLockReasonValue] = React.useState('');
+  // "Leave a comment" dialog - never gated by activeLock (see
+  // ISwimlaneComment), so it's a plain independent boolean rather than
+  // sharing lockDialogMode's 'lock' | 'unlock' pattern.
+  const [commentDialogOpen, setCommentDialogOpen] = React.useState(false);
+  const [commentValue, setCommentValue] = React.useState('');
   const [lastAction, setLastAction] = React.useState<UndoAction | undefined>(undefined);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
@@ -143,9 +151,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setError(undefined);
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
-      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks()
+      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks(),
+      dataService.getSwimlaneComments()
     ])
-      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult, locksResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -188,6 +197,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         // system, but worth knowing this is fail-open, not fail-closed.
         if (locksResult.status === 'fulfilled') {
           setProgressIdLocks(locksResult.value);
+        }
+
+        // Same fail-open treatment as locks/labels above - a missing
+        // "Swimlane comments" list means comments are treated as "none
+        // posted yet" rather than blocking the app.
+        if (commentsResult.status === 'fulfilled') {
+          setSwimlaneComments(commentsResult.value);
         }
 
         setError(errors.length > 0 ? errors.join(' | ') : undefined);
@@ -474,6 +490,19 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setLockReasonValue('');
   };
 
+  // Never gated by activeLock - see ISwimlaneComment for why leaving a
+  // comment is deliberately independent of the lock/edit flow entirely.
+  const handleCommentConfirm = (): void => {
+    const text = commentValue.trim();
+    if (!selectedProgressId || !text) return;
+    const region = selectedFlowRegion || '';
+    dataService.addSwimlaneComment(selectedProgressId, region, currentUserName, text)
+      .then(created => setSwimlaneComments(prev => [...prev, created]))
+      .catch((err: Error) => setError(err.message));
+    setCommentDialogOpen(false);
+    setCommentValue('');
+  };
+
   // Lands the user straight in the swimlane they just created, the same
   // place they'd be if they'd clicked all the way down through an
   // already-populated area - drilling back through empty pickers to find
@@ -738,6 +767,29 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </DialogFooter>
       </Dialog>
 
+      <Dialog
+        hidden={!commentDialogOpen}
+        onDismiss={() => { setCommentDialogOpen(false); setCommentValue(''); }}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Leave a comment',
+          subText: "Posted under your name, permanently - visible here and on the Improvements tab. Not blocked by a lock, and doesn't change anything on the swimlane itself."
+        }}
+      >
+        <TextField
+          label="Comment"
+          multiline
+          rows={4}
+          placeholder="e.g. This step should route to the Regional Finance Manager instead"
+          value={commentValue}
+          onChange={(_e, v) => setCommentValue(v || '')}
+        />
+        <DialogFooter>
+          <DefaultButton text="Cancel" onClick={() => { setCommentDialogOpen(false); setCommentValue(''); }} />
+          <PrimaryButton text="Post comment" onClick={handleCommentConfirm} disabled={!commentValue.trim()} />
+        </DialogFooter>
+      </Dialog>
+
       <section className={styles.swimlaneStudio}>
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -762,13 +814,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           selectedKey={activeTab}
           onLinkClick={(item?: PivotItem) => {
             const key = item?.props.itemKey;
-            setActiveTab(key === 'employees' || key === 'risks' || key === 'audit' ? key : 'flows');
+            setActiveTab(key === 'employees' || key === 'risks' || key === 'audit' || key === 'improvements' ? key : 'flows');
           }}
         >
           <PivotItem headerText="Process Flows" itemKey="flows" />
           <PivotItem headerText="Employees" itemKey="employees" />
           <PivotItem headerText="Risk Register" itemKey="risks" />
           <PivotItem headerText="Audit" itemKey="audit" />
+          <PivotItem headerText="Improvements" itemKey="improvements" />
         </Pivot>
 
         {activeTab === 'employees' ? (
@@ -777,6 +830,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           <RiskRegisterList riskStatements={riskStatements} steps={steps} />
         ) : activeTab === 'audit' ? (
           <AuditView steps={steps} progressIdLocks={progressIdLocks} />
+        ) : activeTab === 'improvements' ? (
+          <ImprovementsView comments={swimlaneComments} />
         ) : (
           <>
             {!selectedCategoryId && (
@@ -861,6 +916,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                         onClick={() => setLockDialogMode('lock')}
                       />
                     )}
+                    <DefaultButton
+                      text="Leave a comment"
+                      iconProps={{ iconName: 'Comment' }}
+                      onClick={() => setCommentDialogOpen(true)}
+                    />
                     <IconButton
                       menuIconProps={{ iconName: 'More' }}
                       title="More actions"
