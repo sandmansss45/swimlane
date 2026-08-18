@@ -39,6 +39,20 @@ export interface ISwimlaneCanvasProps {
   // their shared Process Step ID group - see computeDropOrder for why
   // dragging is confined to one group.
   onMoveStep: (updated: IProcessStep) => void;
+  // Drag-from-legend: dropping a shape from ShapeLegend onto a cell
+  // creates a brand new step there - lane and Process Step ID come from
+  // whatever cell it landed on (see computeInsertOrderAfter), shape from
+  // which legend swatch was dragged. Everything else starts blank/default,
+  // filled in via the edit panel that opens automatically right after
+  // (see autoOpenStepId).
+  onCreateStep: (shapeOverride: string, lane: string, columnStep: IProcessStep) => void;
+  // One-shot signal from the parent: once set, opens this step's edit
+  // panel exactly as if it had been clicked, then the parent should clear
+  // it back to undefined via onAutoOpenHandled. Used right after
+  // onCreateStep so a freshly dropped step's details can be filled in
+  // immediately, without a separate click to find and open it.
+  autoOpenStepId?: string;
+  onAutoOpenHandled?: () => void;
 }
 
 interface IEdgeGeometry {
@@ -71,7 +85,8 @@ function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
 // each box actually faces the other node, so lines don't cut diagonally
 // through unrelated boxes between them).
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, isLocked, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
+  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, isLocked, onLabelEdge, onEditStep, onDeleteStep, onMoveStep,
+  onCreateStep, autoOpenStepId, onAutoOpenHandled
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -88,6 +103,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [draftLabels, setDraftLabels] = React.useState<{ [token: string]: string }>({});
   const [editDraft, setEditDraft] = React.useState<IProcessStepFormValue | undefined>(undefined);
   const [draggingStepId, setDraggingStepId] = React.useState<string | undefined>(undefined);
+  // Set while dragging a shape IN from ShapeLegend rather than moving an
+  // existing step already on the canvas - the two are mutually exclusive
+  // (only one drag can be in progress at once) but kept as separate state
+  // rather than one union, since they have almost entirely different
+  // validity rules and drop handling (see isValidDropTargetForCurrentDrag/
+  // handleDrop below).
+  const [draggingNewShape, setDraggingNewShape] = React.useState<string | undefined>(undefined);
   const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
   // Latest pointer position during a drag, kept in a ref (not state) since
   // it's read every animation frame by the auto-scroll loop below and
@@ -115,6 +137,16 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     return dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id);
   };
 
+  // A brand new step (dragged in from ShapeLegend) has no dependency
+  // relationships yet and no "self" to exclude, so unlike
+  // isValidDropTarget above, EVERY column is a valid target once the
+  // swimlane isn't locked - it'll simply adopt whatever columnStep's
+  // Process Step ID and lane it lands on.
+  const isValidNewShapeDropTarget = (): boolean => !isLocked && !!draggingNewShape;
+
+  const isValidDropTargetForCurrentDrag = (columnStep: IProcessStep): boolean =>
+    draggingNewShape ? isValidNewShapeDropTarget() : isValidDropTarget(columnStep);
+
   const handleDragStart = (step: IProcessStep) => (e: React.DragEvent): void => {
     setDraggingStepId(step.id);
     e.dataTransfer.effectAllowed = 'move';
@@ -128,9 +160,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   };
 
   const handleCellDragOver = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
-    if (!isValidDropTarget(columnStep)) return;
+    if (!isValidDropTargetForCurrentDrag(columnStep)) return;
     e.preventDefault(); // only opt into "droppable" when valid - otherwise leave the browser's own "not allowed" cursor
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = draggingNewShape ? 'copy' : 'move';
     setDragOverCellId(`${lane}-${columnStep.id}`);
   };
 
@@ -148,12 +180,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // scrolling continues smoothly even while the pointer is held still
   // right at the edge, not just each time it moves.
   const handleCanvasDragOver = (e: React.DragEvent): void => {
-    if (!draggingStepId) return;
+    if (!draggingStepId && !draggingNewShape) return;
     dragPointerRef.current = { x: e.clientX, y: e.clientY };
   };
 
   React.useEffect(() => {
-    if (!draggingStepId) return;
+    if (!draggingStepId && !draggingNewShape) return;
     const EDGE = 70; // px from the canvas edge where auto-scroll kicks in
     const MAX_SPEED = 16; // px/frame at the very edge, scaling down to 0 at EDGE
     let frameId: number;
@@ -179,11 +211,18 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       cancelAnimationFrame(frameId);
       dragPointerRef.current = undefined;
     };
-  }, [draggingStepId]);
+  }, [draggingStepId, draggingNewShape]);
 
   const handleDrop = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
     e.preventDefault();
     setDragOverCellId(undefined);
+    if (draggingNewShape) {
+      const shapeOverride = draggingNewShape;
+      setDraggingNewShape(undefined);
+      if (!isValidNewShapeDropTarget()) return;
+      onCreateStep(shapeOverride, lane, columnStep);
+      return;
+    }
     if (!draggingStepId || !isValidDropTarget(columnStep)) { setDraggingStepId(undefined); return; }
     const dragged = stepsById.get(draggingStepId);
     if (!dragged) { setDraggingStepId(undefined); return; }
@@ -479,6 +518,22 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     });
   };
 
+  // Opens a just-created step's edit panel automatically, right after
+  // dropping a shape from the legend (see onCreateStep) - the same panel
+  // a click would open, just triggered by the parent instead of a second,
+  // separate click to go find the new step and open it by hand. Waits for
+  // `steps` to actually contain it (the parent creates it asynchronously
+  // via addProcessStep) rather than opening on the stale, pre-creation
+  // props from the same render the drop happened in.
+  React.useEffect(() => {
+    if (!autoOpenStepId) return;
+    const created = steps.find(s => s.id === autoOpenStepId);
+    if (!created) return;
+    handleNodeClick(created);
+    onAutoOpenHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenStepId, steps]);
+
   // Two different dependent steps can produce the exact same literal
   // DependsOn token text (e.g. both depending on the same decision row
   // while sharing that decision's own processStepId prefix), so the
@@ -569,7 +624,10 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         />
       </div>
       <div className={styles.canvas} ref={canvasRef} onDragOver={handleCanvasDragOver}>
-      <ShapeLegend />
+      <ShapeLegend
+        onDragShapeStart={shapeOverride => !isLocked && setDraggingNewShape(shapeOverride)}
+        onDragShapeEnd={() => setDraggingNewShape(undefined)}
+      />
       <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>
           <marker id="swimlaneArrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
@@ -641,7 +699,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
               const cellKey = `${lane}-${step.id}`;
               const cellClassName = [
                 styles.laneCell,
-                isValidDropTarget(step) ? styles.validDropTarget : '',
+                isValidDropTargetForCurrentDrag(step) ? styles.validDropTarget : '',
                 dragOverCellId === cellKey ? styles.dragOver : ''
               ].filter(Boolean).join(' ');
               return (

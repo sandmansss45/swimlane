@@ -51,6 +51,22 @@
   white-space: nowrap;
 }
 
+.draggableItem {
+  cursor: grab;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--blue-light);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
 // Shape-type swatches - Process and Document keep the same neutral blue
 // the shapes themselves default to; Decision and Approval show their own
 // fill color (see ShapeNode.module.scss) so the legend matches the canvas.

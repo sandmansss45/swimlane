@@ -13,6 +13,7 @@ import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
+import { computeInsertOrderAfter } from '../utils/columns';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
   APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
@@ -80,6 +81,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
   const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
   const [swimlaneComments, setSwimlaneComments] = React.useState<ISwimlaneComment[]>([]);
+  // One-shot signal telling SwimlaneCanvas to open a just-created step's
+  // edit panel automatically - see handleCreateStepFromShape and the
+  // matching prop comment on ISwimlaneCanvasProps.
+  const [autoOpenStepId, setAutoOpenStepId] = React.useState<string | undefined>(undefined);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
@@ -616,6 +621,44 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
       });
   };
 
+  // Drag-from-legend creation (see ShapeLegend's draggable swatches and
+  // SwimlaneCanvas's onCreateStep) - unlike handleAddStep above, there's
+  // no form to fill in first. The step is created immediately, positioned
+  // right where it was dropped (columnStep's Process Step ID/group, the
+  // lane it landed in, ordered right after columnStep - see
+  // computeInsertOrderAfter), with a placeholder description, and its
+  // edit panel opens automatically right after (see autoOpenStepId) so
+  // the real details get filled in on the spot - the same "drop a shape,
+  // then type into it" flow a real diagramming tool would give you.
+  // apqcTitle/processDescription/processStepName/region are inherited
+  // straight from columnStep, the concrete step actually sitting at the
+  // dropped position, rather than handleAddStep's own reference-step
+  // fallback chain (unnecessary here - there's always a real columnStep,
+  // that's what was dropped onto).
+  const handleCreateStepFromShape = (shapeOverride: string, lane: string, columnStep: IProcessStep): void => {
+    if (activeLock) return;
+    dataService.addProcessStep({
+      apqcTitle: columnStep.apqcTitle,
+      processDescription: columnStep.processDescription,
+      processStepId: columnStep.processStepId,
+      processStepName: columnStep.processStepName,
+      region: columnStep.region || '',
+      action: '',
+      actionType: '',
+      actionDescription: 'New step',
+      shapeOverride,
+      responsibleJobTitle: lane === 'Unassigned' ? '' : lane,
+      manualOrder: computeInsertOrderAfter(steps, columnStep.id),
+      dependsOn: [],
+      linkedRisks: []
+    })
+      .then(created => {
+        setSteps(prev => [...prev, created]);
+        setAutoOpenStepId(created.id);
+      })
+      .catch((err: Error) => setError(err.message));
+  };
+
   if (loading) {
     // Keeps the real header (logo, title) visible instead of a bare
     // Spinner with no layout at all - on the real Graph data path this can
@@ -990,6 +1033,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   onEditStep={handleEditStep}
                   onDeleteStep={handleDeleteStep}
                   onMoveStep={handleEditStep}
+                  onCreateStep={handleCreateStepFromShape}
+                  autoOpenStepId={autoOpenStepId}
+                  onAutoOpenHandled={() => setAutoOpenStepId(undefined)}
                 />
 
                 {!activeLock && (
