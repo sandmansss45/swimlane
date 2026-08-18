@@ -9,4 +9,9 @@ export interface ISwimlaneStudioProps {
   // list left no way back to mock data short of clearing site storage.
   onSignOut?: () => void;
   signOutLabel?: string;
+  // Attributes swimlane locks/unlocks to a real name (see
+  // IProgressIdLock) - the signed-in MSAL account's display name in real
+  // usage, a fixed stand-in in mock mode since there's no real session to
+  // read one from.
+  currentUserName: string;
 }

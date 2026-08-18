@@ -22,11 +22,13 @@ interface IAppProps {
 const SignedInApp: React.FC = () => {
   const { instance } = useMsal();
   const dataService = useMemo(() => new GraphDataService(instance), [instance]);
+  const account = instance.getActiveAccount();
   return (
     <SwimlaneStudio
       dataService={dataService}
       signOutLabel="Sign out"
       onSignOut={() => instance.logoutRedirect()}
+      currentUserName={account?.name || account?.username || 'Unknown user'}
     />
   );
 };
@@ -109,6 +111,7 @@ function App({ msalInstance }: IAppProps) {
           dataService={mockService}
           signOutLabel="Back to sign-in"
           onSignOut={() => setUseMock(false)}
+          currentUserName="Mock User"
         />
       ) : (
         <MsalProvider instance={msalInstance}>

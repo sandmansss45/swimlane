@@ -4,6 +4,7 @@ import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
+import { IProgressIdLock } from '../models/IProgressIdLock';
 
 // Real accounts-payable process data from the "9.6 tester" SharePoint list
 // (QLE UK) - used deliberately instead of placeholder data, at the user's
@@ -123,6 +124,9 @@ export class MockDataService implements IDataService {
   // Same idea, one level down - names for an empty Progress ID shell
   // created via "+ Add new progress ID" before it has any real steps.
   private _progressIdLabels: IProgressIdLabel[] = [];
+  // Append-only audit trail - see IProgressIdLock. Starts empty; nothing
+  // is locked until someone explicitly locks it.
+  private _progressIdLocks: IProgressIdLock[] = [];
   // A monotonic counter, not `_steps.length + 1` - length-based IDs looked
   // fine until the first delete-then-add in the same session (e.g. undoing
   // a delete): the array shrinks, so the next "length + 1" ID collides
@@ -172,6 +176,34 @@ export class MockDataService implements IDataService {
   public updateProgressIdLabel(id: string, name: string): Promise<void> {
     const index = this._progressIdLabels.findIndex(l => l.id === id);
     if (index >= 0) this._progressIdLabels[index] = { ...this._progressIdLabels[index], name };
+    return Promise.resolve();
+  }
+
+  public getProgressIdLocks(): Promise<IProgressIdLock[]> {
+    return Promise.resolve(this._progressIdLocks.slice());
+  }
+
+  public lockProgressId(progressId: string, region: string, lockedBy: string, reason: string): Promise<IProgressIdLock> {
+    const created: IProgressIdLock = {
+      id: `mock-lock-${this._progressIdLocks.length + 1}`,
+      progressId, region, lockedBy, reason,
+      lockedAt: new Date().toISOString(),
+      unlockedBy: '', unlockedAt: '', unlockReason: ''
+    };
+    this._progressIdLocks.push(created);
+    return Promise.resolve(created);
+  }
+
+  public unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void> {
+    const index = this._progressIdLocks.findIndex(l => l.id === id);
+    if (index >= 0) {
+      this._progressIdLocks[index] = {
+        ...this._progressIdLocks[index],
+        unlockedBy,
+        unlockedAt: new Date().toISOString(),
+        unlockReason: reason
+      };
+    }
     return Promise.resolve();
   }
 

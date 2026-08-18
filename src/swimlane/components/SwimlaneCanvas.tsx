@@ -25,6 +25,12 @@ export interface ISwimlaneCanvasProps {
   riskStatements: IRiskStatement[]; // drives each shape's traffic-light fill when linked to a step
   drilledDownStepId: string | undefined;
   employees: IEmployee[];
+  // True while the swimlane currently on screen is locked (see
+  // IProgressIdLock) - disables dragging entirely and switches the edit
+  // panel to read-only (still opens, just can't Save or Delete), rather
+  // than hiding the panel altogether - people should still be able to
+  // look at a locked step's details.
+  isLocked: boolean;
   onLabelEdge: (toRowId: string, token: string, label: string) => void;
   onEditStep: (step: IProcessStep) => void;
   onDeleteStep: (stepId: string) => void;
@@ -65,7 +71,7 @@ function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
 // each box actually faces the other node, so lines don't cut diagonally
 // through unrelated boxes between them).
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
-  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
+  steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, isLocked, onLabelEdge, onEditStep, onDeleteStep, onMoveStep
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -99,7 +105,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // dragged step relative to columnStep AND reassigns it to this cell's
   // lane.
   const isValidDropTarget = (columnStep: IProcessStep): boolean => {
-    if (!draggingStepId || draggingStepId === columnStep.id) return false;
+    if (isLocked || !draggingStepId || draggingStepId === columnStep.id) return false;
     const dragged = stepsById.get(draggingStepId);
     if (!dragged || dragged.processStepId !== columnStep.processStepId) return false;
     // Confirmed design rule: dragging can reorder within the group, but
@@ -651,7 +657,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                     <div
                       ref={el => { if (el) nodeRefs.current.set(step.id, el); }}
                       className={[styles.draggableNode, draggingStepId === step.id ? styles.dragging : ''].filter(Boolean).join(' ')}
-                      draggable
+                      draggable={!isLocked}
                       onDragStart={handleDragStart(step)}
                       onDragEnd={handleDragEnd}
                     >
@@ -680,10 +686,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             <div className={styles.editHeader}>
               <h4>Edit task</h4>
               <div>
-                <IconButton iconProps={{ iconName: 'Delete' }} title="Delete this task" onClick={deleteSelected} />
+                <IconButton iconProps={{ iconName: 'Delete' }} title="Delete this task" onClick={deleteSelected} disabled={isLocked} />
                 <IconButton iconProps={{ iconName: 'Cancel' }} title="Close" onClick={closeEditPopup} />
               </div>
             </div>
+
+            {isLocked && <p className={styles.lockedNotice}>This swimlane is locked - viewing only.</p>}
 
             <div className={styles.editForm}>
               <ProcessStepForm
@@ -693,7 +701,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                 dependsOnOptions={dependsOnOptions}
                 riskStatements={riskStatements}
               />
-              <PrimaryButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} />
+              <PrimaryButton text="Save changes" onClick={() => { saveEdit(); closeEditPopup(); }} disabled={isLocked} />
             </div>
 
             <h4>Outgoing connections</h4>

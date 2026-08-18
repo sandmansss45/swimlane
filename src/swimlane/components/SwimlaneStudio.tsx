@@ -10,6 +10,7 @@ import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
+import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
@@ -67,13 +68,14 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 });
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
-  const { dataService, onSignOut, signOutLabel } = props;
+  const { dataService, onSignOut, signOutLabel, currentUserName } = props;
 
   const [steps, setSteps] = React.useState<IProcessStep[]>([]);
   const [employees, setEmployees] = React.useState<IEmployee[]>([]);
   const [riskStatements, setRiskStatements] = React.useState<IRiskStatement[]>([]);
   const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
   const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
+  const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
@@ -110,6 +112,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [renameTarget, setRenameTarget] = React.useState<{ level: 'processGroup' | 'progressId'; id: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
+  // Which lock dialog is open, if any, and the reason text being typed
+  // into it - 'lock' and 'unlock' share one dialog/one reason field since
+  // they're never open at the same time.
+  const [lockDialogMode, setLockDialogMode] = React.useState<'lock' | 'unlock' | undefined>(undefined);
+  const [lockReasonValue, setLockReasonValue] = React.useState('');
   const [lastAction, setLastAction] = React.useState<UndoAction | undefined>(undefined);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
 
@@ -136,9 +143,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setError(undefined);
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
-      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels()
+      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks()
     ])
-      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult, locksResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -170,6 +177,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
         if (progressIdLabelsResult.status === 'fulfilled') {
           setProgressIdLabels(progressIdLabelsResult.value);
+        }
+
+        // Same "nice to have, not a blocking error" treatment as the label
+        // lists above, for the same reason (this list won't exist on most
+        // sites yet). Deliberate trade-off: a failure here means locks are
+        // treated as "nothing is locked" rather than making the whole app
+        // unusable - reasonable given locking is a v1, anyone-signed-in
+        // social control (see IProgressIdLock), not a hard permission
+        // system, but worth knowing this is fail-open, not fail-closed.
+        if (locksResult.status === 'fulfilled') {
+          setProgressIdLocks(locksResult.value);
         }
 
         setError(errors.length > 0 ? errors.join(' | ') : undefined);
@@ -238,6 +256,18 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     return undefined;
   }, [drilledDownStepId, selectedProgressId, selectedProcessGroupId, selectedCategoryId, stepsInProgressId, customGroupNames, customProgressIdNames]);
 
+  // The lock currently in effect for the swimlane actually on screen right
+  // now (this Progress ID + this region), if any - undefined means it's
+  // editable. Scoped to progressId+region together, not just progressId,
+  // matching the confirmed design rule that regions are genuinely separate
+  // swimlanes (see IProgressIdLock/FlowRegionTabs) - locking the UK
+  // version of a flow never touches the US/SA versions on the same
+  // Progress ID.
+  const activeLock = React.useMemo(
+    () => selectedProgressId ? findActiveLock(progressIdLocks, selectedProgressId, selectedFlowRegion) : undefined,
+    [progressIdLocks, selectedProgressId, selectedFlowRegion]
+  );
+
   // A Progress ID can hold several genuinely separate swimlanes side by
   // side, one per region (see FlowRegionTabs) - narrowed here, upstream of
   // everything else derived from stepsInProgressId, so picking a region
@@ -279,6 +309,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   const handleEditStep = (updated: IProcessStep): void => {
+    if (activeLock) return; // defense in depth - SwimlaneCanvas's isLocked prop already keeps its Save button from calling this
     const previous = steps.find(s => s.id === updated.id);
     setSteps(prev => prev.map(s => (s.id === updated.id ? updated : s)));
     dataService.updateProcessStep(updated).catch((err: Error) => setError(err.message));
@@ -286,6 +317,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   const handleDeleteStep = (stepId: string): void => {
+    if (activeLock) return; // defense in depth - SwimlaneCanvas's isLocked prop already hides the delete affordance
     const step = steps.find(s => s.id === stepId);
     setSteps(prev => prev.filter(s => s.id !== stepId));
     dataService.deleteProcessStep(stepId).catch((err: Error) => setError(err.message));
@@ -297,6 +329,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // visibleSteps) - so removing a whole mistaken flow doesn't mean
   // deleting each of its steps one at a time via the edit panel.
   const handleBulkDelete = (): void => {
+    if (activeLock) return; // defense in depth - the menu item that opens this is already disabled while locked
     const deleted = visibleSteps.slice();
     const idsToDelete = deleted.map(s => s.id);
     setSteps(prev => prev.filter(s => !idsToDelete.includes(s.id)));
@@ -396,6 +429,33 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setRenameTarget(undefined);
   };
 
+  // Confirmed design rule: v1 doesn't restrict who can lock/unlock to
+  // specific people - anyone signed in can do either. Accountability comes
+  // from every action being attributed (currentUserName) and permanently
+  // logged (see IProgressIdLock's append-only shape), not from a
+  // technical permission barrier.
+  const handleLockConfirm = (): void => {
+    if (!selectedProgressId || lockDialogMode !== 'lock') return;
+    const region = selectedFlowRegion || '';
+    dataService.lockProgressId(selectedProgressId, region, currentUserName, lockReasonValue.trim())
+      .then(created => setProgressIdLocks(prev => [...prev, created]))
+      .catch((err: Error) => setError(err.message));
+    setLockDialogMode(undefined);
+    setLockReasonValue('');
+  };
+
+  const handleUnlockConfirm = (): void => {
+    if (!activeLock || lockDialogMode !== 'unlock') return;
+    const reason = lockReasonValue.trim();
+    const unlockedAt = new Date().toISOString();
+    setProgressIdLocks(prev => prev.map(l => (l.id === activeLock.id
+      ? { ...l, unlockedBy: currentUserName, unlockedAt, unlockReason: reason }
+      : l)));
+    dataService.unlockProgressId(activeLock.id, currentUserName, reason).catch((err: Error) => setError(err.message));
+    setLockDialogMode(undefined);
+    setLockReasonValue('');
+  };
+
   // Lands the user straight in the swimlane they just created, the same
   // place they'd be if they'd clicked all the way down through an
   // already-populated area - drilling back through empty pickers to find
@@ -448,7 +508,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const newProcessPrefix = selectedProcessGroupId ? `${selectedProcessGroupId}.` : selectedCategoryId ? `${selectedCategoryId}.` : '';
 
   const handleAddStep = (): void => {
-    if (!selectedProgressId || !newStepDraft.actionDescription.trim()) return;
+    if (!selectedProgressId || !newStepDraft.actionDescription.trim() || activeLock) return;
     // The very first step in a brand-new region has no reference step IN
     // THAT REGION to inherit from (stepsInRegion is empty) - it used to
     // fall back straight to blank/bare defaults there, leaving Process
@@ -631,6 +691,33 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </DialogFooter>
       </Dialog>
 
+      <Dialog
+        hidden={!lockDialogMode}
+        onDismiss={() => { setLockDialogMode(undefined); setLockReasonValue(''); }}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: lockDialogMode === 'unlock' ? 'Unlock this swimlane?' : 'Lock this swimlane?',
+          subText: lockDialogMode === 'unlock'
+            ? 'Reopens it for editing. This is recorded permanently, same as the original lock.'
+            : "Blocks further edits until it's unlocked again. Who locked it, when, and why is recorded permanently."
+        }}
+      >
+        <TextField
+          label="Reason (optional)"
+          placeholder={lockDialogMode === 'unlock' ? 'e.g. Reopening to fix an error found in review' : 'e.g. Approved for FY26 audit'}
+          value={lockReasonValue}
+          onChange={(_e, v) => setLockReasonValue(v || '')}
+          onKeyDown={e => { if (e.key === 'Enter') (lockDialogMode === 'unlock' ? handleUnlockConfirm() : handleLockConfirm()); }}
+        />
+        <DialogFooter>
+          <DefaultButton text="Cancel" onClick={() => { setLockDialogMode(undefined); setLockReasonValue(''); }} />
+          <PrimaryButton
+            text={lockDialogMode === 'unlock' ? 'Unlock' : 'Lock'}
+            onClick={lockDialogMode === 'unlock' ? handleUnlockConfirm : handleLockConfirm}
+          />
+        </DialogFooter>
+      </Dialog>
+
       <section className={styles.swimlaneStudio}>
         {error && (
           <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setError(undefined)}>
@@ -726,8 +813,28 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             ) : (
               <>
                 <div className={styles.toolbar}>
+                  {activeLock && (
+                    <MessageBar messageBarType={MessageBarType.warning} className={styles.lockBanner}>
+                      Locked by {activeLock.lockedBy} on {new Date(activeLock.lockedAt).toLocaleString()}
+                      {activeLock.reason ? ` — ${activeLock.reason}` : ''}. Read-only until it's unlocked.
+                    </MessageBar>
+                  )}
                   <div className={styles.toolbarRow}>
                     <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); setSelectedFlowRegion(undefined); }} />
+                    {activeLock ? (
+                      <DefaultButton
+                        text="Unlock swimlane"
+                        iconProps={{ iconName: 'Unlock' }}
+                        onClick={() => setLockDialogMode('unlock')}
+                      />
+                    ) : (
+                      <DefaultButton
+                        text="Lock swimlane"
+                        iconProps={{ iconName: 'Lock' }}
+                        disabled={visibleSteps.length === 0}
+                        onClick={() => setLockDialogMode('lock')}
+                      />
+                    )}
                     <IconButton
                       menuIconProps={{ iconName: 'More' }}
                       title="More actions"
@@ -735,13 +842,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                       styles={{ root: { border: '1px solid var(--border)', borderRadius: 4 } }}
                       menuProps={{
                         items: [
-                          { key: 'addNew', text: '+ Add new process', iconProps: { iconName: 'Add' }, onClick: () => { setNewProcessOpen(true); } },
-                          { key: 'importCsv', text: 'Import CSV', iconProps: { iconName: 'Upload' }, onClick: () => { setImportOpen(true); } },
+                          { key: 'addNew', text: '+ Add new process', iconProps: { iconName: 'Add' }, onClick: () => { setNewProcessOpen(true); }, disabled: !!activeLock },
+                          { key: 'importCsv', text: 'Import CSV', iconProps: { iconName: 'Upload' }, onClick: () => { setImportOpen(true); }, disabled: !!activeLock },
                           {
                             key: 'deleteFlow',
                             text: `Delete flow (${visibleSteps.length})`,
                             iconProps: { iconName: 'Delete', styles: { root: { color: 'var(--risk-high)' } } },
-                            disabled: visibleSteps.length === 0,
+                            disabled: visibleSteps.length === 0 || !!activeLock,
                             onClick: () => { setBulkDeleteOpen(true); }
                           }
                         ]
@@ -764,7 +871,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     steps={stepsInRegion}
                     selectedStepId={drilledDownStepId}
                     onSelect={setDrilledDownStepId}
-                    onAddNew={() => setAddSectionOpen(true)}
+                    onAddNew={activeLock ? undefined : () => setAddSectionOpen(true)}
                   />
                 </div>
 
@@ -776,12 +883,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   riskStatements={riskStatements}
                   drilledDownStepId={drilledDownStepId}
                   employees={employees}
+                  isLocked={!!activeLock}
                   onLabelEdge={handleLabelEdge}
                   onEditStep={handleEditStep}
                   onDeleteStep={handleDeleteStep}
                   onMoveStep={handleEditStep}
                 />
 
+                {!activeLock && (
                 <div className={styles.addStepForm}>
                   <h3 className={styles.cardTitle}>Add a step</h3>
                   <ProcessStepForm
@@ -797,6 +906,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     onClick={handleAddStep}
                   />
                 </div>
+                )}
               </>
             )}
           </>

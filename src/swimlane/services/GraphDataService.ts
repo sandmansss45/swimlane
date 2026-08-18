@@ -5,6 +5,7 @@ import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
+import { IProgressIdLock } from '../models/IProgressIdLock';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -37,6 +38,14 @@ const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
 // new progress ID") before it has any real steps of its own to derive a
 // name from.
 const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
+// TODO-CONFIRM: doesn't exist on the real site yet - needs creating, with
+// the built-in Title column (unused - left blank) plus single line of
+// text columns "Progress ID", "Region", "Locked By", "Locked At",
+// "Reason", "Unlocked By", "Unlocked At", "Unlock Reason". Append-only
+// audit trail for swimlane sign-off/locking - see models/IProgressIdLock
+// for why this is never edited in place except to fill in the three
+// Unlocked* columns once, on unlock.
+const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
 
 type FieldMap = { [displayName: string]: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -292,6 +301,62 @@ export class GraphDataService implements IDataService {
     const titleField = fieldMap['Title'];
     if (!titleField) return;
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });
+  }
+
+  public async getProgressIdLocks(): Promise<IProgressIdLock[]> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const items = await this._getItems(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): IProgressIdLock => ({
+      id: item.id,
+      progressId: get(item, 'Progress ID'),
+      region: get(item, 'Region'),
+      lockedBy: get(item, 'Locked By'),
+      lockedAt: get(item, 'Locked At'),
+      reason: get(item, 'Reason'),
+      unlockedBy: get(item, 'Unlocked By'),
+      unlockedAt: get(item, 'Unlocked At'),
+      unlockReason: get(item, 'Unlock Reason')
+    }));
+  }
+
+  public async lockProgressId(progressId: string, region: string, lockedBy: string, reason: string): Promise<IProgressIdLock> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const lockedAt = new Date().toISOString();
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Progress ID', progressId);
+    set('Region', region);
+    set('Locked By', lockedBy);
+    set('Locked At', lockedAt);
+    set('Reason', reason);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, progressId, region, lockedBy, lockedAt, reason, unlockedBy: '', unlockedAt: '', unlockReason: '' };
+  }
+
+  public async unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROGRESS_ID_LOCKS_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Unlocked By', unlockedBy);
+    set('Unlocked At', new Date().toISOString());
+    set('Unlock Reason', reason);
+
+    await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, fields);
   }
 
   public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
