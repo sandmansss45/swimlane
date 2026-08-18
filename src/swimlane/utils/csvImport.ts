@@ -154,11 +154,25 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
 
   const parsedRows: IParsedCsvRow[] = [];
   const groupHistory = new Map<string, IGroupHistoryEntry[]>();
+  // Row numbers skipped for missing a required value in that specific
+  // cell, not just a missing column - REQUIRED_HEADERS above only checked
+  // the header row HAS these columns, never that any given row's cells in
+  // them weren't blank. An unnoticed blank Process Step ID used to import
+  // fine and then silently vanish everywhere (it doesn't belong to any
+  // Category/Group/Progress ID), while still consuming a row-number slot
+  // other rows' DependsOn tokens count against.
+  const skippedRows: Array<{ csvRowNumber: number; missingFields: string[] }> = [];
 
   rawRows.forEach((cells, arrIdx) => {
     if (arrIdx === 0) return; // header
     const csvRowNumber = arrIdx + 1;
     if (cells.every(c => (c || '').trim() === '')) return; // blank separator row
+
+    const missingFields = REQUIRED_HEADERS.filter(h => !get(cells, h));
+    if (missingFields.length > 0) {
+      skippedRows.push({ csvRowNumber, missingFields });
+      return;
+    }
 
     const processStepId = get(cells, 'Process Step ID');
     const action = get(cells, 'Action');
@@ -214,6 +228,14 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
       }
     });
   });
+
+  if (skippedRows.length > 0) {
+    const rowList = skippedRows.map(s => `${s.csvRowNumber} (missing ${s.missingFields.join(', ')})`).join('; ');
+    warnings.push(
+      `Skipped ${skippedRows.length} row${skippedRows.length === 1 ? '' : 's'} with a blank required value - ` +
+      `not imported: ${rowList}. Fix these in the file and re-upload if they should be included.`
+    );
+  }
 
   if (parsedRows.length === 0) {
     warnings.push('No data rows found.');
