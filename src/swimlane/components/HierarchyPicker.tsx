@@ -22,10 +22,12 @@ export interface IHierarchyPickerProps {
   onAddNew?: () => void;
   addNewLabel?: string;
   // Small edit affordance on each real card (not the "+ Add new" tile) -
-  // only wired in at the Process Group level, since that's the only level
-  // with a name that can actually be changed (Categories are the fixed
-  // APQC standard; Progress ID/Activity names come from real step data,
-  // not a label someone assigns).
+  // wired in at the Process Group and Progress ID levels, both of which
+  // can carry a user-assigned custom label that wins over whatever name
+  // would otherwise show (static APQC table, or a step's own derived
+  // text) - see customGroupNames/customProgressIdNames in
+  // SwimlaneStudio.tsx. Not offered at the Category level, which is the
+  // fixed APQC standard and never has a custom name.
   onRename?: (groupId: string, currentLabel: string) => void;
 }
 

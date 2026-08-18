@@ -25,6 +25,7 @@ import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
 import AddHierarchyShellModal, { HierarchyShellLevel } from './AddHierarchyShellModal';
+import AddStepSectionModal from './AddStepSectionModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
@@ -100,8 +101,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // 13), computed fresh each time it's opened rather than reusing
   // newProcessPrefix so the two flows stay independent.
   const [addShellState, setAddShellState] = React.useState<{ level: HierarchyShellLevel; idPrefix: string } | undefined>(undefined);
+  // The lightweight "add a 4th-level section" flow (see
+  // AddStepSectionModal) - a real minimal step, not a label-only shell
+  // like addShellState above, since a section's name only ever lives on
+  // real step rows. true only once a Progress ID is actually selected
+  // (there's nowhere to add a section before that).
+  const [addSectionOpen, setAddSectionOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
-  const [renameTarget, setRenameTarget] = React.useState<{ groupId: string; currentLabel: string } | undefined>(undefined);
+  const [renameTarget, setRenameTarget] = React.useState<{ level: 'processGroup' | 'progressId'; id: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
   const [lastAction, setLastAction] = React.useState<UndoAction | undefined>(undefined);
   const [activeTab, setActiveTab] = React.useState<MainTab>('flows');
@@ -210,14 +217,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // but showing ONLY numbers up there left no way to tell at a glance
   // which actual swimlane is open without drilling back down through the
   // pickers - a real user flagged this directly. Same name-resolution
-  // logic each picker level already uses (sample step's own text wins,
-  // then a user-added custom label, then the static APQC table).
+  // logic each picker level already uses - a custom label (an explicit,
+  // deliberate rename) always wins over a step's own processDescription,
+  // not the other way around, so a wrong/junk value that ended up in real
+  // data (e.g. someone typing "yes" into the wrong field) can always be
+  // corrected via rename instead of being permanently stuck showing.
   const currentLevelName = React.useMemo(() => {
     if (drilledDownStepId) {
       return stepsInProgressId.find(s => s.processStepId === drilledDownStepId)?.processStepName;
     }
     if (selectedProgressId) {
-      return stepsInProgressId[0]?.processDescription || customProgressIdNames[selectedProgressId] || getProgressIdName(selectedProgressId);
+      return customProgressIdNames[selectedProgressId] || stepsInProgressId[0]?.processDescription || getProgressIdName(selectedProgressId);
     }
     if (selectedProcessGroupId) {
       return customGroupNames[selectedProcessGroupId] || getProcessGroupName(selectedProcessGroupId);
@@ -344,28 +354,44 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setAddShellState(undefined);
   };
 
-  const openRename = (groupId: string, currentLabel: string): void => {
-    setRenameTarget({ groupId, currentLabel });
+  const openRename = (level: 'processGroup' | 'progressId', id: string, currentLabel: string): void => {
+    setRenameTarget({ level, id, currentLabel });
     setRenameValue(currentLabel);
   };
 
-  // Renaming a group that already has a custom label updates that same
+  // Renaming something that already has a custom label updates that same
   // record; renaming one that's still showing its static apqcHierarchy.ts
-  // name (or the generic "Process Group X.Y" fallback) creates a new
-  // custom label instead, which then wins over the static name the same
-  // way it already does for a brand-new group (see customGroupNames).
+  // name (or a step-derived/generic fallback) creates a new custom label
+  // instead, which then wins over that fallback the same way it already
+  // does for a brand-new group/progress ID (see customGroupNames /
+  // customProgressIdNames) - this is the ONLY way to correct a wrong
+  // value that ended up baked into real step data (e.g. a real case: a
+  // Progress ID showing "yes" as its name because that's literally what
+  // ended up in some step's Process Description field).
   const handleRenameSave = (): void => {
     if (!renameTarget) return;
     const trimmed = renameValue.trim();
     if (!trimmed) return;
-    const existingLabel = processGroupLabels.find(l => l.groupId === renameTarget.groupId);
-    if (existingLabel) {
-      setProcessGroupLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
-      dataService.updateProcessGroupLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+    if (renameTarget.level === 'processGroup') {
+      const existingLabel = processGroupLabels.find(l => l.groupId === renameTarget.id);
+      if (existingLabel) {
+        setProcessGroupLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
+        dataService.updateProcessGroupLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+      } else {
+        dataService.addProcessGroupLabel(renameTarget.id, trimmed)
+          .then(created => setProcessGroupLabels(prev => [...prev, created]))
+          .catch((err: Error) => setError(err.message));
+      }
     } else {
-      dataService.addProcessGroupLabel(renameTarget.groupId, trimmed)
-        .then(created => setProcessGroupLabels(prev => [...prev, created]))
-        .catch((err: Error) => setError(err.message));
+      const existingLabel = progressIdLabels.find(l => l.progressId === renameTarget.id);
+      if (existingLabel) {
+        setProgressIdLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
+        dataService.updateProgressIdLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+      } else {
+        dataService.addProgressIdLabel(renameTarget.id, trimmed)
+          .then(created => setProgressIdLabels(prev => [...prev, created]))
+          .catch((err: Error) => setError(err.message));
+      }
     }
     setRenameTarget(undefined);
   };
@@ -390,6 +416,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     // column group instead of continuing the one the user just started.
     setDrilledDownStepId(created.processStepId);
     setNewProcessOpen(false);
+  };
+
+  // Lands the user straight in the section they just created, same "go
+  // straight to what you made" treatment as handleProcessCreated - the
+  // new section already belongs to the current Progress ID/region (see
+  // AddStepSectionModal), so only its own Process Step ID tab needs
+  // selecting, nothing else about the current context changes.
+  const handleSectionCreated = (created: IProcessStep): void => {
+    setSteps(prev => [...prev, created]);
+    setDrilledDownStepId(created.processStepId);
+    setAddSectionOpen(false);
   };
 
   // Jumps straight to a step found via GlobalSearch - same drill-down
@@ -434,7 +471,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         : selectedFlowRegion
           ? `${selectedProgressId} - ${selectedFlowRegion}`
           : anyReferenceStep ? anyReferenceStep.apqcTitle : selectedProgressId,
-      processDescription: regionReferenceStep?.processDescription || anyReferenceStep?.processDescription || '',
+      // A custom rename (if one's been set) wins over whatever's actually
+      // sitting in existing steps' processDescription - otherwise a new
+      // step would keep perpetuating a wrong value a rename was supposed
+      // to have already corrected.
+      processDescription: (selectedProgressId && customProgressIdNames[selectedProgressId])
+        || regionReferenceStep?.processDescription || anyReferenceStep?.processDescription || '',
       processStepId: drilledDownStepId || selectedProgressId,
       processStepName: regionReferenceStep?.processStepName || anyReferenceStep?.processStepName || '',
       region: selectedFlowRegion || '',
@@ -543,6 +585,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onCreated={handleShellCreated}
       />
 
+      <AddStepSectionModal
+        isOpen={addSectionOpen}
+        idPrefix={selectedProgressId ? `${selectedProgressId}.` : ''}
+        referenceStep={stepsInProgressId[0]}
+        region={selectedFlowRegion}
+        dataService={dataService}
+        onDismiss={() => setAddSectionOpen(false)}
+        onCreated={handleSectionCreated}
+      />
+
       <Dialog
         hidden={!bulkDeleteOpen}
         onDismiss={() => setBulkDeleteOpen(false)}
@@ -565,10 +617,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
       <Dialog
         hidden={!renameTarget}
         onDismiss={() => setRenameTarget(undefined)}
-        dialogContentProps={{ type: DialogType.normal, title: `Rename ${renameTarget?.groupId || ''}` }}
+        dialogContentProps={{ type: DialogType.normal, title: `Rename ${renameTarget?.id || ''}` }}
       >
         <TextField
-          label="Process Group name"
+          label={renameTarget?.level === 'progressId' ? 'Progress ID name' : 'Process Group name'}
           value={renameValue}
           onChange={(_e, v) => setRenameValue(v || '')}
           onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(); }}
@@ -651,7 +703,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   allGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
                   onAddNew={() => setAddShellState({ level: 'processGroup', idPrefix: `${selectedCategoryId}.` })}
                   addNewLabel="+ Add new process group"
-                  onRename={openRename}
+                  onRename={(id, label) => openRename('processGroup', id, label)}
                 />
               </>
             ) : !selectedProgressId ? (
@@ -663,11 +715,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
                   getGroupId={getProgressId}
-                  getLabel={(id, sampleStep) => sampleStep?.processDescription || customProgressIdNames[id] || getProgressIdName(id)}
+                  getLabel={(id, sampleStep) => customProgressIdNames[id] || sampleStep?.processDescription || getProgressIdName(id)}
                   onSelect={setSelectedProgressId}
                   allGroupIds={[...Object.keys(APQC_PROGRESS_ID_NAMES), ...Object.keys(customProgressIdNames)].filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
                   onAddNew={() => setAddShellState({ level: 'progressId', idPrefix: `${selectedProcessGroupId}.` })}
                   addNewLabel="+ Add new progress ID"
+                  onRename={(id, label) => openRename('progressId', id, label)}
                 />
               </>
             ) : (
@@ -707,7 +760,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                       setDrilledDownStepId(undefined);
                     }}
                   />
-                  <ProcessStepTabs steps={stepsInRegion} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
+                  <ProcessStepTabs
+                    steps={stepsInRegion}
+                    selectedStepId={drilledDownStepId}
+                    onSelect={setDrilledDownStepId}
+                    onAddNew={() => setAddSectionOpen(true)}
+                  />
                 </div>
 
                 <SwimlaneCanvas

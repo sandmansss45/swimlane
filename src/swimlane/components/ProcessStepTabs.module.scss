@@ -42,3 +42,25 @@
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
+
+// Dashed/outline treatment rather than a solid fill - this sits inline
+// among real tabs (unlike HierarchyPicker's solid-blue add tile, which
+// has its own dedicated space in a card grid), so it needs to read as
+// "add one of these" without competing for attention with the tabs
+// people are actually navigating with.
+.addTab {
+  background: var(--surface);
+  border: 1px dashed var(--blue);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--blue);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--blue-light);
+  }
+}
