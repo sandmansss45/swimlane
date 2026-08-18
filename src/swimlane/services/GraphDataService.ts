@@ -38,7 +38,7 @@ const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
 // new progress ID") before it has any real steps of its own to derive a
 // name from.
 const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
-// TODO-CONFIRM: doesn't exist on the real site yet - needs creating, with
+// CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, with
 // the built-in Title column (unused - left blank) plus single line of
 // text columns "Progress ID", "Region", "Locked By", "Locked At",
 // "Reason", "Unlocked By", "Unlocked At", "Unlock Reason". Append-only
