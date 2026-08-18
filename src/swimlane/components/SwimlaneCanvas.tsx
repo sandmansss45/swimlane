@@ -3,7 +3,7 @@ import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption } from
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
-import { IRiskStatement, resolveRiskLevel, worstLinkedSeverity } from '../models/IRiskStatement';
+import { IRiskStatement, worstLinkedSeverity } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
 import { IResolvedEdge, dependsOnTokensToStepIds, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups, computeDropOrder, dropKeepsDependencyOrder } from '../utils/columns';
@@ -473,7 +473,6 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       actionDescription: step.actionDescription,
       actionType: step.actionType,
       shapeOverride: step.shapeOverride || '',
-      riskLevelOverride: step.riskLevelOverride || '',
       responsibleJobTitle: step.responsibleJobTitle,
       dependsOnStepIds: dependsOnTokensToStepIds(allSteps, step.dependsOn),
       linkedRisks: step.linkedRisks || []
@@ -664,7 +663,6 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                       <ShapeNode
                         label={step.actionDescription}
                         shape={getShapeType(step)}
-                        riskLevel={resolveRiskLevel(step.riskLevelOverride)}
                         linkedRiskSeverity={worstLinkedSeverity(step.linkedRisks)}
                         linkedRiskCount={(step.linkedRisks || []).length}
                         selected={selectedNodeId === step.id}

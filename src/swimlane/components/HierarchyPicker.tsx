@@ -29,6 +29,14 @@ export interface IHierarchyPickerProps {
   // SwimlaneStudio.tsx. Not offered at the Category level, which is the
   // fixed APQC standard and never has a custom name.
   onRename?: (groupId: string, currentLabel: string) => void;
+  // When set, a card's count shows the number of DISTINCT values this
+  // returns per step (e.g. distinct Process Group IDs), not the number of
+  // raw process steps - used at the Category level, where "steps" was a
+  // less useful number than "how many process groups this category has".
+  // Process Group and Progress ID levels leave this unset and keep
+  // showing their own step counts.
+  countBy?: (processStepId: string) => string;
+  countLabel?: string; // singular noun for the count, e.g. "process group" - defaults to "step"
 }
 
 // Generic drill-down level: groups steps by whatever ID prefix the caller
@@ -37,44 +45,52 @@ export interface IHierarchyPickerProps {
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.
 const HierarchyPicker: React.FC<IHierarchyPickerProps> = ({
-  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename
+  steps, getGroupId, getLabel, onSelect, emptyMessage, allGroupIds, onAddNew, addNewLabel, onRename, countBy, countLabel
 }) => {
   const groups = React.useMemo(() => {
-    const byGroupId = new Map<string, { groupId: string; label: string; count: number }>();
+    const byGroupId = new Map<string, { groupId: string; label: string; count: number; subIds: Set<string> }>();
     steps.forEach(step => {
       const groupId = getGroupId(step.processStepId);
+      const subId = countBy ? countBy(step.processStepId) : undefined;
       const existing = byGroupId.get(groupId);
       if (existing) {
         existing.count += 1;
+        if (subId) existing.subIds.add(subId);
       } else {
-        byGroupId.set(groupId, { groupId, label: getLabel(groupId, step), count: 1 });
+        const subIds = new Set<string>();
+        if (subId) subIds.add(subId);
+        byGroupId.set(groupId, { groupId, label: getLabel(groupId, step), count: 1, subIds });
       }
     });
     (allGroupIds || []).forEach(groupId => {
-      if (!byGroupId.has(groupId)) byGroupId.set(groupId, { groupId, label: getLabel(groupId), count: 0 });
+      if (!byGroupId.has(groupId)) byGroupId.set(groupId, { groupId, label: getLabel(groupId), count: 0, subIds: new Set() });
     });
     return Array.from(byGroupId.values()).sort((a, b) => compareProcessStepIds(a.groupId, b.groupId));
-  }, [steps, getGroupId, getLabel, allGroupIds]);
+  }, [steps, getGroupId, getLabel, allGroupIds, countBy]);
 
   return (
     <div className={styles.grid}>
-      {groups.map(group => (
-        <div className={styles.card} key={group.groupId} onClick={() => onSelect(group.groupId)}>
-          {onRename && (
-            <button
-              type="button"
-              className={styles.renameButton}
-              title="Rename"
-              onClick={e => { e.stopPropagation(); onRename(group.groupId, group.label); }}
-            >
-              ✎
-            </button>
-          )}
-          <span className={styles.code}>{group.groupId}</span>
-          <h3>{group.label}</h3>
-          <p>{group.count} step{group.count === 1 ? '' : 's'}</p>
-        </div>
-      ))}
+      {groups.map(group => {
+        const displayCount = countBy ? group.subIds.size : group.count;
+        const noun = countLabel || 'step';
+        return (
+          <div className={styles.card} key={group.groupId} onClick={() => onSelect(group.groupId)}>
+            {onRename && (
+              <button
+                type="button"
+                className={styles.renameButton}
+                title="Rename"
+                onClick={e => { e.stopPropagation(); onRename(group.groupId, group.label); }}
+              >
+                ✎
+              </button>
+            )}
+            <span className={styles.code}>{group.groupId}</span>
+            <h3>{group.label}</h3>
+            <p>{displayCount} {noun}{displayCount === 1 ? '' : 's'}</p>
+          </div>
+        );
+      })}
       {onAddNew && (
         <div className={styles.addCard} onClick={onAddNew}>
           <span className={styles.addIcon}>+</span>

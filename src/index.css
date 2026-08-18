@@ -2,13 +2,21 @@
   --navy: #0b2148;
   --blue: #1f4fa3;
   --blue-light: #e6f0ff;
-  /* Traffic-light risk severity - fills a step's shape once it's linked
-     to a Risk Register entry. Shape TYPE is conveyed by form (rounded
-     rect/diamond/circle/wavy rect), not color - see ShapeNode.module.scss -
-     so there's no separate per-shape-type color in this palette. */
+  /* Linked-risk severity - the small corner marker a step gets once it's
+     linked to a real Risk Register entry (see ShapeNode's riskMarker).
+     Does NOT fill the shape itself - that used to be a separate manual
+     "risk level" override, retired in favor of the linked-register marker
+     being the one real risk indicator. */
   --risk-high: #d92d20;
   --risk-medium: #dc6803;
   --risk-low: #17803d;
+  /* Shape-type fill colors - Decision and Approval get their own color so
+     they read at a glance among a sea of default-blue process/document
+     shapes; Process and Document keep the plain default blue. Matches
+     BRAND.decision/BRAND.approval in theme.ts, which already reserved
+     these exact values for this purpose. */
+  --shape-decision: #c96a1f;
+  --shape-approval: #146c43;
   --text: #16233d;
   --text-secondary: #5b6b84;
   --border: #dde3ea;

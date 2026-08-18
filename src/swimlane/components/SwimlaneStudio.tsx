@@ -62,7 +62,6 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   actionDescription: '',
   actionType: 'Execute (Within Limits)',
   shapeOverride: '',
-  riskLevelOverride: '',
   responsibleJobTitle: '',
   dependsOnStepIds: [],
   linkedRisks: []
@@ -508,10 +507,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setAddSectionOpen(false);
   };
 
-  // Jumps straight to a step found via GlobalSearch - same drill-down
-  // state a user would end up in by clicking all the way down through
-  // Category -> Process Group -> Progress ID -> that step's own tab by
-  // hand.
+  // Jumps straight to a step found via GlobalSearch - lands on the
+  // Progress ID's swimlane (Category -> Process Group -> Progress ID),
+  // same as clicking all the way down by hand, but stops there rather
+  // than also auto-selecting that step's own Process Step ID tab - the
+  // swimlane for the whole Progress ID is the useful landing spot, since
+  // it shows the found step in context next to everything around it.
   const handleSearchNavigate = (step: IProcessStep): void => {
     setActiveTab('flows');
     setSelectedCategoryId(getCategoryId(step.processStepId));
@@ -521,7 +522,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     // stale region selection from wherever the user was browsing before
     // could hide the very step search just landed them on.
     setSelectedFlowRegion(step.region || undefined);
-    setDrilledDownStepId(step.processStepId);
+    setDrilledDownStepId(undefined);
   };
 
   const newProcessPrefix = selectedProcessGroupId ? `${selectedProcessGroupId}.` : selectedCategoryId ? `${selectedCategoryId}.` : '';
@@ -585,7 +586,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           <img src={qleLogo} className={styles.appBarLogo} alt="Quantum Leap Energy" />
           <div>
             <h2 className={styles.title}>Swimlane Studio</h2>
-            <p className={styles.breadcrumb}>Finance process visualization</p>
+            <p className={styles.breadcrumb}>Business process visualisation</p>
           </div>
         </header>
         <div className={styles.loadingState}>
@@ -607,7 +608,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               {currentLevelName ? ` — ${currentLevelName}` : ''}
             </p>
           ) : (
-            <p className={styles.breadcrumb}>Finance process visualization</p>
+            <p className={styles.breadcrumb}>Business process visualisation</p>
           )}
         </div>
         <div className={styles.appBarSearch}>
@@ -796,6 +797,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   getLabel={id => getCategoryName(id)}
                   onSelect={setSelectedCategoryId}
                   allGroupIds={Object.keys(APQC_CATEGORY_NAMES)}
+                  countBy={getProcessGroupId}
+                  countLabel="process group"
                 />
               </>
             ) : !selectedProcessGroupId ? (

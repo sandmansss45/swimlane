@@ -70,7 +70,7 @@ const SignInGate: React.FC<{ onUseMock: () => void }> = ({ onUseMock }) => {
       <div className={styles.card}>
         <img src={qleLogo} className={styles.mark} alt="Quantum Leap Energy" />
         <h2 className={styles.title}>Swimlane Studio</h2>
-        <p className={styles.subtitle}>Finance process visualization</p>
+        <p className={styles.subtitle}>Business process visualisation</p>
 
         {registrationPending && (
           <div className={styles.warning}>

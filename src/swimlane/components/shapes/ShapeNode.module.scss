@@ -12,12 +12,8 @@
   text-align: center;
   padding: 8px 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  // Default fill when no risk is linked - shape TYPE (process/decision/
-  // approval/document) is conveyed purely by form (rounded rect, diamond,
-  // circle, wavy-bottomed rect), not by color, since color is reserved
-  // for risk severity once the Risk Register is linked in. Every shape
-  // starts here and only a .riskHigh/.riskMedium/.riskLow class (added
-  // once a risk is linked) overrides it to red/amber/green.
+  // Default fill for Process and Document shapes - Decision and Approval
+  // override this with their own color below (see .decision/.approval).
   background: var(--blue);
   color: #fff;
   font-weight: 600;
@@ -58,6 +54,7 @@
   min-width: 170px;
   max-width: 170px;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: var(--shape-decision);
 
   .label {
     max-width: 100px;
@@ -72,6 +69,7 @@
   min-width: 140px;
   max-width: 140px;
   border-radius: 50%;
+  background: var(--shape-approval);
 }
 
 // Document-type = physical/system artifacts (a PO, an invoice, a
@@ -86,21 +84,6 @@
     0% 0%, 100% 0%, 100% 88%,
     87.5% 94%, 75% 88%, 62.5% 94%, 50% 88%, 37.5% 94%, 25% 88%, 12.5% 94%, 0% 88%
   );
-}
-
-// Risk-severity fills - declared after the shape-type rules above so
-// they win (equal specificity, later wins) when a node carries both a
-// type class and a risk class.
-.riskHigh {
-  background: var(--risk-high);
-}
-
-.riskMedium {
-  background: var(--risk-medium);
-}
-
-.riskLow {
-  background: var(--risk-low);
 }
 
 .label {

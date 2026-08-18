@@ -69,10 +69,13 @@ export function serializeLinkedRisks(links: IRiskLink[]): string {
 }
 
 /**
- * A step's shape gets a small corner marker (not a full recolor - see
- * ShapeNode/riskLevelOverride below) when it has at least one linked risk,
- * colored by the WORST linked severity - same "worst wins" reasoning the
- * rest of this app's risk coloring already uses.
+ * A step's shape gets a small corner marker when it has at least one
+ * linked risk, colored by the WORST linked severity - "worst wins" is the
+ * same reasoning the rest of this app's risk coloring already uses. This
+ * is the app's one real risk indicator - a separate manual "risk level"
+ * fill override used to exist alongside it (step.riskLevelOverride, set
+ * directly from the edit panel without going through the Risk Register at
+ * all) but was retired once this linked-register marker existed for real.
  */
 export function worstLinkedSeverity(links: IRiskLink[] | undefined): RiskLevel | undefined {
   let worst: RiskLevel | undefined;
@@ -80,16 +83,4 @@ export function worstLinkedSeverity(links: IRiskLink[] | undefined): RiskLevel |
     if (!worst || SEVERITY_RANK[link.severity] > SEVERITY_RANK[worst]) worst = link.severity;
   });
   return worst;
-}
-
-/**
- * The level a step's shape FILL renders with - a separate, older concept
- * from the linked-risk marker above. This is a manual, ad hoc flag
- * (step.riskLevelOverride) someone can set directly from the edit panel
- * without going through the formal Risk Register at all - kept exactly as
- * it worked before the Risk Register was wired in for real, so existing
- * flagged steps don't change appearance.
- */
-export function resolveRiskLevel(riskLevelOverride: string | undefined): RiskLevel | undefined {
-  return toRiskLevel(riskLevelOverride);
 }

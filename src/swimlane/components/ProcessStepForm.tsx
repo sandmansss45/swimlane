@@ -14,7 +14,6 @@ export interface IProcessStepFormValue {
   actionDescription: string;
   actionType: string;
   shapeOverride: string;
-  riskLevelOverride: string;
   responsibleJobTitle: string;
   dependsOnStepIds: string[];
   linkedRisks: IRiskLink[];
@@ -26,13 +25,6 @@ export const SHAPE_OPTIONS: IDropdownOption[] = [
   { key: 'Decision', text: 'Decision (diamond)' },
   { key: 'Approval', text: 'Approval (circle)' },
   { key: 'Document', text: 'Document (artifact)' }
-];
-
-export const RISK_LEVEL_OPTIONS: IDropdownOption[] = [
-  { key: '', text: '(use Risk Register)' },
-  { key: 'High', text: 'High' },
-  { key: 'Medium', text: 'Medium' },
-  { key: 'Low', text: 'Low' }
 ];
 
 // Both Action and Action Type are free text in the real data (there's no
@@ -92,15 +84,8 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
         options={SHAPE_OPTIONS}
         onChange={(_e, option) => option && set('shapeOverride', String(option.key))}
       />
-      <Dropdown
-        label="Risk level"
-        selectedKey={value.riskLevelOverride}
-        options={RISK_LEVEL_OPTIONS}
-        onChange={(_e, option) => option && set('riskLevelOverride', String(option.key))}
-      />
       <EmployeePicker
         employees={employees}
-        actionType={value.actionType}
         value={value.responsibleJobTitle}
         onChange={jobTitle => set('responsibleJobTitle', jobTitle)}
       />

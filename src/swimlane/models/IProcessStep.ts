@@ -22,12 +22,11 @@ export interface IProcessStep {
   // only shows up under "All".
   region?: string;
   shapeOverride?: string; // raw SharePoint value, e.g. 'Approval', 'Decision', 'Process Step'
-  // Raw value from the shape's edit panel ('High' | 'Medium' | 'Low' | '')
-  // - kept as a plain string, same reasoning as shapeOverride, and
-  // validated where it's consumed (resolveRiskLevel in IRiskStatement.ts)
-  // rather than by the type here. Wins over whatever the Risk Register
-  // would derive for this step; '' means "no override, use the Risk
-  // Register".
+  // Retired manual risk-level flag ('High' | 'Medium' | 'Low' | '') - no
+  // longer settable from the UI and no longer drives any shape color (see
+  // linkedRisks below, the app's one real risk indicator now). Field kept
+  // only so existing values already stored in the real SharePoint column
+  // still round-trip on load/save instead of silently vanishing.
   riskLevelOverride?: string;
   // Manual drag-and-drop position within this step's own Process Step ID
   // group (see orderStepsForTimeline in utils/columns.ts) - lower sorts
@@ -48,10 +47,8 @@ export interface IProcessStep {
   // the UI, not here.
   edgeLabels?: { [dependsOnToken: string]: string };
   // Real Risk Register entries tied to this step, each with its own
-  // manually-chosen severity (see IRiskLink) - separate from
-  // riskLevelOverride above, which is an older, unrelated ad hoc flag that
-  // still drives the shape's fill color on its own. This instead drives a
-  // small corner marker (see ShapeNode) so the two don't visually collide.
+  // manually-chosen severity (see IRiskLink) - drives a small corner
+  // marker (see ShapeNode), the app's one real risk indicator.
   linkedRisks?: IRiskLink[];
   // Who created/last touched this step, and when - confirmed 2026-08-19,
   // part of the same audit-trail thread as swimlane locking
@@ -140,18 +137,4 @@ export function getShapeType(step: IProcessStep): ShapeType {
   if (actionType.indexOf('approve') === 0 || actionType.indexOf('endorse') === 0) return 'approval';
   if (/\?\s*$/.test(step.actionDescription || '')) return 'decision';
   return 'process';
-}
-
-/**
- * Authority tier used to steer job-title suggestions: Execute -> analyst,
- * Endorse -> manager, Approve -> senior/chief. Confirmed design rule - do
- * not flip this mapping.
- */
-export type AuthorityTier = 'analyst' | 'manager' | 'senior';
-
-export function getAuthorityTier(actionType: string): AuthorityTier {
-  const normalized = (actionType || '').trim().toLowerCase();
-  if (normalized.indexOf('approve') === 0) return 'senior';
-  if (normalized.indexOf('endorse') === 0) return 'manager';
-  return 'analyst'; // Execute (Within Limits), Execute (Non Threshold), Automated, etc.
 }

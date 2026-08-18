@@ -35,7 +35,6 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   actionDescription: '',
   actionType: 'Execute (Within Limits)',
   shapeOverride: '',
-  riskLevelOverride: '',
   responsibleJobTitle: '',
   dependsOnStepIds: [],
   linkedRisks: []
