@@ -87,11 +87,25 @@ export class GraphDataService implements IDataService {
     if (cached) return cached;
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(listTitle);
-    const columns = await this._graph.getAllPages<{ name: string; displayName: string }>(
-      `/sites/${siteId}/lists/${listId}/columns?$select=name,displayName`
+    const columns = await this._graph.getAllPages<{ name: string; displayName: string; readOnly?: boolean }>(
+      `/sites/${siteId}/lists/${listId}/columns?$select=name,displayName,readOnly`
     );
     const map: FieldMap = {};
-    columns.forEach(c => { map[c.displayName] = c.name; });
+    columns.forEach(c => {
+      // Every SharePoint list has a hidden, computed "LinkTitle" column
+      // (sometimes "LinkTitleNoMenu") that renders the real Title field as
+      // a clickable link in default views - it reports the SAME display
+      // name ("Title") as the real, editable Title column. Building this
+      // map naively let whichever one the API happened to return last win,
+      // which could silently point a 'Title' write at the read-only
+      // LinkTitle column instead - Graph then rejects the write with
+      // "Field 'LinkTitle' is read-only" (403). Skipping every read-only
+      // column here means a display name always resolves to the one
+      // column that's actually safe to write to, for any list, not just
+      // this specific Title case.
+      if (c.readOnly) return;
+      map[c.displayName] = c.name;
+    });
     this._fieldMapCache.set(listTitle, map);
     return map;
   }
