@@ -204,6 +204,30 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [steps, selectedProgressId]
   );
 
+  // The readable name for wherever the header breadcrumb is currently
+  // pointing - the breadcrumb itself stays the compact numeric trail
+  // ("9 / 9.2 / 9.2.3") since that's genuinely useful for quick reference,
+  // but showing ONLY numbers up there left no way to tell at a glance
+  // which actual swimlane is open without drilling back down through the
+  // pickers - a real user flagged this directly. Same name-resolution
+  // logic each picker level already uses (sample step's own text wins,
+  // then a user-added custom label, then the static APQC table).
+  const currentLevelName = React.useMemo(() => {
+    if (drilledDownStepId) {
+      return stepsInProgressId.find(s => s.processStepId === drilledDownStepId)?.processStepName;
+    }
+    if (selectedProgressId) {
+      return stepsInProgressId[0]?.processDescription || customProgressIdNames[selectedProgressId] || getProgressIdName(selectedProgressId);
+    }
+    if (selectedProcessGroupId) {
+      return customGroupNames[selectedProcessGroupId] || getProcessGroupName(selectedProcessGroupId);
+    }
+    if (selectedCategoryId) {
+      return getCategoryName(selectedCategoryId);
+    }
+    return undefined;
+  }, [drilledDownStepId, selectedProgressId, selectedProcessGroupId, selectedCategoryId, stepsInProgressId, customGroupNames, customProgressIdNames]);
+
   // A Progress ID can hold several genuinely separate swimlanes side by
   // side, one per region (see FlowRegionTabs) - narrowed here, upstream of
   // everything else derived from stepsInProgressId, so picking a region
@@ -459,6 +483,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           {selectedCategoryId ? (
             <p className={styles.breadcrumb}>
               {[selectedCategoryId, selectedProcessGroupId, selectedProgressId, drilledDownStepId].filter(Boolean).join(' / ')}
+              {currentLevelName ? ` — ${currentLevelName}` : ''}
             </p>
           ) : (
             <p className={styles.breadcrumb}>Finance process visualization</p>
