@@ -25,6 +25,7 @@ import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
 import AuditView from './AuditView';
 import ImprovementsView from './ImprovementsView';
+import SwimlaneComments from './SwimlaneComments';
 import SwimlaneCanvas from './SwimlaneCanvas';
 import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
@@ -282,6 +283,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const activeLock = React.useMemo(
     () => selectedProgressId ? findActiveLock(progressIdLocks, selectedProgressId, selectedFlowRegion) : undefined,
     [progressIdLocks, selectedProgressId, selectedFlowRegion]
+  );
+
+  // Same progressId + region scoping as activeLock above - only the
+  // comments that actually belong to the swimlane currently on screen,
+  // not every comment ever left anywhere (that's what the separate
+  // Improvements tab is for).
+  const commentsForSwimlane = React.useMemo(
+    () => selectedProgressId
+      ? swimlaneComments.filter(c => c.progressId === selectedProgressId && c.region === (selectedFlowRegion || ''))
+      : [],
+    [swimlaneComments, selectedProgressId, selectedFlowRegion]
   );
 
   // A Progress ID can hold several genuinely separate swimlanes side by
@@ -997,6 +1009,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   />
                 </div>
                 )}
+
+                <SwimlaneComments comments={commentsForSwimlane} />
               </>
             )}
           </>

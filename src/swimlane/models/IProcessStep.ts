@@ -78,13 +78,16 @@ export function getProgressId(processStepId: string): string {
   return (processStepId || '').split('.').slice(0, 3).join('.');
 }
 
-// The three regions always offered by FlowRegionTabs even before any step
+// The regions always offered by FlowRegionTabs even before any step
 // exists for them yet, and also what CSV import (see utils/csvImport.ts)
 // recognizes when auto-detecting a region from an APQC Title's own
 // trailing "- UK" suffix - shared here, in one place, rather than
-// duplicated, so both only ever need updating once if a real 4th region
-// shows up.
-export const KNOWN_FLOW_REGIONS = ['UK', 'US', 'SA'];
+// duplicated. 'Global' added 2026-08-19 for a process that genuinely
+// applies everywhere rather than being tied to one country's variant -
+// a real, taggable region in its own right, distinct from "All" (the
+// FlowRegionTabs aggregate view showing every region's steps together
+// regardless of tag, selectedFlowRegion === undefined).
+export const KNOWN_FLOW_REGIONS = ['UK', 'US', 'SA', 'Global'];
 
 /**
  * Real APQC Title values already carry their region as a trailing suffix
