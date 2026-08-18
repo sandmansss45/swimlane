@@ -1,0 +1,48 @@
+// Identical pill styling to ProcessStepTabs (navy active state) rather
+// than DepartmentFilter's blue - this is a primary "which swimlane am I
+// even looking at" choice like Process Step ID tabs are, not a secondary
+// filter like Department, so it gets the same visual weight.
+.tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--blue);
+  }
+}
+
+.active {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+
+.count {
+  display: inline-block;
+  background: rgba(11, 33, 72, 0.08);
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: var(--fs-xs);
+  margin-left: 4px;
+  color: var(--text-secondary);
+}
+
+.active .count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}

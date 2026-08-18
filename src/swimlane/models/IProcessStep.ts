@@ -12,6 +12,15 @@ export interface IProcessStep {
   action: string;
   actionDescription: string;
   responsibleJobTitle: string;
+  // Which country/entity's variant of this flow this step belongs to (e.g.
+  // 'UK', 'US', 'SA') - confirmed 2026-08-18 as a real, separate concept
+  // from IEmployee.department (which is just which department a
+  // RESPONSIBLE PERSON sits in, unrelated). A Progress ID can hold several
+  // genuinely different swimlanes side by side, one per region - see
+  // FlowRegionTabs, which is the only thing that reads/sets this. '' or
+  // undefined means the step isn't tagged to any particular region and
+  // only shows up under "All".
+  region?: string;
   shapeOverride?: string; // raw SharePoint value, e.g. 'Approval', 'Decision', 'Process Step'
   // Raw value from the shape's edit panel ('High' | 'Medium' | 'Low' | '')
   // - kept as a plain string, same reasoning as shapeOverride, and

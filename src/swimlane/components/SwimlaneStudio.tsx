@@ -18,6 +18,7 @@ import {
 import HierarchyPicker from './HierarchyPicker';
 import GlobalSearch from './GlobalSearch';
 import ProcessStepTabs from './ProcessStepTabs';
+import FlowRegionTabs from './FlowRegionTabs';
 import DepartmentFilter from './DepartmentFilter';
 import EmployeesList from './EmployeesList';
 import RiskRegisterList from './RiskRegisterList';
@@ -84,6 +85,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [selectedProcessGroupId, setSelectedProcessGroupId] = React.useState<string | undefined>(undefined);
   const [selectedProgressId, setSelectedProgressId] = React.useState<string | undefined>(undefined);
   const [drilledDownStepId, setDrilledDownStepId] = React.useState<string | undefined>(undefined);
+  // Which region's variant of the current Progress ID's flow is showing -
+  // a genuinely different concept from selectedDepartment below (that's
+  // just which department a RESPONSIBLE PERSON sits in). undefined = "All"
+  // regions combined. See FlowRegionTabs for the full reasoning.
+  const [selectedFlowRegion, setSelectedFlowRegion] = React.useState<string | undefined>(undefined);
   const [selectedDepartment, setSelectedDepartment] = React.useState<string | undefined>(undefined);
 
   const [newStepDraft, setNewStepDraft] = React.useState<IProcessStepFormValue>(emptyStepDraft());
@@ -206,17 +212,27 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [steps, selectedProgressId]
   );
 
-  // Scoped to the current swimlane (this Progress ID's own steps), not the
-  // full cross-progress-ID dataset - a step realistically only ever
-  // depends on something in its own flow, and listing all ~40 steps from
-  // every unrelated flow made the real option buried in noise. No
-  // excludeStepId - a brand-new step has no "self" to leave out, unlike
-  // the edit panel's version of this same list.
-  const addStepDependsOnOptions = React.useMemo(() => buildDependsOnOptions(stepsInProgressId), [stepsInProgressId]);
+  // A Progress ID can hold several genuinely separate swimlanes side by
+  // side, one per region (see FlowRegionTabs) - narrowed here, upstream of
+  // everything else derived from stepsInProgressId, so picking a region
+  // acts as the primary partition and Process Step ID tabs/Depends-on
+  // options/the canvas itself only ever see that region's own steps.
+  const stepsInRegion = React.useMemo(
+    () => selectedFlowRegion ? stepsInProgressId.filter(s => (s.region || '') === selectedFlowRegion) : stepsInProgressId,
+    [stepsInProgressId, selectedFlowRegion]
+  );
+
+  // Scoped to the current swimlane (this region's own steps within the
+  // Progress ID), not the full cross-progress-ID dataset - a step
+  // realistically only ever depends on something in its own flow, and
+  // listing all ~40 steps from every unrelated flow made the real option
+  // buried in noise. No excludeStepId - a brand-new step has no "self" to
+  // leave out, unlike the edit panel's version of this same list.
+  const addStepDependsOnOptions = React.useMemo(() => buildDependsOnOptions(stepsInRegion), [stepsInRegion]);
 
   const visibleSteps = React.useMemo(
-    () => drilledDownStepId ? stepsInProgressId.filter(s => s.processStepId === drilledDownStepId) : stepsInProgressId,
-    [stepsInProgressId, drilledDownStepId]
+    () => drilledDownStepId ? stepsInRegion.filter(s => s.processStepId === drilledDownStepId) : stepsInRegion,
+    [stepsInRegion, drilledDownStepId]
   );
 
   // Resolved against the FULL, unfiltered `steps` array - row-number-based
@@ -307,6 +323,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     } else {
       setProgressIdLabels(prev => [...prev, created]);
       setSelectedProgressId(created.progressId);
+      setSelectedFlowRegion(undefined);
     }
     setAddShellState(undefined);
   };
@@ -346,6 +363,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setSelectedCategoryId(getCategoryId(created.processStepId));
     setSelectedProcessGroupId(getProcessGroupId(created.processStepId));
     setSelectedProgressId(getProgressId(created.processStepId));
+    // NewProcessModal has no region context to inherit (it's often used to
+    // start an entirely new area from scratch), so the created step is
+    // unregioned - "All" is the only view it's guaranteed to show up in.
+    setSelectedFlowRegion(undefined);
     // Selects the new step's own Process Step ID tab, not "All" - without
     // this, "Add a step" right afterward defaulted to the bare Progress ID
     // as its processStepId (drilledDownStepId || selectedProgressId, with
@@ -364,6 +385,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setSelectedCategoryId(getCategoryId(step.processStepId));
     setSelectedProcessGroupId(getProcessGroupId(step.processStepId));
     setSelectedProgressId(getProgressId(step.processStepId));
+    // Guarantees the found step is actually visible - without this, a
+    // stale region selection from wherever the user was browsing before
+    // could hide the very step search just landed them on.
+    setSelectedFlowRegion(step.region || undefined);
     setDrilledDownStepId(step.processStepId);
   };
 
@@ -371,14 +396,32 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleAddStep = (): void => {
     if (!selectedProgressId || !newStepDraft.actionDescription.trim()) return;
-    const referenceStep = stepsInProgressId[0];
+    // The very first step in a brand-new region has no reference step IN
+    // THAT REGION to inherit from (stepsInRegion is empty) - it used to
+    // fall back straight to blank/bare defaults there, leaving Process
+    // Description empty and APQC Title as just the bare Progress ID
+    // number. Falls back to ANY step in the Progress ID instead: Process
+    // Description/Step Name describe the same underlying business process
+    // regardless of which region's specific procedure this is, so
+    // inheriting them from another region's step is far more useful than
+    // leaving them blank. APQC Title alone gets rebuilt for the new
+    // region (mirroring the real data's own "9.6.1 - UK" convention)
+    // rather than inherited verbatim, since copying e.g. "9.6.1 - US"
+    // onto a brand-new UK step would mislabel it.
+    const regionReferenceStep = stepsInRegion[0];
+    const anyReferenceStep = stepsInProgressId[0];
     const { dependsOnStepIds, ...fields } = newStepDraft;
     setSaving(true);
     dataService.addProcessStep({
-      apqcTitle: referenceStep ? referenceStep.apqcTitle : selectedProgressId,
-      processDescription: referenceStep ? referenceStep.processDescription : '',
+      apqcTitle: regionReferenceStep
+        ? regionReferenceStep.apqcTitle
+        : selectedFlowRegion
+          ? `${selectedProgressId} - ${selectedFlowRegion}`
+          : anyReferenceStep ? anyReferenceStep.apqcTitle : selectedProgressId,
+      processDescription: regionReferenceStep?.processDescription || anyReferenceStep?.processDescription || '',
       processStepId: drilledDownStepId || selectedProgressId,
-      processStepName: referenceStep ? referenceStep.processStepName : '',
+      processStepName: regionReferenceStep?.processStepName || anyReferenceStep?.processStepName || '',
+      region: selectedFlowRegion || '',
       ...fields,
       actionDescription: fields.actionDescription.trim(),
       dependsOn: stepIdsToDependsOnTokens(steps, dependsOnStepIds)
@@ -616,7 +659,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               <>
                 <div className={styles.toolbar}>
                   <div className={styles.toolbarRow}>
-                    <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); }} />
+                    <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); setSelectedFlowRegion(undefined); }} />
                     <IconButton
                       menuIconProps={{ iconName: 'More' }}
                       title="More actions"
@@ -637,14 +680,26 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                       }}
                     />
                   </div>
-                  <ProcessStepTabs steps={stepsInProgressId} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
+                  <FlowRegionTabs
+                    steps={stepsInProgressId}
+                    selectedRegion={selectedFlowRegion}
+                    onSelect={region => {
+                      // A Process Step ID tab selected in one region may not
+                      // exist (or mean the same thing) in another - clear it
+                      // so switching regions never leaves the canvas
+                      // showing a stale, unrelated tab's worth of nothing.
+                      setSelectedFlowRegion(region);
+                      setDrilledDownStepId(undefined);
+                    }}
+                  />
+                  <ProcessStepTabs steps={stepsInRegion} selectedStepId={drilledDownStepId} onSelect={setDrilledDownStepId} />
                   <DepartmentFilter departments={departments} selectedDepartment={selectedDepartment} onChange={setSelectedDepartment} />
                 </div>
 
                 <SwimlaneCanvas
                   steps={visibleSteps}
                   allSteps={steps}
-                  swimlaneSteps={stepsInProgressId}
+                  swimlaneSteps={stepsInRegion}
                   edges={edges}
                   riskStatements={riskStatements}
                   drilledDownStepId={drilledDownStepId}

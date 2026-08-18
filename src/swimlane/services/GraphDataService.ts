@@ -151,6 +151,12 @@ export class GraphDataService implements IDataService {
       action: get(item, 'Action'),
       actionDescription: get(item, 'Action Description'),
       responsibleJobTitle: get(item, 'ResponsibleJobTitle'),
+      // TODO-CONFIRM: "Region" doesn't exist on the real "9.6 tester" list
+      // yet - needs creating as a single line of text column, values like
+      // "UK"/"US"/"SA" (see FlowRegionTabs and the schema comment on
+      // IProcessStep.region for why this is a separate concept from the
+      // employee Department field).
+      region: get(item, 'Region') || undefined,
       shapeOverride: get(item, 'ShapeOverride'),
       // TODO-CONFIRM: guessed display names, not verified against the real
       // process list yet - same caveat as ShapeOverride's own history.
@@ -306,6 +312,7 @@ export class GraphDataService implements IDataService {
     set('Action', step.action);
     set('Action Description', step.actionDescription);
     set('ResponsibleJobTitle', step.responsibleJobTitle);
+    set('Region', step.region || '');
     set('ShapeOverride', step.shapeOverride || '');
     set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
@@ -345,6 +352,7 @@ export class GraphDataService implements IDataService {
     set('Action', step.action);
     set('Action Description', step.actionDescription);
     set('ResponsibleJobTitle', step.responsibleJobTitle);
+    set('Region', step.region || '');
     set('ShapeOverride', step.shapeOverride || '');
     set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
