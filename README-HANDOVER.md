@@ -566,7 +566,38 @@ around.
 
 ---
 
-## B. Setting up Claude Code in VS Code (so others can make changes)
+## B. Making changes going forward — and why Claude Code specifically
+
+This app was built collaboratively with Claude Code across many focused
+sessions, not written and then documented after the fact. That shows up
+directly in the codebase: comments throughout consistently explain *why*
+a decision was made (often citing a real bug it fixed, or an explicit
+user decision with a date) rather than just what the code does — exactly
+the kind of context an AI coding assistant (or a new human developer)
+needs to make a safe change without re-deriving it from scratch by
+reading every file. `CLAUDE.md` in the repo root exists specifically to
+hand that context over automatically.
+
+**Recommended workflow for any future change:**
+1. Open the repo in VS Code with Claude Code installed (steps below).
+2. Describe the change in plain language. Claude Code reads `CLAUDE.md`
+   automatically for project/architecture context, and can be pointed at
+   this document for the operational picture.
+3. Insist on `npm run build` succeeding with zero errors, and on the
+   actual feature being verified live — ideally in a browser, in mock
+   mode where no credentials are needed — not just "the code compiles."
+4. Review the diff before committing. A push to `main` deploys to
+   production immediately with no approval gate (see Section 1) — there
+   is no safety net between "committed" and "live."
+
+Changes are still possible without Claude Code for anyone comfortable
+reading React/TypeScript directly, but a lot of the app's non-obvious
+behaviour — why arrows route the way they do, why `DependsOn` uses row
+numbers instead of IDs, why swimlane locking is a social control and not
+a technical one — lives in comments that are easy to miss without
+something deliberately reading the whole file first.
+
+### Setting up Claude Code in VS Code
 
 1. Install **VS Code**: https://code.visualstudio.com
 2. Install **Node.js** (LTS): https://nodejs.org — a normal system-wide
