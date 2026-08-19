@@ -36,15 +36,6 @@
 }
 
 .grid {
-  // Both properties matter, not just position: a positioned element with
-  // z-index:auto/0 actually paints ABOVE non-positioned in-flow content
-  // per the CSS2.1 stacking order (counterintuitively "on top", not
-  // "at the back") - explicit z-index here makes .grid its own stacking
-  // context, so .watermark's negative z-index below is scoped to stay
-  // behind .grid's own (non-positioned) cell content without also
-  // escaping past it into .canvas's own painted background further up.
-  position: relative;
-  z-index: 0;
   display: grid;
   border-collapse: collapse;
   // Breathing room between adjacent nodes so an edge label sitting on the
@@ -187,22 +178,6 @@
   background: transparent;
   border-color: transparent;
   transition: none;
-}
-
-// A subtle, repeating brand mark behind the diagram - export only (see
-// exportToPdf), so anyone who receives the PDF on its own can tell where
-// it came from at a glance without it competing with the actual content
-// for attention. Sized to the grid's own full content box (not the
-// canvas's scrolled viewport), since .grid never scrolls itself - only
-// its .canvas parent does.
-.watermark {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-repeat: repeat;
-  background-size: 150px auto;
-  opacity: 0.06;
-  pointer-events: none;
 }
 
 // A cell that WOULD accept the step currently being dragged (same

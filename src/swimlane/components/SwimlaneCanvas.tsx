@@ -11,7 +11,6 @@ import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } f
 import ShapeNode from './shapes/ShapeNode';
 import ShapeLegend from './ShapeLegend';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
-import qleMark from '../../assets/qle-mark.svg';
 import styles from './SwimlaneCanvas.module.scss';
 
 export interface ISwimlaneCanvasProps {
@@ -636,7 +635,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     if (!canvas || exporting) return;
     setExporting(true);
     // setExporting(true) only SCHEDULES the re-render that hides empty-cell
-    // chrome and shows the watermark (see cellClassName/the watermark div
+    // chrome and the connector handles (see cellClassName/onConnectorDragStart
     // below) - without waiting for it to actually paint, toJpeg would
     // capture the DOM as it looked a frame ago, before either change took
     // effect. Two rAFs (not one) reliably lands after a real paint, not
@@ -736,9 +735,6 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         leaves empty canvas to the right instead of stretching.
       */}
       <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(170px, 260px))` }}>
-        {exporting && (
-          <div className={styles.watermark} style={{ backgroundImage: `url(${qleMark})` }} aria-hidden="true" />
-        )}
         <div className={styles.corner} />
         {columnGroups.map(group => (
           <div
@@ -805,7 +801,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                         linkedRiskCount={(step.linkedRisks || []).length}
                         selected={selectedNodeId === step.id}
                         onClick={() => handleNodeClick(step)}
-                        onConnectorDragStart={isLocked ? undefined : handleConnectDragStart(step)}
+                        // Editing UI, not diagram content - hidden during
+                        // PDF export the same way empty cells are (see
+                        // cellClassName above), just via not rendering it
+                        // at all rather than a CSS class, so there's no
+                        // transition-timing risk to worry about either.
+                        onConnectorDragStart={isLocked || exporting ? undefined : handleConnectDragStart(step)}
                         onConnectorDragEnd={handleConnectDragEnd}
                         connectable={isValidConnectionTarget(step)}
                       />
