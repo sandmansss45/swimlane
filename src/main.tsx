@@ -37,7 +37,7 @@ initMsal()
         <h2 style="color: #142d50; margin: 0 0 8px;">Swimlane Studio failed to start</h2>
         <p style="color: #16233d; margin: 0 0 12px;">Something went wrong during startup, before the app could render anything - almost always a sign-in (MSAL) configuration issue.</p>
         <pre style="background: #eaf2fd; padding: 12px; border-radius: 8px; overflow: auto; color: #16233d; white-space: pre-wrap; margin: 0 0 12px;">${escaped}</pre>
-        <p style="color: #5b6b84; font-size: 13px; margin: 0;">Open DevTools (F12) → Console for the full error and stack trace.</p>
+        <p style="color: #646e82; font-size: 13px; margin: 0;">Open DevTools (F12) → Console for the full error and stack trace.</p>
       </div>
     `;
   });

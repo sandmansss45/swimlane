@@ -122,7 +122,7 @@ export const signInTheme: ITheme = createTheme({
     neutralLight: '#1c2c4a',
     neutralQuaternaryAlt: '#233457',
     neutralQuaternary: '#2a3c62',
-    neutralTertiaryAlt: '#5b6b84',
+    neutralTertiaryAlt: BRAND.textSecondary,
     neutralTertiary: '#9fb0cc',
     neutralSecondary: '#cdd7e8',
     neutralPrimaryAlt: '#e2e8f4',
