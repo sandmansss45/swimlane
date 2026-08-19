@@ -182,10 +182,8 @@ created specifically for this app. **CONFIRMED.**
 **Master File columns:** APQC Title, Process Description, Process Step
 ID, Process Step Name, Action Type, Action, Action Description,
 ResponsibleJobTitle, Region, ShapeOverride, ManualOrder, DependsOn, Edge
-Labels — all **CONFIRMED** present on the real list. **Linked Risks** is
-coded and ready but the column **does not yet exist** on the real list —
-**needs creating** (single line of text) before risk-linking will persist
-in real (signed-in) mode; it already works in mock/demo mode.
+Labels, Linked Risks, SOP Link, Delegation of Authority Link — all
+**CONFIRMED** present on the real list.
 `RiskLevelOverride`'s exact real column name is also unconfirmed (a
 retired feature — see Roadmap — kept only so any pre-existing data in it
 still round-trips, not actively used any more).
@@ -418,9 +416,7 @@ release/versioning process.
   constrained to free/no-added-cost options at the user's request. No
   direction has been committed to.
 
-**Outstanding work.** Create the missing `Linked Risks` column on the
-real Master File list (the code already reads/writes it — it just needs
-the column to exist). Confirm `RiskLevelOverride`'s real column name, or
+**Outstanding work.** Confirm `RiskLevelOverride`'s real column name, or
 formally retire the field if it's no longer wanted at all.
 
 **Future architecture considerations.** If role-based access control is

@@ -218,10 +218,10 @@ export class GraphDataService implements IDataService {
         return isNaN(parsed) ? undefined : parsed;
       })(),
       dependsOn: parseDependsOn(get(item, 'DependsOn')),
-      // TODO-CONFIRM: "Linked Risks" doesn't exist on the real Master File
-      // list yet - needs creating as a single line of text column, same as
-      // DependsOn - see the schema comment on IProcessStep.linkedRisks for
-      // the "riskId:severity" format it expects.
+      // CONFIRMED 2026-08-19 - "Linked Risks" column created on the real
+      // Master File list (single line of text), same format as DependsOn -
+      // see the schema comment on IProcessStep.linkedRisks for the
+      // "riskId:severity" format it expects.
       linkedRisks: parseLinkedRisks(get(item, 'Linked Risks')),
       // CONFIRMED 2026-08-19 - "Edge Labels" column created on the real
       // Master File list (single line of text), same format as DependsOn/
