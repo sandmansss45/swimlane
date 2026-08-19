@@ -231,6 +231,15 @@ export class GraphDataService implements IDataService {
         const parsed = parseEdgeLabels(get(item, 'Edge Labels'));
         return Object.keys(parsed).length > 0 ? parsed : undefined;
       })(),
+      // TODO-CONFIRM: "SOP Link" and "Delegation of Authority Link" don't
+      // exist on the real Master File list yet - guessed display names,
+      // needs creating as two single line of text columns (not Hyperlink -
+      // that column type returns a {Url, Description} object from Graph
+      // instead of a plain string, which _get/set here aren't set up to
+      // handle, unlike every other text-ish field in this list). See the
+      // schema comment on IProcessStep.sopLink for what each is for.
+      sopLink: get(item, 'SOP Link') || undefined,
+      delegationOfAuthorityLink: get(item, 'Delegation of Authority Link') || undefined,
       // Native SharePoint item metadata, not a custom column - see the
       // GraphItem type comment and IProcessStep.createdBy for why.
       createdBy: GraphDataService._identityName(item.createdBy),
@@ -475,6 +484,8 @@ export class GraphDataService implements IDataService {
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
     set('Edge Labels', serializeEdgeLabels(step.edgeLabels));
+    set('SOP Link', step.sopLink || '');
+    set('Delegation of Authority Link', step.delegationOfAuthorityLink || '');
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     const now = new Date().toISOString();
@@ -521,6 +532,8 @@ export class GraphDataService implements IDataService {
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
     set('Edge Labels', serializeEdgeLabels(step.edgeLabels));
+    set('SOP Link', step.sopLink || '');
+    set('Delegation of Authority Link', step.delegationOfAuthorityLink || '');
 
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${step.id}/fields`, fields);
   }

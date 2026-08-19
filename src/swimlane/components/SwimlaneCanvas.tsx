@@ -575,7 +575,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       shapeOverride: step.shapeOverride || '',
       responsibleJobTitle: step.responsibleJobTitle,
       dependsOnStepIds: dependsOnTokensToStepIds(allSteps, step.dependsOn),
-      linkedRisks: step.linkedRisks || []
+      linkedRisks: step.linkedRisks || [],
+      sopLink: step.sopLink || '',
+      delegationOfAuthorityLink: step.delegationOfAuthorityLink || ''
     });
   };
 

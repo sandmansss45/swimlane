@@ -1,0 +1,27 @@
+// Left-aligned, not full-width - a plain DefaultButton stretched across
+// the whole form would read as a primary action, competing with "Save
+// changes"/"Add step" below it, when this is really just a quiet toggle.
+.addButton {
+  align-self: flex-start;
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.field {
+  flex: 1;
+}
+
+.iconButton {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  // Nudged up to land level with the text input itself, not the label
+  // sitting above it - TextField's own label pushes the input down, and
+  // align-items: flex-end on .row alone isn't enough to compensate since
+  // Fluent's IconButton has no such label of its own.
+  margin-bottom: 1px;
+}

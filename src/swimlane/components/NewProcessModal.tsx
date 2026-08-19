@@ -37,7 +37,9 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   shapeOverride: '',
   responsibleJobTitle: '',
   dependsOnStepIds: [],
-  linkedRisks: []
+  linkedRisks: [],
+  sopLink: '',
+  delegationOfAuthorityLink: ''
 });
 
 // Every other way of getting a step into the app (Add a step, CSV import)

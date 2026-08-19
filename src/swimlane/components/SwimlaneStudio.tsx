@@ -68,7 +68,9 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
   shapeOverride: '',
   responsibleJobTitle: '',
   dependsOnStepIds: [],
-  linkedRisks: []
+  linkedRisks: [],
+  sopLink: '',
+  delegationOfAuthorityLink: ''
 });
 
 const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {

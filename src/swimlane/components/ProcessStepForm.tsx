@@ -4,6 +4,7 @@ import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, IRiskLink } from '../models/IRiskStatement';
 import EmployeePicker from './EmployeePicker';
 import RiskLinkPicker from './RiskLinkPicker';
+import OptionalLinkField from './OptionalLinkField';
 
 // The full set of fields a process step actually has - shared by the
 // "Add a step" card and the shape edit panel so a step created here has
@@ -17,6 +18,8 @@ export interface IProcessStepFormValue {
   responsibleJobTitle: string;
   dependsOnStepIds: string[];
   linkedRisks: IRiskLink[];
+  sopLink: string;
+  delegationOfAuthorityLink: string;
 }
 
 export const SHAPE_OPTIONS: IDropdownOption[] = [
@@ -122,6 +125,20 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
         riskStatements={riskStatements}
         value={value.linkedRisks}
         onChange={links => set('linkedRisks', links)}
+      />
+      <OptionalLinkField
+        label="SOP / guidance link"
+        addButtonText="+ Add SOP / guidance link"
+        placeholder="https://... (SOP, NetSuite, or other system guidance)"
+        value={value.sopLink}
+        onChange={v => set('sopLink', v)}
+      />
+      <OptionalLinkField
+        label="Delegation of authority link"
+        addButtonText="+ Add delegation of authority link"
+        placeholder="https://..."
+        value={value.delegationOfAuthorityLink}
+        onChange={v => set('delegationOfAuthorityLink', v)}
       />
     </>
   );

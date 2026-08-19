@@ -65,6 +65,18 @@ export interface IProcessStep {
   createdAt?: string; // ISO date string
   modifiedBy?: string;
   modifiedAt?: string; // ISO date string
+  // Two separate reference links a step can carry - confirmed 2026-08-19.
+  // sopLink points to the detailed SOP and/or system guidance for doing
+  // the step (e.g. a NetSuite how-to page); delegationOfAuthorityLink
+  // points to the DoA document governing who's allowed to take the
+  // action. Deliberately kept as two distinct fields rather than one
+  // generic "links" list - they're different documents with different
+  // audiences, and a step might have either, both, or neither. Both
+  // undefined/blank for the vast majority of steps, so the edit panel
+  // hides each behind its own "+ Add link" affordance (see
+  // OptionalLinkField) instead of always showing two empty boxes.
+  sopLink?: string;
+  delegationOfAuthorityLink?: string;
 }
 
 /**
