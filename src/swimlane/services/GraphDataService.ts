@@ -231,13 +231,13 @@ export class GraphDataService implements IDataService {
         const parsed = parseEdgeLabels(get(item, 'Edge Labels'));
         return Object.keys(parsed).length > 0 ? parsed : undefined;
       })(),
-      // TODO-CONFIRM: "SOP Link" and "Delegation of Authority Link" don't
-      // exist on the real Master File list yet - guessed display names,
-      // needs creating as two single line of text columns (not Hyperlink -
-      // that column type returns a {Url, Description} object from Graph
-      // instead of a plain string, which _get/set here aren't set up to
-      // handle, unlike every other text-ish field in this list). See the
-      // schema comment on IProcessStep.sopLink for what each is for.
+      // CONFIRMED 2026-08-19 - "SOP Link" and "Delegation of Authority
+      // Link" columns created on the real Master File list (single line of
+      // text, not Hyperlink - that column type returns a {Url,
+      // Description} object from Graph instead of a plain string, which
+      // _get/set here aren't set up to handle, unlike every other text-ish
+      // field in this list). See the schema comment on IProcessStep.sopLink
+      // for what each is for.
       sopLink: get(item, 'SOP Link') || undefined,
       delegationOfAuthorityLink: get(item, 'Delegation of Authority Link') || undefined,
       // Native SharePoint item metadata, not a custom column - see the
