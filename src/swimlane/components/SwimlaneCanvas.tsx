@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption } from '@fluentui/react';
+import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption, Callout, TextField } from '@fluentui/react';
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
@@ -101,6 +101,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [needsHighwayStrip, setNeedsHighwayStrip] = React.useState(true);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>(undefined);
   const [draftLabels, setDraftLabels] = React.useState<{ [token: string]: string }>({});
+  // Set while the small "Label or delete this dependency" Callout is open
+  // for one specific arrow (see the edge hit-area's onClick) - point is
+  // the click's viewport coordinates, since there's no single stable DOM
+  // element per edge to anchor a Callout's target to the way there would
+  // be for an ordinary button.
+  const [edgePopup, setEdgePopup] = React.useState<{ edge: IResolvedEdge; point: { x: number; y: number } } | undefined>(undefined);
   const [editDraft, setEditDraft] = React.useState<IProcessStepFormValue | undefined>(undefined);
   const [draggingStepId, setDraggingStepId] = React.useState<string | undefined>(undefined);
   // Set while dragging a shape IN from ShapeLegend rather than moving an
@@ -611,13 +617,14 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     }
   };
 
-  // Removes just this one dependency, directly from clicking its arrow on
-  // the canvas - no need to open the source step's edit panel and find it
-  // in the Outgoing connections list first. Goes through onEditStep, the
-  // same path every other edit takes (not a new action type), so it gets
-  // undo for free (see handleEditStep/lastAction in SwimlaneStudio.tsx) -
-  // consistent with how this app already treats "editing" a link
-  // elsewhere (RiskLinkPicker: remove and re-add, never in-place edit).
+  // Removes just this one dependency - offered from the small popup
+  // clicking an arrow opens (see edgePopup), no need to open the source
+  // step's edit panel and find it in the Outgoing connections list first.
+  // Goes through onEditStep, the same path every other edit takes (not a
+  // new action type), so it gets undo for free (see handleEditStep/
+  // lastAction in SwimlaneStudio.tsx) - consistent with how this app
+  // already treats "editing" a link elsewhere (RiskLinkPicker: remove and
+  // re-add, never in-place edit).
   const deleteEdge = (edge: IResolvedEdge): void => {
     if (isLocked) return;
     const target = stepsById.get(edge.toRowId);
@@ -744,9 +751,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                   stroke="transparent"
                   strokeWidth={14}
                   fill="none"
-                  onClick={e => { e.stopPropagation(); deleteEdge(edge); }}
+                  onClick={e => { e.stopPropagation(); setEdgePopup({ edge, point: { x: e.clientX, y: e.clientY } }); }}
                 >
-                  <title>Click to remove this dependency</title>
+                  <title>Click to label or remove this dependency</title>
                 </path>
               )}
               <path
@@ -764,6 +771,37 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
           );
         })}
       </svg>
+
+      {/*
+        Anchored to the click's viewport point (see edgePopup), not a DOM
+        element ref - there's no single stable element per edge the way
+        there would be for an ordinary button. Both actions live in one
+        popup rather than a menu you'd pick a branch from first, since
+        seeing the current label (if any) while deciding whether to
+        relabel or just remove it is more useful than hiding one behind
+        the other.
+      */}
+      {edgePopup && (
+        <Callout
+          target={edgePopup.point}
+          onDismiss={() => setEdgePopup(undefined)}
+          setInitialFocus
+          className={styles.edgePopup}
+        >
+          <TextField
+            label="Branch label"
+            placeholder="Yes / No / label this branch"
+            defaultValue={edgePopup.edge.label || ''}
+            onChange={(_e, v) => setDraftLabels(prev => ({ ...prev, [draftKey(edgePopup.edge)]: v || '' }))}
+            onBlur={() => saveLabel(edgePopup.edge)}
+          />
+          <DefaultButton
+            text="Remove dependency"
+            iconProps={{ iconName: 'Delete', styles: { root: { color: 'var(--risk-high)' } } }}
+            onClick={() => { deleteEdge(edgePopup.edge); setEdgePopup(undefined); }}
+          />
+        </Callout>
+      )}
 
       {/*
         1fr used to let each column stretch to fill whatever width the

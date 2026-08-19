@@ -35,10 +35,11 @@
 
 // Wide, invisible click target for an otherwise 1.5-2.5px line (see the
 // comment in SwimlaneCanvas.tsx for why it's a separate path rather than
-// just widening the visible one). stroke: risk-high on hover, not the
-// selection blue used elsewhere on this line - red reads as "this is
-// about to be removed", matching what actually happens on click, rather
-// than looking like a selection state that does nothing.
+// just widening the visible one). Blue on hover, the same brand blue used
+// for the highlighted/selected state elsewhere on this line - clicking
+// opens a small popup to label or remove the dependency (see edgePopup),
+// not an instant delete, so a neutral "this is interactive" blue fits
+// better than a red "about to be removed" warning would.
 .edgeHitArea {
   cursor: pointer;
   pointer-events: stroke;
@@ -48,9 +49,17 @@
   // which the CSS cascade always ranks below an actual class selector
   // regardless of specificity.
   &:hover ~ .edgeLine {
-    stroke: var(--risk-high);
+    stroke: var(--blue);
     stroke-width: 2.5px;
   }
+}
+
+.edgePopup {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 240px;
 }
 
 .edgeLabel {
