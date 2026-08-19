@@ -111,6 +111,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // validity rules and drop handling (see isValidDropTargetForCurrentDrag/
   // handleDrop below).
   const [draggingNewShape, setDraggingNewShape] = React.useState<string | undefined>(undefined);
+  // Set while dragging a step's connector handle (see ShapeNode) to draw a
+  // new dependency link onto another step - a third, independent drag
+  // mode alongside draggingStepId (move) and draggingNewShape (create),
+  // never active at the same time as either since only one native drag
+  // gesture can be in progress at once.
+  const [connectingFromStepId, setConnectingFromStepId] = React.useState<string | undefined>(undefined);
   const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
   // Latest pointer position during a drag, kept in a ref (not state) since
   // it's read every animation frame by the auto-scroll loop below and
@@ -181,12 +187,12 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // scrolling continues smoothly even while the pointer is held still
   // right at the edge, not just each time it moves.
   const handleCanvasDragOver = (e: React.DragEvent): void => {
-    if (!draggingStepId && !draggingNewShape) return;
+    if (!draggingStepId && !draggingNewShape && !connectingFromStepId) return;
     dragPointerRef.current = { x: e.clientX, y: e.clientY };
   };
 
   React.useEffect(() => {
-    if (!draggingStepId && !draggingNewShape) return;
+    if (!draggingStepId && !draggingNewShape && !connectingFromStepId) return;
     const EDGE = 70; // px from the canvas edge where auto-scroll kicks in
     const MAX_SPEED = 16; // px/frame at the very edge, scaling down to 0 at EDGE
     let frameId: number;
@@ -212,7 +218,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       cancelAnimationFrame(frameId);
       dragPointerRef.current = undefined;
     };
-  }, [draggingStepId, draggingNewShape]);
+  }, [draggingStepId, draggingNewShape, connectingFromStepId]);
 
   const handleDrop = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
     e.preventDefault();
@@ -256,6 +262,61 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // axis: orderedSteps[i] is column i.
   const orderedSteps = React.useMemo(() => orderStepsForTimeline(steps), [steps]);
   const columnGroups = React.useMemo(() => buildColumnGroups(orderedSteps), [orderedSteps]);
+
+  // Drag-to-connect: unlike isValidDropTarget above, a link can legally
+  // cross Process Step ID groups within the same swimlane (DependsOn
+  // already allows that - see buildDependsOnOptions), so group membership
+  // isn't the constraint here. What IS still enforced, matching the same
+  // "arrows only move forward" rule the move-drag already follows: the
+  // target has to sit AT OR AFTER the source in the current left-to-right
+  // column order, or the new arrow would point backward. Comparing
+  // positions in orderedSteps (the same array that defines the columns
+  // themselves) makes this correct across group boundaries too, and
+  // rules out circular links as a side effect - a genuine cycle would
+  // need at least one backward edge, which this already rejects.
+  const isValidConnectionTarget = (targetStep: IProcessStep): boolean => {
+    if (isLocked || !connectingFromStepId || connectingFromStepId === targetStep.id) return false;
+    const sourceIdx = orderedSteps.findIndex(s => s.id === connectingFromStepId);
+    const targetIdx = orderedSteps.findIndex(s => s.id === targetStep.id);
+    if (sourceIdx === -1 || targetIdx === -1) return false;
+    return targetIdx > sourceIdx;
+  };
+
+  const handleConnectDragStart = (step: IProcessStep) => (): void => {
+    setConnectingFromStepId(step.id);
+  };
+
+  const handleConnectDragEnd = (): void => {
+    setConnectingFromStepId(undefined);
+  };
+
+  // Only intercepts the event while a connection drag is actually in
+  // progress - otherwise returns without calling preventDefault/
+  // stopPropagation, so the event bubbles up untouched to the parent
+  // cell's own onDragOver (the move/create-from-legend handlers), which
+  // still need to see it when THIS drag mode isn't the one active.
+  const handleConnectDragOver = (targetStep: IProcessStep) => (e: React.DragEvent): void => {
+    if (!connectingFromStepId || !isValidConnectionTarget(targetStep)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleConnectDrop = (targetStep: IProcessStep) => (e: React.DragEvent): void => {
+    if (!connectingFromStepId) return; // not our drag - let the cell's own onDrop handle it
+    e.preventDefault();
+    e.stopPropagation();
+    const sourceId = connectingFromStepId;
+    setConnectingFromStepId(undefined);
+    if (!isValidConnectionTarget(targetStep)) return;
+    // Adds to whatever the target already depends on, rather than
+    // replacing it - a step can have more than one predecessor, same as
+    // setting this by hand in the edit panel's Depends on field.
+    // Silently no-ops if the link already exists instead of duplicating
+    // the token.
+    const existingStepIds = dependsOnTokensToStepIds(allSteps, targetStep.dependsOn);
+    if (existingStepIds.includes(sourceId)) return;
+    onEditStep({ ...targetStep, dependsOn: stepIdsToDependsOnTokens(allSteps, [...existingStepIds, sourceId]) });
+  };
 
   // Only edges whose both ends are currently rendered - the rest belong to
   // a different Progress ID / Process Step ID that isn't in view right now.
@@ -734,6 +795,8 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                       draggable={!isLocked}
                       onDragStart={handleDragStart(step)}
                       onDragEnd={handleDragEnd}
+                      onDragOver={handleConnectDragOver(step)}
+                      onDrop={handleConnectDrop(step)}
                     >
                       <ShapeNode
                         label={step.actionDescription}
@@ -742,6 +805,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
                         linkedRiskCount={(step.linkedRisks || []).length}
                         selected={selectedNodeId === step.id}
                         onClick={() => handleNodeClick(step)}
+                        onConnectorDragStart={isLocked ? undefined : handleConnectDragStart(step)}
+                        onConnectorDragEnd={handleConnectDragEnd}
+                        connectable={isValidConnectionTarget(step)}
                       />
                     </div>
                   )}

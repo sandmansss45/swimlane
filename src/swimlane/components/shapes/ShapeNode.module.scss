@@ -127,3 +127,49 @@
 .markerLow {
   background: var(--risk-low);
 }
+
+// Opposite corner from .riskMarker so the two never collide. Low-opacity
+// by default rather than hidden entirely - fully hover-only would mean a
+// first-time user has no way to discover this exists at all; always
+// faintly visible plus a clear brighten-on-hover strikes a balance
+// between "discoverable" and "not cluttering a dense diagram of many
+// nodes at once".
+.connectorHandle {
+  position: absolute;
+  bottom: -7px;
+  right: -7px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--navy);
+  background: var(--surface);
+  border: 2px solid var(--blue);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.35);
+  cursor: grab;
+  opacity: 0.4;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// A valid drop target for the connection currently being dragged (see
+// connectingFromStepId in SwimlaneCanvas.tsx) - dashed accent outline,
+// same visual language as a valid cell drop target elsewhere in the app.
+.connectable {
+  outline: 2px dashed var(--blue);
+  outline-offset: 3px;
+}
