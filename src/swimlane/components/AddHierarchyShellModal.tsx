@@ -3,9 +3,10 @@ import { Modal, PrimaryButton, DefaultButton, TextField } from '@fluentui/react'
 import { IDataService } from '../services/IDataService';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
+import { ICategoryLabel } from '../models/ICategoryLabel';
 import styles from './AddHierarchyShellModal.module.scss';
 
-export type HierarchyShellLevel = 'processGroup' | 'progressId';
+export type HierarchyShellLevel = 'category' | 'processGroup' | 'progressId';
 
 export interface IAddHierarchyShellModalProps {
   isOpen: boolean;
@@ -16,14 +17,21 @@ export interface IAddHierarchyShellModalProps {
   dataService: IDataService;
   onDismiss: () => void;
   // The caller can tell which was created from the shape alone (a
-  // Process Group label has groupId, a Progress ID label has
-  // progressId) - lets it both cache the new label and navigate
-  // straight into it, same as every other "created something, land in
-  // it" flow in this app.
-  onCreated: (created: IProcessGroupLabel | IProgressIdLabel) => void;
+  // Category label has categoryId, a Process Group label has groupId, a
+  // Progress ID label has progressId) - lets it both cache the new label
+  // and navigate straight into it, same as every other "created
+  // something, land in it" flow in this app.
+  onCreated: (created: ICategoryLabel | IProcessGroupLabel | IProgressIdLabel) => void;
 }
 
 const LEVEL_COPY: Record<HierarchyShellLevel, { title: string; idLabel: string; nameLabel: string; namePlaceholder: string; segments: number }> = {
+  category: {
+    title: 'Add a new Category',
+    idLabel: 'Category ID',
+    nameLabel: 'Category name',
+    namePlaceholder: 'e.g. Manage Supply Chain',
+    segments: 1
+  },
   processGroup: {
     title: 'Add a new Process Group',
     idLabel: 'Process Group ID',
@@ -75,9 +83,11 @@ const AddHierarchyShellModal: React.FC<IAddHierarchyShellModalProps> = ({
     setSaving(true);
     setError(undefined);
     const trimmedName = name.trim();
-    const request = level === 'processGroup'
-      ? dataService.addProcessGroupLabel(trimmedId, trimmedName)
-      : dataService.addProgressIdLabel(trimmedId, trimmedName);
+    const request = level === 'category'
+      ? dataService.addCategoryLabel(trimmedId, trimmedName)
+      : level === 'processGroup'
+        ? dataService.addProcessGroupLabel(trimmedId, trimmedName)
+        : dataService.addProgressIdLabel(trimmedId, trimmedName);
     request
       .then(created => {
         setSaving(false);
@@ -102,7 +112,11 @@ const AddHierarchyShellModal: React.FC<IAddHierarchyShellModalProps> = ({
         label={copy.idLabel}
         value={id}
         onChange={(_e, v) => setId(v || '')}
-        errorMessage={trimmedId.length > 0 && !idLooksValid ? `Needs exactly ${copy.segments} dot-separated numbers, e.g. ${idPrefix}${Array(copy.segments - idPrefix.split('.').filter(Boolean).length).fill('1').join('.')}` : undefined}
+        errorMessage={trimmedId.length > 0 && !idLooksValid
+          ? (copy.segments === 1
+            ? `Needs to be a single number, e.g. ${Array(copy.segments - idPrefix.split('.').filter(Boolean).length).fill('1').join('.')}`
+            : `Needs exactly ${copy.segments} dot-separated numbers, e.g. ${idPrefix}${Array(copy.segments - idPrefix.split('.').filter(Boolean).length).fill('1').join('.')}`)
+          : undefined}
       />
       <TextField
         label={copy.nameLabel}

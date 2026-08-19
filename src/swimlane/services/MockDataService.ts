@@ -3,6 +3,7 @@ import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
@@ -123,6 +124,15 @@ export class MockDataService implements IDataService {
   // apqcHierarchy.ts's static table; this only holds ones a user adds at
   // runtime via "+ Add new process" for a group that table doesn't cover.
   private _groupLabels: IProcessGroupLabel[] = [];
+  // Same idea, one level up - names for a genuinely new Category the
+  // static APQC_CATEGORY_NAMES table doesn't cover, created via "+ Add
+  // new category".
+  private _categoryLabels: ICategoryLabel[] = [];
+  // Employees added at runtime via "+ Add employee" - kept separate from
+  // the static MOCK_EMPLOYEES const rather than mutating it in place,
+  // same reasoning as _groupLabels/_categoryLabels layering runtime
+  // additions on top of static seed data instead of touching it directly.
+  private _addedEmployees: IEmployee[] = [];
   // Same idea, one level down - names for an empty Progress ID shell
   // created via "+ Add new progress ID" before it has any real steps.
   private _progressIdLabels: IProgressIdLabel[] = [];
@@ -153,11 +163,27 @@ export class MockDataService implements IDataService {
   }
 
   public getEmployees(): Promise<IEmployee[]> {
-    return Promise.resolve(MOCK_EMPLOYEES.slice());
+    return Promise.resolve([...MOCK_EMPLOYEES, ...this._addedEmployees]);
+  }
+
+  public addEmployee(jobTitle: string, department: string): Promise<IEmployee> {
+    const created: IEmployee = { id: `mock-employee-${this._addedEmployees.length + 1}`, jobTitle, department: department || undefined };
+    this._addedEmployees.push(created);
+    return Promise.resolve(created);
   }
 
   public getRiskStatements(): Promise<IRiskStatement[]> {
     return Promise.resolve(MOCK_RISKS.slice());
+  }
+
+  public getCategoryLabels(): Promise<ICategoryLabel[]> {
+    return Promise.resolve(this._categoryLabels.slice());
+  }
+
+  public addCategoryLabel(categoryId: string, name: string): Promise<ICategoryLabel> {
+    const created: ICategoryLabel = { id: `mock-category-${this._categoryLabels.length + 1}`, categoryId, name };
+    this._categoryLabels.push(created);
+    return Promise.resolve(created);
   }
 
   public getProcessGroupLabels(): Promise<IProcessGroupLabel[]> {

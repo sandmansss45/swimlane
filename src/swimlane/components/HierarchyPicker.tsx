@@ -26,8 +26,11 @@ export interface IHierarchyPickerProps {
   // can carry a user-assigned custom label that wins over whatever name
   // would otherwise show (static APQC table, or a step's own derived
   // text) - see customGroupNames/customProgressIdNames in
-  // SwimlaneStudio.tsx. Not offered at the Category level, which is the
-  // fixed APQC standard and never has a custom name.
+  // SwimlaneStudio.tsx. Not offered at the Category level - it can now
+  // have a custom name too (see customCategoryNames, for a genuinely new
+  // Category 14+ the static table doesn't cover), but renaming one of
+  // the fixed 13 real APQC categories was never asked for, so only "+ Add
+  // new" is wired up there, not this.
   onRename?: (groupId: string, currentLabel: string) => void;
   // When set, a card's count shows the number of DISTINCT values this
   // returns per step (e.g. distinct Process Group IDs), not the number of

@@ -4,6 +4,7 @@ import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels } fr
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
@@ -35,6 +36,13 @@ const RISK_LIST_TITLE = 'risk register data';
 // column "Group ID". Stores names for Process Groups the static
 // APQC_PROCESS_GROUP_NAMES table (apqcHierarchy.ts) doesn't already cover.
 const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
+// TODO-CONFIRM: guessed name/shape, needs creating on the real site -
+// same pattern as "Process Group labels" one level up: built-in Title
+// column (the Category's name) plus a single line of text column
+// "Category ID". Stores names for a Category the static
+// APQC_CATEGORY_NAMES table (apqcHierarchy.ts) doesn't already cover -
+// see ICategoryLabel.
+const CATEGORY_LABELS_LIST_TITLE = 'Category labels';
 // CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, same
 // shape as "Process Group labels": the built-in Title column (the
 // Progress ID's name) plus a single line of text column "Progress ID".
@@ -264,6 +272,30 @@ export class GraphDataService implements IDataService {
     }));
   }
 
+  // Writes directly into "QLE Existing Organisation" - see the interface
+  // comment on IDataService.addEmployee for why that's a deliberate,
+  // explicitly-confirmed choice despite the list otherwise being read-
+  // only/owned elsewhere. Only Job title/Department are set - every other
+  // real column on this list (Display name, Reports to, Start date,
+  // Hobbies) is left untouched, same as getEmployees only ever reads
+  // those same two.
+  public async addEmployee(jobTitle: string, department: string): Promise<IEmployee> {
+    const fieldMap = await this._resolveFieldMap(EMPLOYEES_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(EMPLOYEES_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Job title', jobTitle);
+    set('Department', department);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, jobTitle, department: department || undefined };
+  }
+
   public async getRiskStatements(): Promise<IRiskStatement[]> {
     const fieldMap = await this._resolveFieldMap(RISK_LIST_TITLE);
     const items = await this._getItems(RISK_LIST_TITLE);
@@ -289,6 +321,35 @@ export class GraphDataService implements IDataService {
       inherentRiskRating: getNumber(item, 'Inherent Risk Rating'),
       riskResponse: get(item, 'Risk Response')
     }));
+  }
+
+  public async getCategoryLabels(): Promise<ICategoryLabel[]> {
+    const fieldMap = await this._resolveFieldMap(CATEGORY_LABELS_LIST_TITLE);
+    const items = await this._getItems(CATEGORY_LABELS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): ICategoryLabel => ({
+      id: item.id,
+      categoryId: get(item, 'Category ID'),
+      name: get(item, 'Title')
+    }));
+  }
+
+  public async addCategoryLabel(categoryId: string, name: string): Promise<ICategoryLabel> {
+    const fieldMap = await this._resolveFieldMap(CATEGORY_LABELS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(CATEGORY_LABELS_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Category ID', categoryId);
+    set('Title', name);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, categoryId, name };
   }
 
   public async getProcessGroupLabels(): Promise<IProcessGroupLabel[]> {

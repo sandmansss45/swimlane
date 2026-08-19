@@ -1,9 +1,11 @@
 import * as React from 'react';
+import { DefaultButton } from '@fluentui/react';
 import { IEmployee } from '../models/IEmployee';
 import styles from './EmployeesList.module.scss';
 
 export interface IEmployeesListProps {
   employees: IEmployee[];
+  onAddClick: () => void;
 }
 
 // No department filter here (deliberately removed) - the real Employees
@@ -12,7 +14,7 @@ export interface IEmployeesListProps {
 // made the tab bar unusable. The swimlane's own department filter
 // (narrowing the Responsible picker for one step) is unaffected - this
 // only touches the standalone directory view.
-const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
+const EmployeesList: React.FC<IEmployeesListProps> = ({ employees, onAddClick }) => {
   const [query, setQuery] = React.useState('');
 
   const sorted = React.useMemo(() => {
@@ -52,6 +54,7 @@ const EmployeesList: React.FC<IEmployeesListProps> = ({ employees }) => {
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
+        <DefaultButton text="+ Add employee" iconProps={{ iconName: 'AddFriend' }} onClick={onAddClick} />
       </div>
 
       {sorted.length === 0 ? (

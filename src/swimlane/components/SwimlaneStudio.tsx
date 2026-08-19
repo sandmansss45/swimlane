@@ -9,6 +9,7 @@ import { IProcessStep, getProgressId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
@@ -24,6 +25,7 @@ import GlobalSearch from './GlobalSearch';
 import ProcessStepTabs from './ProcessStepTabs';
 import FlowRegionTabs from './FlowRegionTabs';
 import EmployeesList from './EmployeesList';
+import AddEmployeeModal from './AddEmployeeModal';
 import RiskRegisterList from './RiskRegisterList';
 import AuditView from './AuditView';
 import ImprovementsView from './ImprovementsView';
@@ -80,6 +82,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [steps, setSteps] = React.useState<IProcessStep[]>([]);
   const [employees, setEmployees] = React.useState<IEmployee[]>([]);
   const [riskStatements, setRiskStatements] = React.useState<IRiskStatement[]>([]);
+  const [categoryLabels, setCategoryLabels] = React.useState<ICategoryLabel[]>([]);
   const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
   const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
   const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
@@ -108,6 +111,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [saving, setSaving] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [newProcessOpen, setNewProcessOpen] = React.useState(false);
+  const [addEmployeeOpen, setAddEmployeeOpen] = React.useState(false);
   // The lightweight "just name and reserve an ID" flow (see
   // AddHierarchyShellModal) - separate from newProcessOpen, which is the
   // full "create a complete step" flow. idPrefix is the parent ID plus a
@@ -160,10 +164,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setError(undefined);
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
-      dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks(),
+      dataService.getCategoryLabels(), dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks(),
       dataService.getSwimlaneComments()
     ])
-      .then(([stepsResult, employeesResult, risksResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, categoryLabelsResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -182,6 +186,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           setRiskStatements(risksResult.value);
         } else {
           errors.push(`Risk statements: ${describeError(risksResult.reason)}`);
+        }
+
+        // Same "nice to have, not a blocking error" treatment as
+        // groupLabelsResult below - most sites won't have this list
+        // created yet, and every category it would name already has a
+        // working fallback (the static table, or just "Category N").
+        if (categoryLabelsResult.status === 'fulfilled') {
+          setCategoryLabels(categoryLabelsResult.value);
         }
 
         // Not surfaced as an error - this list is a nice-to-have that most
@@ -221,6 +233,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   }, [dataService]);
 
   React.useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Same idea, one level up - user-added names for Categories the static
+  // apqcHierarchy.ts table doesn't already cover (see ICategoryLabel).
+  const customCategoryNames = React.useMemo(
+    () => Object.fromEntries(categoryLabels.map(l => [l.categoryId, l.name])) as Record<string, string>,
+    [categoryLabels]
+  );
 
   // User-added names for Process Groups the static apqcHierarchy.ts table
   // doesn't already cover (see IProcessGroupLabel) - merged in wherever a
@@ -434,13 +453,21 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setProcessGroupLabels(prev => [...prev, created]);
   };
 
-  // Lands the user straight in the empty Process Group or Progress ID
-  // they just named, same "go straight to what you made" treatment as
-  // handleProcessCreated gets for a full step - the difference here is
-  // there's no step to select underneath it, so drilling in shows an
-  // empty picker/canvas ready for "Add a step".
-  const handleShellCreated = (created: IProcessGroupLabel | IProgressIdLabel): void => {
-    if ('groupId' in created) {
+  const handleEmployeeCreated = (created: IEmployee): void => {
+    setEmployees(prev => [...prev, created]);
+    setAddEmployeeOpen(false);
+  };
+
+  // Lands the user straight in the empty Category, Process Group, or
+  // Progress ID they just named, same "go straight to what you made"
+  // treatment as handleProcessCreated gets for a full step - the
+  // difference here is there's no step to select underneath it, so
+  // drilling in shows an empty picker/canvas ready for "Add a step".
+  const handleShellCreated = (created: ICategoryLabel | IProcessGroupLabel | IProgressIdLabel): void => {
+    if ('categoryId' in created) {
+      setCategoryLabels(prev => [...prev, created]);
+      setSelectedCategoryId(created.categoryId);
+    } else if ('groupId' in created) {
       setProcessGroupLabels(prev => [...prev, created]);
       setSelectedProcessGroupId(created.groupId);
     } else {
@@ -764,6 +791,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onCreated={handleShellCreated}
       />
 
+      <AddEmployeeModal
+        isOpen={addEmployeeOpen}
+        dataService={dataService}
+        onDismiss={() => setAddEmployeeOpen(false)}
+        onCreated={handleEmployeeCreated}
+      />
+
       <AddStepSectionModal
         isOpen={addSectionOpen}
         idPrefix={selectedProgressId ? `${selectedProgressId}.` : ''}
@@ -895,7 +929,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </Pivot>
 
         {activeTab === 'employees' ? (
-          <EmployeesList employees={employees} />
+          <EmployeesList employees={employees} onAddClick={() => setAddEmployeeOpen(true)} />
         ) : activeTab === 'risks' ? (
           <RiskRegisterList riskStatements={riskStatements} steps={steps} />
         ) : activeTab === 'audit' ? (
@@ -920,9 +954,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <HierarchyPicker
                   steps={steps}
                   getGroupId={getCategoryId}
-                  getLabel={id => getCategoryName(id)}
+                  getLabel={id => customCategoryNames[id] || getCategoryName(id)}
                   onSelect={setSelectedCategoryId}
-                  allGroupIds={Object.keys(APQC_CATEGORY_NAMES)}
+                  allGroupIds={[...Object.keys(APQC_CATEGORY_NAMES), ...Object.keys(customCategoryNames)]}
+                  onAddNew={() => setAddShellState({ level: 'category', idPrefix: '' })}
+                  addNewLabel="+ Add new category"
                   countBy={getProcessGroupId}
                   countLabel="process group"
                   allSubGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)]}

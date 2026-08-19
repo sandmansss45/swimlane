@@ -2,6 +2,7 @@ import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
+import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
@@ -18,7 +19,19 @@ export interface IBulkAddStepsResult {
 export interface IDataService {
   getProcessSteps(): Promise<IProcessStep[]>;
   getEmployees(): Promise<IEmployee[]>;
+  // Writes a real new row into the "QLE Existing Organisation" list -
+  // CONFIRMED 2026-08-19, an explicit user choice made with the
+  // tradeoff spelled out: that list is otherwise read-only/owned
+  // elsewhere (see the schema comment on IEmployee), presumably fed from
+  // a real HR/directory system. Whoever owns that list should be aware
+  // rows can now originate from this app too.
+  addEmployee(jobTitle: string, department: string): Promise<IEmployee>;
   getRiskStatements(): Promise<IRiskStatement[]>;
+  getCategoryLabels(): Promise<ICategoryLabel[]>;
+  // No update/rename here (unlike the two levels below) - not asked for,
+  // and the static Category table is already complete for every category
+  // that exists today; this only covers a genuinely new one.
+  addCategoryLabel(categoryId: string, name: string): Promise<ICategoryLabel>;
   getProcessGroupLabels(): Promise<IProcessGroupLabel[]>;
   addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel>;
   // Renaming an existing custom label (one previously created via
