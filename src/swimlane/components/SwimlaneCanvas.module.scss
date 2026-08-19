@@ -36,6 +36,15 @@
 }
 
 .grid {
+  // Both properties matter, not just position: a positioned element with
+  // z-index:auto/0 actually paints ABOVE non-positioned in-flow content
+  // per the CSS2.1 stacking order (counterintuitively "on top", not
+  // "at the back") - explicit z-index here makes .grid its own stacking
+  // context, so .watermark's negative z-index below is scoped to stay
+  // behind .grid's own (non-positioned) cell content without also
+  // escaping past it into .canvas's own painted background further up.
+  position: relative;
+  z-index: 0;
   display: grid;
   border-collapse: collapse;
   // Breathing room between adjacent nodes so an edge label sitting on the
@@ -161,6 +170,39 @@
   min-height: 190px;
   background: var(--canvas);
   transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+// Only applied while exporting to PDF (see exportToPdf/cellClassName in
+// SwimlaneCanvas.tsx), never in the live view - a grid full of bare,
+// empty cell outlines is a useful "here's where you can drop something"
+// affordance while editing, but reads as pure visual noise in a document
+// meant to be read/shared. Declared after .laneCell so it wins on equal
+// specificity without needing !important. transition: none matters here,
+// not just cosmetically - .laneCell animates background-color over 0.1s,
+// so without overriding that, toJpeg could capture a still-fading
+// halfway color if the capture starts before the transition finishes
+// (confirmed happening in testing: getComputedStyle read the ORIGINAL
+// colour back one frame after this class was already applied).
+.emptyCellExport {
+  background: transparent;
+  border-color: transparent;
+  transition: none;
+}
+
+// A subtle, repeating brand mark behind the diagram - export only (see
+// exportToPdf), so anyone who receives the PDF on its own can tell where
+// it came from at a glance without it competing with the actual content
+// for attention. Sized to the grid's own full content box (not the
+// canvas's scrolled viewport), since .grid never scrolls itself - only
+// its .canvas parent does.
+.watermark {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-repeat: repeat;
+  background-size: 150px auto;
+  opacity: 0.06;
+  pointer-events: none;
 }
 
 // A cell that WOULD accept the step currently being dragged (same

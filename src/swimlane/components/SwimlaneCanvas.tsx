@@ -11,6 +11,7 @@ import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } f
 import ShapeNode from './shapes/ShapeNode';
 import ShapeLegend from './ShapeLegend';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
+import qleMark from '../../assets/qle-mark.svg';
 import styles from './SwimlaneCanvas.module.scss';
 
 export interface ISwimlaneCanvasProps {
@@ -573,6 +574,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas || exporting) return;
     setExporting(true);
+    // setExporting(true) only SCHEDULES the re-render that hides empty-cell
+    // chrome and shows the watermark (see cellClassName/the watermark div
+    // below) - without waiting for it to actually paint, toJpeg would
+    // capture the DOM as it looked a frame ago, before either change took
+    // effect. Two rAFs (not one) reliably lands after a real paint, not
+    // just after the next scheduled frame callback.
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     try {
       // The live element only shows its scrolled/visible portion - render
       // the capture at the FULL scrollable content size instead (same
@@ -667,6 +675,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
         leaves empty canvas to the right instead of stretching.
       */}
       <div className={styles.grid} style={{ gridTemplateColumns: `170px repeat(${orderedSteps.length}, minmax(170px, 260px))` }}>
+        {exporting && (
+          <div className={styles.watermark} style={{ backgroundImage: `url(${qleMark})` }} aria-hidden="true" />
+        )}
         <div className={styles.corner} />
         {columnGroups.map(group => (
           <div
@@ -700,7 +711,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
               const cellClassName = [
                 styles.laneCell,
                 isValidDropTargetForCurrentDrag(step) ? styles.validDropTarget : '',
-                dragOverCellId === cellKey ? styles.dragOver : ''
+                dragOverCellId === cellKey ? styles.dragOver : '',
+                // A grid full of bare, empty cell outlines reads as visual
+                // noise in an exported PDF meant to be shared/read, even
+                // though the same outlines are genuinely useful in the live
+                // view (they're real drop targets there) - only hidden
+                // during the export capture, never in normal editing.
+                !belongsToLane && exporting ? styles.emptyCellExport : ''
               ].filter(Boolean).join(' ');
               return (
                 <div
