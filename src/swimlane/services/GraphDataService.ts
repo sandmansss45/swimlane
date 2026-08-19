@@ -36,12 +36,11 @@ const RISK_LIST_TITLE = 'risk register data';
 // column "Group ID". Stores names for Process Groups the static
 // APQC_PROCESS_GROUP_NAMES table (apqcHierarchy.ts) doesn't already cover.
 const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
-// TODO-CONFIRM: guessed name/shape, needs creating on the real site -
-// same pattern as "Process Group labels" one level up: built-in Title
-// column (the Category's name) plus a single line of text column
-// "Category ID". Stores names for a Category the static
-// APQC_CATEGORY_NAMES table (apqcHierarchy.ts) doesn't already cover -
-// see ICategoryLabel.
+// CONFIRMED 2026-08-19 - created on the real site, same pattern as
+// "Process Group labels" one level up: built-in Title column (the
+// Category's name) plus a single line of text column "Category ID".
+// Stores names for a Category the static APQC_CATEGORY_NAMES table
+// (apqcHierarchy.ts) doesn't already cover - see ICategoryLabel.
 const CATEGORY_LABELS_LIST_TITLE = 'Category labels';
 // CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, same
 // shape as "Process Group labels": the built-in Title column (the
