@@ -42,9 +42,21 @@ const EmployeePicker: React.FC<IEmployeePickerProps> = ({ employees, value, onCh
       // like it "didn't change the job title" in the box. `text` instead
       // just displays whatever the step's current value literally is,
       // matching how the Action/Action type fields already work.
+      //
+      // allowFreeform is required for that same `text` prop to actually be
+      // typeable - without it, Fluent treats `text` as fully authoritative
+      // on every render, so each keystroke got redrawn straight back to
+      // the old value before the user could see what they'd typed, and
+      // the options list never got a chance to narrow (confirmed live:
+      // typing "Chief" left the field showing the old value and all
+      // options unfiltered). onChange below still only ever commits a
+      // REAL option's key, never freeformValue, so a job title that isn't
+      // in the Employees list still can't be saved - allowFreeform only
+      // unlocks live typing/filtering, not arbitrary freeform values.
       text={value}
       options={options}
       autoComplete="on"
+      allowFreeform
       onChange={(_e, option) => {
         if (option) onChange(String(option.key));
       }}
