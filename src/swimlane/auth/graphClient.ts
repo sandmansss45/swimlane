@@ -11,12 +11,26 @@ import { GRAPH_BASE_URL, GRAPH_SCOPES } from './authConfig';
  */
 export class GraphClient {
   private msal: IPublicClientApplication;
+  // Every list load fires several Graph calls in parallel (see
+  // Promise.allSettled in SwimlaneStudio.tsx) - without this, an expired
+  // silent token means each one independently races to be the one
+  // interactive request MSAL allows at a time, and the losers fail
+  // outright with "interaction_in_progress" instead of just waiting their
+  // turn. Sharing one in-flight promise across all callers fixes that.
+  private tokenPromise: Promise<string> | undefined;
 
   constructor(msal: IPublicClientApplication) {
     this.msal = msal;
   }
 
-  private async getToken(): Promise<string> {
+  private getToken(): Promise<string> {
+    if (!this.tokenPromise) {
+      this.tokenPromise = this.acquireToken().finally(() => { this.tokenPromise = undefined; });
+    }
+    return this.tokenPromise;
+  }
+
+  private async acquireToken(): Promise<string> {
     const account = this.msal.getActiveAccount() || this.msal.getAllAccounts()[0];
     if (!account) {
       throw new Error('No signed-in account - sign in before calling Microsoft Graph.');
@@ -25,8 +39,20 @@ export class GraphClient {
       const result = await this.msal.acquireTokenSilent({ scopes: GRAPH_SCOPES, account });
       return result.accessToken;
     } catch {
-      const result = await this.msal.acquireTokenPopup({ scopes: GRAPH_SCOPES, account });
-      return result.accessToken;
+      // acquireTokenRedirect, not acquireTokenPopup - same reasoning as
+      // the sign-in button in App.tsx: this app's redirect URI boots the
+      // whole bundle rather than a minimal blank popup landing page, and
+      // on top of that a popup triggered from a background data refresh
+      // (not a direct click) gets killed outright by the browser's popup
+      // blocker - confirmed as the actual cause of a real
+      // "popup_window_error". Redirect reloads the tab instead, which the
+      // existing handleRedirectPromise() bootstrap in msalInstance.ts
+      // already resumes from on the next load, same as it does for the
+      // initial sign-in.
+      await this.msal.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account });
+      // Never actually reached - acquireTokenRedirect navigates the tab
+      // away before its promise resolves.
+      return '';
     }
   }
 
