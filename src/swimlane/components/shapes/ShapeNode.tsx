@@ -60,6 +60,17 @@ const ShapeNode: React.FC<IShapeNodeProps> = ({
 
   return (
     <div className={className} onClick={onClick} title={label}>
+      {/* Carries the shape's actual visible fill/border/clip-path -
+          separated from the outer div so corner badges (riskMarker,
+          connectorHandle) can sit OUTSIDE what gets clipped. clip-path
+          on an element clips its own descendants too, not just its own
+          background - a badge positioned at a clipped shape's corner
+          (the diamond/document zigzag) was getting silently cut away
+          entirely, not just visually overlapped. The outer div keeps
+          the real layout size (width/height/padding) so
+          getBoundingClientRect for arrow routing is unaffected - only
+          the paint layer moved. */}
+      <div className={styles.shapeFill} />
       <span className={styles.label}>{label}</span>
       {linkedRiskSeverity && (
         <span

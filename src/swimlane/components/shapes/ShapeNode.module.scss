@@ -1,5 +1,10 @@
 .shapeNode {
+  // z-index (not just position) matters here, not decoration - it makes
+  // this its own stacking context, so .shapeFill's negative z-index below
+  // stays scoped to just this node instead of escaping past it into
+  // whatever ancestor (.draggableNode, .laneCell) sits behind it.
   position: relative;
+  z-index: 0;
   cursor: pointer;
   // The most-read text in the whole app (the actual process step
   // descriptions) - bumped from 12px so it's comfortably legible at a
@@ -11,30 +16,51 @@
   justify-content: center;
   text-align: center;
   padding: 8px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  // Default fill for Process and Document shapes - Decision and Approval
-  // override this with their own color below (see .decision/.approval).
-  background: var(--blue);
   color: #fff;
   font-weight: 600;
   min-width: 120px;
   max-width: 190px;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.15);
-  transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: filter 0.15s ease, transform 0.15s ease;
 
   &:hover {
     filter: brightness(0.96);
-    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.22);
     transform: translateY(-1px);
   }
 }
 
-.selected {
+// Carries everything that actually paints the shape's fill - background,
+// border, shadow, and (for Decision/Document) the clip-path that cuts
+// the box down to a diamond/wavy-bottomed rectangle. Split out from
+// .shapeNode itself specifically so clip-path only clips THIS layer, not
+// .shapeNode's other children (.riskMarker, .connectorHandle) - those
+// corner badges sit at negative offsets outside the diamond/document
+// outline on purpose, and clip-path clips an element's own descendants
+// too, not just its own paint, so they were being silently discarded
+// entirely rather than just visually clashing. .shapeNode itself keeps
+// the real width/height/padding (so getBoundingClientRect for arrow
+// routing is unaffected) - only the paint layer moved.
+.shapeFill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  // Default fill for Process and Document shapes - Decision and Approval
+  // override this with their own color below (see .decision/.approval).
+  background: var(--blue);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.15);
+  transition: box-shadow 0.15s ease;
+}
+
+.shapeNode:hover .shapeFill {
+  box-shadow: 0 4px 10px rgba(16, 24, 40, 0.22);
+}
+
+.selected .shapeFill {
   box-shadow: 0 0 0 3px var(--blue), 0 4px 10px rgba(16, 24, 40, 0.22);
 }
 
 // Ordinary process steps = rounded rectangles
-.process {
+.process .shapeFill {
   border-radius: 8px;
 }
 
@@ -43,7 +69,7 @@
 // because rotation preserves the box's own unequal width/height. Cutting
 // the diamond out of an UNROTATED box with clip-path instead gives a
 // true, evenly-pointed rhombus regardless of the box's aspect ratio, and
-// as a bonus the box's own layout bounds (what getBoundingClientRect
+// as a bonus .shapeNode's own layout bounds (what getBoundingClientRect
 // returns for arrow anchoring) now exactly match where the diamond's
 // points are - top-center/right-center/bottom-center/left-center - so
 // connectors land precisely on the tip instead of approximating it
@@ -53,8 +79,11 @@
   height: 130px;
   min-width: 170px;
   max-width: 170px;
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  background: var(--shape-decision);
+
+  .shapeFill {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: var(--shape-decision);
+  }
 
   .label {
     max-width: 100px;
@@ -68,8 +97,11 @@
   height: 140px;
   min-width: 140px;
   max-width: 140px;
-  border-radius: 50%;
-  background: var(--shape-approval);
+
+  .shapeFill {
+    border-radius: 50%;
+    background: var(--shape-approval);
+  }
 }
 
 // Document-type = physical/system artifacts (a PO, an invoice, a
@@ -78,24 +110,33 @@
 // symbol. The zigzag is a straight-line approximation of a wave (real
 // curves need SVG, not plain CSS clip-path) but reads clearly at this size.
 .document {
-  border-radius: 4px 4px 0 0;
   padding-bottom: 16px;
-  clip-path: polygon(
-    0% 0%, 100% 0%, 100% 88%,
-    87.5% 94%, 75% 88%, 62.5% 94%, 50% 88%, 37.5% 94%, 25% 88%, 12.5% 94%, 0% 88%
-  );
+
+  .shapeFill {
+    border-radius: 4px 4px 0 0;
+    clip-path: polygon(
+      0% 0%, 100% 0%, 100% 88%,
+      87.5% 94%, 75% 88%, 62.5% 94%, 50% 88%, 37.5% 94%, 25% 88%, 12.5% 94%, 0% 88%
+    );
+  }
 }
 
 .label {
+  // Plain in-flow inline content already paints above a negative-
+  // z-index sibling by default (CSS2.1 painting order) - no position or
+  // z-index of its own needed to stay above .shapeFill.
   line-height: 1.3;
 }
 
 // A real Risk Register link, separate from the shape's own risk-level
 // FILL color above (riskHigh/riskMedium/riskLow) - this sits on top of
 // whatever fill the shape already has, in its own small badge, rather
-// than fighting with it for the same visual channel. z-index clears the
-// clip-path shapes (.decision/.document), whose corners are otherwise
-// cut away right where this sits.
+// than fighting with it for the same visual channel. A sibling of
+// .shapeFill, not a descendant of it - clip-path clips its OWN
+// descendants too, not just its own paint, so a badge positioned at a
+// clipped shape's corner would be silently discarded entirely (not just
+// visually overlapped) if it lived inside the clipped element; z-index
+// alone can't undo that. See the .shapeFill comment above for the fix.
 .riskMarker {
   position: absolute;
   top: -7px;
