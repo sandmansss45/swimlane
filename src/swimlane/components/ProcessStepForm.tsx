@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { TextField, Dropdown, IDropdownOption, ComboBox, IComboBoxOption } from '@fluentui/react';
+import { TextField, Dropdown, IDropdownOption, ComboBox, IComboBoxOption, Checkbox } from '@fluentui/react';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, IRiskLink } from '../models/IRiskStatement';
 import EmployeePicker from './EmployeePicker';
@@ -90,6 +90,19 @@ const ProcessStepForm: React.FC<IProcessStepFormProps> = ({ value, onChange, emp
         employees={employees}
         value={value.responsibleJobTitle}
         onChange={jobTitle => set('responsibleJobTitle', jobTitle)}
+      />
+      <Checkbox
+        label="This step depends on nothing"
+        // Derived from the selection itself rather than tracked as its
+        // own separate boolean - there's no state to fall out of sync
+        // with, and picking anything in the dropdown below immediately
+        // (and correctly) unchecks it again on its own, with no extra
+        // wiring needed. Checking it is a one-click "clear all" instead
+        // of hunting through the list below to deselect each one by hand
+        // - unchecking it directly is a no-op, since there's nothing a
+        // plain uncheck could sensibly restore.
+        checked={value.dependsOnStepIds.length === 0}
+        onChange={(_e, checked) => { if (checked) set('dependsOnStepIds', []); }}
       />
       <Dropdown
         label="Depends on"
