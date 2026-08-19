@@ -611,6 +611,20 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     }
   };
 
+  // Removes just this one dependency, directly from clicking its arrow on
+  // the canvas - no need to open the source step's edit panel and find it
+  // in the Outgoing connections list first. Goes through onEditStep, the
+  // same path every other edit takes (not a new action type), so it gets
+  // undo for free (see handleEditStep/lastAction in SwimlaneStudio.tsx) -
+  // consistent with how this app already treats "editing" a link
+  // elsewhere (RiskLinkPicker: remove and re-add, never in-place edit).
+  const deleteEdge = (edge: IResolvedEdge): void => {
+    if (isLocked) return;
+    const target = stepsById.get(edge.toRowId);
+    if (!target) return;
+    onEditStep({ ...target, dependsOn: target.dependsOn.filter(token => token !== edge.token) });
+  };
+
   const saveEdit = (): void => {
     const original = selectedNodeId ? stepsById.get(selectedNodeId) : undefined;
     if (!original || !editDraft) return;
@@ -711,7 +725,32 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
           const highlighted = selectedNodeId !== undefined && edge.fromRowId === selectedNodeId;
           return (
             <g key={`${edge.fromRowId}-${edge.toRowId}-${edge.token}`}>
+              {/*
+                Wide, invisible hit area, rendered BEFORE (so it paints
+                underneath) the visible line below - that line is only
+                1.5-2.5px wide, far too thin to reliably click on its own.
+                pointer-events is re-enabled here specifically; .edgeOverlay
+                itself stays pointer-events:none so empty canvas space
+                still click-through to the grid underneath it. The general
+                sibling selector below (.edgeHitArea:hover ~ .edgeLine)
+                relies on this exact order to highlight the visible line
+                on hover, so it reads as "this arrow" rather than a vague
+                hover with no visible feedback.
+              */}
+              {!isLocked && (
+                <path
+                  className={styles.edgeHitArea}
+                  d={path}
+                  stroke="transparent"
+                  strokeWidth={14}
+                  fill="none"
+                  onClick={e => { e.stopPropagation(); deleteEdge(edge); }}
+                >
+                  <title>Click to remove this dependency</title>
+                </path>
+              )}
               <path
+                className={styles.edgeLine}
                 d={path}
                 stroke={highlighted ? '#1441b9' : '#3c4a63'}
                 strokeWidth={highlighted ? 2.5 : 1.5}

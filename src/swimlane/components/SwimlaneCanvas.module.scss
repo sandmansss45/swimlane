@@ -26,6 +26,33 @@
   z-index: 4;
 }
 
+// The actual rendered arrow - a plain transition so the hover-triggered
+// color/width change below (from the invisible hit area next to it)
+// animates instead of snapping.
+.edgeLine {
+  transition: stroke 0.1s ease, stroke-width 0.1s ease;
+}
+
+// Wide, invisible click target for an otherwise 1.5-2.5px line (see the
+// comment in SwimlaneCanvas.tsx for why it's a separate path rather than
+// just widening the visible one). stroke: risk-high on hover, not the
+// selection blue used elsewhere on this line - red reads as "this is
+// about to be removed", matching what actually happens on click, rather
+// than looking like a selection state that does nothing.
+.edgeHitArea {
+  cursor: pointer;
+  pointer-events: stroke;
+
+  // No !important needed - stroke/strokeWidth are set on .edgeLine as
+  // plain SVG presentation attributes (JSX props, not a style object),
+  // which the CSS cascade always ranks below an actual class selector
+  // regardless of specificity.
+  &:hover ~ .edgeLine {
+    stroke: var(--risk-high);
+    stroke-width: 2.5px;
+  }
+}
+
 .edgeLabel {
   // Bumped from 11px alongside the extra column-gap breathing room above -
   // this text sits directly on the diagram with no card/background behind
