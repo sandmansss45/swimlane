@@ -1,4 +1,4 @@
-import { IDataService } from './IDataService';
+import { IDataService, IBulkAddStepsResult } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
@@ -246,7 +246,7 @@ export class MockDataService implements IDataService {
     return Promise.resolve(created);
   }
 
-  public addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
+  public addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IBulkAddStepsResult> {
     const now = new Date().toISOString();
     const created = steps.map(step => {
       const item: IProcessStep = {
@@ -258,7 +258,10 @@ export class MockDataService implements IDataService {
       this._steps.push(item);
       return item;
     });
-    return Promise.resolve(created);
+    // Mock mode has nothing that can fail a single row the way a real
+    // network call can - failed always empty, matching IDataService's
+    // contract for the real implementation.
+    return Promise.resolve({ created, failed: [] });
   }
 
   public updateProcessStep(step: IProcessStep): Promise<void> {

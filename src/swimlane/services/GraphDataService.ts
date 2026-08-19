@@ -1,5 +1,5 @@
 import { IPublicClientApplication } from '@azure/msal-browser';
-import { IDataService } from './IDataService';
+import { IDataService, IBulkAddStepsResult } from './IDataService';
 import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
@@ -496,15 +496,31 @@ export class GraphDataService implements IDataService {
     };
   }
 
-  public async addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]> {
+  public async addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IBulkAddStepsResult> {
     // Sequential, not Promise.all - row order must match creation order
     // (later rows' DependsOn tokens are meaningless if rows land out of
     // order), and it keeps well clear of Graph's per-request throttling.
+    //
+    // Each row is caught individually and the loop always continues to the
+    // next one - a single row failing (a network blip, Graph throttling,
+    // one malformed row) used to throw straight out of this loop, which
+    // both abandoned every row after it that would otherwise have
+    // succeeded, AND discarded every row already genuinely created in
+    // SharePoint from the return value, since the whole promise rejected.
+    // Those were real, permanent items the caller never found out existed
+    // until a manual reload. Now nothing that succeeds is ever lost, and
+    // every failure is reported with why instead of one bad row erasing
+    // the whole batch's progress.
     const created: IProcessStep[] = [];
-    for (const step of steps) {
-      created.push(await this.addProcessStep(step));
+    const failed: Array<{ index: number; error: string }> = [];
+    for (let i = 0; i < steps.length; i++) {
+      try {
+        created.push(await this.addProcessStep(steps[i]));
+      } catch (err) {
+        failed.push({ index: i, error: err instanceof Error ? err.message : String(err) });
+      }
     }
-    return created;
+    return { created, failed };
   }
 
   public async updateProcessStep(step: IProcessStep): Promise<void> {

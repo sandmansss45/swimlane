@@ -21,6 +21,7 @@ export interface IImportCsvModalProps {
 
 const MAX_PREVIEW_ROWS = 12;
 const MAX_DUPLICATE_IDS_SHOWN = 5;
+const MAX_FAILED_ROWS_SHOWN = 10;
 
 const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, insertionIndex, existingSteps, onDismiss, onImported }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -65,11 +66,37 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
   const handleImport = (): void => {
     if (!preview || preview.rows.length === 0) return;
     setImporting(true);
-    const prepared = prepareStepsForImport(preview.rows, insertionIndex);
+    const rows = preview.rows;
+    const prepared = prepareStepsForImport(rows, insertionIndex);
     dataService.addProcessSteps(prepared)
-      .then(created => {
-        onImported(created);
-        handleClose();
+      .then(result => {
+        // Whatever succeeded is real and permanent (already sitting in
+        // SharePoint/mock data) - always hand it up so it shows in the
+        // diagram immediately, even on a partial failure. Losing track of
+        // rows that DID succeed, just because some other row in the same
+        // batch failed, was the actual bug being fixed here.
+        if (result.created.length > 0) onImported(result.created);
+
+        if (result.failed.length === 0) {
+          handleClose();
+          return;
+        }
+
+        // Partial (or total) failure - stay open rather than closing, so
+        // this message doesn't just flash and vanish along with the rest
+        // of the modal.
+        setImporting(false);
+        const failedRowNumbers = result.failed.map(f => rows[f.index].csvRowNumber);
+        const shown = failedRowNumbers.slice(0, MAX_FAILED_ROWS_SHOWN).join(', ');
+        const more = failedRowNumbers.length > MAX_FAILED_ROWS_SHOWN
+          ? `, +${failedRowNumbers.length - MAX_FAILED_ROWS_SHOWN} more` : '';
+        setReadError(
+          `${result.created.length} row${result.created.length === 1 ? '' : 's'} imported successfully. ` +
+          `${result.failed.length} row${result.failed.length === 1 ? '' : 's'} failed and ${result.failed.length === 1 ? 'was' : 'were'} ` +
+          `NOT imported (file row${failedRowNumbers.length === 1 ? '' : 's'} ${shown}${more}) - fix ${result.failed.length === 1 ? 'it' : 'these'} and ` +
+          `re-upload just the remaining row${failedRowNumbers.length === 1 ? '' : 's'} to retry. First error: ${result.failed[0].error}. ` +
+          "Any Depends On link pointing at one of the failed rows will need reconnecting by hand from the step's edit panel."
+        );
       })
       .catch((err: Error) => {
         setReadError(err.message || 'Import failed.');

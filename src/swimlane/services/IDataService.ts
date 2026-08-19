@@ -6,6 +6,15 @@ import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 
+export interface IBulkAddStepsResult {
+  created: IProcessStep[];
+  // `index` is the position in the array passed to addProcessSteps, not a
+  // SharePoint/mock ID (the row never got one) - callers that know a
+  // CSV-specific concept of row number (see ImportCsvModal) map this back
+  // to something a person can actually locate in their source file.
+  failed: Array<{ index: number; error: string }>;
+}
+
 export interface IDataService {
   getProcessSteps(): Promise<IProcessStep[]>;
   getEmployees(): Promise<IEmployee[]>;
@@ -38,8 +47,17 @@ export interface IDataService {
    * ID assigned after the previous one), since callers rely on the result
    * landing contiguously at the end of the existing dataset for DependsOn
    * row-number math to stay correct.
+   *
+   * Never rejects on an individual row failing - a network blip or one bad
+   * row used to throw out of the whole batch, silently discarding every
+   * row already successfully created (real, permanent items that existed
+   * in SharePoint but the caller never found out about) and never even
+   * attempting whatever came after it in the file. Every row that
+   * succeeds is always returned in `created`; every row that fails is
+   * reported in `failed` with its index into the input array and why, so
+   * the caller can show the user exactly what did and didn't make it in.
    */
-  addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IProcessStep[]>;
+  addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IBulkAddStepsResult>;
   updateProcessStep(step: IProcessStep): Promise<void>;
   deleteProcessStep(id: string): Promise<void>;
 }
