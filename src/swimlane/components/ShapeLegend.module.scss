@@ -67,9 +67,9 @@
   }
 }
 
-// Shape-type swatches - Process and Document keep the same neutral blue
-// the shapes themselves default to; Decision and Approval show their own
-// fill color (see ShapeNode.module.scss) so the legend matches the canvas.
+// Shape-type swatches - Process keeps the neutral blue the shape itself
+// defaults to; Decision, Approval and Document each show their own fill
+// color (see ShapeNode.module.scss) so the legend matches the canvas.
 .swatch {
   display: inline-block;
   width: 15px;
@@ -98,6 +98,7 @@
 .document {
   border-radius: 3px 3px 0 0;
   clip-path: polygon(0% 0%, 100% 0%, 100% 80%, 75% 100%, 50% 80%, 25% 100%, 0% 80%);
+  background: var(--shape-document);
 }
 
 // A stand-in for ShapeNode's actual .riskMarker badge (see

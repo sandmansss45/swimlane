@@ -18,12 +18,38 @@ export const BRAND = {
   approval: '#00ce69',
   greenLight: '#e0f5ea',
   decision: '#f59e0b',
-  document: '#5b6478',
+  // CORRECTED 2026-08-19 - was '#5b6478', an improvised near-match picked
+  // before this value was actually applied anywhere (the CSS never
+  // referenced it - Document shapes silently fell back to the same blue
+  // as Process). Now the confirmed brand sheet grey, and actually wired
+  // into ShapeNode.module.scss's .document .shapeFill.
+  document: '#646e82',
   riskHigh: '#dc152c',
   riskMedium: '#f59e0b',
   riskLow: '#065f46',
   textPrimary: '#16233d',
-  textSecondary: '#5b6b84',
+  // CORRECTED 2026-08-19 - was '#5b6b84', an approximation of the brand
+  // sheet's confirmed grey (#646e82) rather than the exact value.
+  textSecondary: '#646e82',
+  // Brand sheet's light blue-grey - ADDED 2026-08-19, previously defined
+  // in the sheet but never used anywhere in the app. Genuinely lighter/
+  // cooler than textSecondary, so it's for text that should read as
+  // de-emphasized placeholder-ish content (a table's "-"/"All" fallback,
+  // a timestamp) rather than actual secondary body copy someone still
+  // needs to read normally.
+  textMuted: '#a0afc8',
+  // Secondary brand color - ADDED 2026-08-19, previously defined in the
+  // sheet but never used anywhere in the app, unlike orange/red/dark
+  // green (all already doing real work as decision/risk colors).
+  // Deliberately scoped to ONE thing app-wide - the Improvements/
+  // swimlane-comments feature's own visual identity (see
+  // ImprovementsView.module.scss / SwimlaneComments.module.scss) - rather
+  // than sprinkled in wherever, so it reads as "this section is
+  // different" instead of an arbitrary extra accent competing with blue.
+  // Never applied to buttons/controls - those stay brand blue everywhere
+  // for consistency with every other action in the app.
+  purple: '#7c3aed',
+  purpleLight: '#f2ebfd',
   border: '#dde3ea',
   surface: '#ffffff',
   canvas: '#eaf2fd',

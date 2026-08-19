@@ -8,10 +8,14 @@
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
+// Purple, matching ImprovementsView's own title - same feedback/
+// discussion content, same "this section is different" identity (see
+// BRAND.purple in theme.ts), just shown in-context here instead of
+// aggregated across every swimlane.
 .title {
   margin: 0 0 14px;
   font-size: var(--fs-lg);
-  color: var(--navy);
+  color: var(--purple);
 }
 
 .empty {
@@ -25,10 +29,15 @@
   gap: 12px;
 }
 
+// Left border accent (not the plain neutral --border every other card in
+// the app uses) - same treatment as .laneLabel's blue accent in
+// SwimlaneCanvas.module.scss, carrying the purple identity onto each
+// individual comment rather than just the section title above.
 .comment {
   padding: 12px 14px;
-  background: var(--canvas);
+  background: var(--purple-light);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
   border-radius: 10px;
 }
 
@@ -48,7 +57,7 @@
 
 .postedAt {
   font-size: var(--fs-xs);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 

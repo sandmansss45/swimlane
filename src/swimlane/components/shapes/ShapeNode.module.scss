@@ -113,6 +113,12 @@
   padding-bottom: 16px;
 
   .shapeFill {
+    // Own dedicated grey (added 2026-08-19) - previously fell back to
+    // the same blue as an ordinary Process shape, distinguished only by
+    // outline (the wavy bottom), never by color, even though a color had
+    // already been set aside for exactly this in theme.ts and just
+    // never got wired in here.
+    background: var(--shape-document);
     border-radius: 4px 4px 0 0;
     clip-path: polygon(
       0% 0%, 100% 0%, 100% 88%,

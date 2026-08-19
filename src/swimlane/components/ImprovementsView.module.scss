@@ -6,10 +6,17 @@
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
+// Purple, not the navy every other section heading in the app uses -
+// deliberate: this is the one view whose content is feedback/discussion
+// rather than process data, and purple is the brand color set aside for
+// exactly that kind of "this section is different" identity (see BRAND
+// .purple in theme.ts). The table header/hover tints below carry the
+// same identity through the rest of the view instead of it being just
+// one isolated line of purple text.
 .title {
   margin: 0 0 14px;
   font-size: var(--fs-lg);
-  color: var(--navy);
+  color: var(--purple);
 }
 
 .empty {
@@ -32,7 +39,7 @@
   th {
     position: sticky;
     top: 0;
-    background: var(--canvas);
+    background: var(--purple-light);
     text-align: left;
     padding: 10px 14px;
     color: var(--navy);
@@ -53,7 +60,7 @@
   }
 
   tr:hover td {
-    background: var(--blue-light);
+    background: var(--purple-light);
   }
 }
 
@@ -68,5 +75,5 @@
 }
 
 .muted {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }

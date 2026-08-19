@@ -90,8 +90,11 @@
   }
 }
 
+// De-emphasized placeholder content (a blank cell's "-"), not real
+// secondary body text - the lighter, cooler --text-muted rather than
+// --text-secondary.
 .muted {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .autoTag {

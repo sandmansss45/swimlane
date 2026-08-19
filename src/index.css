@@ -19,23 +19,46 @@
   --risk-high: #dc152c;
   --risk-medium: #f59e0b;
   --risk-low: #065f46;
-  /* Shape-type fill colors - Decision and Approval get their own color so
-     they read at a glance among a sea of default-blue process/document
-     shapes; Process and Document keep the plain default blue. Decision
-     uses the brand sheet's Secondary orange, Approval its Primary neon
-     green - both by explicit user request. Matches BRAND.decision/
-     BRAND.approval in theme.ts, which already reserved these exact
-     values for this purpose. */
+  /* Shape-type fill colors - Decision, Approval and Document each get
+     their own color so they read at a glance among a sea of default-blue
+     Process shapes. Decision uses the brand sheet's Secondary orange,
+     Approval its Primary neon green, Document its Primary grey - all by
+     explicit user request. Matches BRAND.decision/BRAND.approval/
+     BRAND.document in theme.ts, which already reserved these exact
+     values for this purpose. Document's own color was added 2026-08-19 -
+     until then it silently fell back to plain Process blue, since
+     nothing actually applied the grey theme.ts had already set aside for
+     it. */
   --shape-decision: #f59e0b;
   --shape-approval: #00ce69;
+  --shape-document: #646e82;
   --text: #16233d;
-  --text-secondary: #5b6b84;
+  /* CORRECTED 2026-08-19 - was #5b6b84, an approximation of the brand
+     sheet's confirmed grey rather than the exact value. */
+  --text-secondary: #646e82;
+  /* Brand sheet's light blue-grey - ADDED 2026-08-19, previously defined
+     on the sheet but unused anywhere in the app. For de-emphasized
+     placeholder-ish text (a table's "-"/"All" fallback, a timestamp),
+     genuinely lighter/cooler than --text-secondary, which is for actual
+     secondary body copy someone still needs to read normally. */
+  --text-muted: #a0afc8;
   --border: #dde3ea;
   --canvas: #eaf2fd;
   --surface: #ffffff;
   --dark-bg: #0a1420;
   --dark-surface: #111d33;
   --bright-blue: #007fff;
+  /* Secondary brand color - ADDED 2026-08-19, previously defined on the
+     sheet but unused anywhere in the app, unlike orange/red/dark green
+     (all already doing real work as decision/risk colors). Deliberately
+     scoped to ONE thing app-wide - the Improvements/swimlane-comments
+     feature's own visual identity - rather than sprinkled in wherever,
+     so it reads as "this section is different" instead of an arbitrary
+     extra accent competing with blue. Never applied to buttons/controls -
+     those stay brand blue everywhere for consistency with every other
+     action in the app. */
+  --purple: #7c3aed;
+  --purple-light: #f2ebfd;
 
   /* Type scale - one consistent set of steps instead of dozens of
      one-off px values (11, 11.5, 12, 12.5, 13, 13.5, 14.5... accumulated
