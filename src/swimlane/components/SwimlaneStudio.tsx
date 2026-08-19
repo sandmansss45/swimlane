@@ -726,6 +726,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         isOpen={importOpen}
         dataService={dataService}
         insertionIndex={steps.length}
+        existingSteps={steps}
         onDismiss={() => setImportOpen(false)}
         onImported={handleImported}
       />

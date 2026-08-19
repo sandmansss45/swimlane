@@ -107,6 +107,22 @@
   padding: 1px 5px;
 }
 
+// Warning-toned (risk-medium orange), not the info-blue .autoTag above -
+// this flags a row that collides with a step already in the diagram,
+// not a benign auto-filled value.
+.duplicateTag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--risk-medium);
+  background: rgba(220, 104, 3, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
 .moreRows {
   margin: 0;
   padding: 8px 10px;

@@ -9,13 +9,20 @@ export interface IImportCsvModalProps {
   isOpen: boolean;
   dataService: IDataService;
   insertionIndex: number;
+  // Steps already in the diagram - purely to warn about Process Step ID
+  // collisions before committing (see duplicateStepIds below). Import
+  // itself never touches these; addProcessSteps only ever creates new
+  // items, so a colliding row lands as a genuine duplicate sitting
+  // alongside the original, not an overwrite.
+  existingSteps: IProcessStep[];
   onDismiss: () => void;
   onImported: (created: IProcessStep[]) => void;
 }
 
 const MAX_PREVIEW_ROWS = 12;
+const MAX_DUPLICATE_IDS_SHOWN = 5;
 
-const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, insertionIndex, onDismiss, onImported }) => {
+const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, insertionIndex, existingSteps, onDismiss, onImported }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = React.useState<string | undefined>(undefined);
   const [preview, setPreview] = React.useState<ICsvImportPreview | undefined>(undefined);
@@ -75,6 +82,19 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
     return new Set(preview.rows.map(r => r.step.processStepId)).size;
   }, [preview]);
 
+  // Process Step IDs this file shares with steps already in the diagram -
+  // addProcessSteps only ever creates new items (see IDataService), so a
+  // collision here means the import is about to add a second, separate
+  // copy sitting alongside the original rather than replacing or merging
+  // it. Surfaced as a warning rather than blocked outright - re-importing
+  // an updated version of an already-loaded file is a legitimate thing to
+  // want to do (e.g. after deleting the old rows first), just not silently.
+  const duplicateStepIds = React.useMemo(() => {
+    if (!preview) return [];
+    const existingIds = new Set(existingSteps.map(s => s.processStepId).filter(Boolean));
+    return Array.from(new Set(preview.rows.map(r => r.step.processStepId).filter(id => id && existingIds.has(id))));
+  }, [preview, existingSteps]);
+
   return (
     <Modal isOpen={isOpen} onDismiss={handleClose} isBlocking={false} containerClassName={styles.modal}>
       <div className={styles.header}>
@@ -112,6 +132,18 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
           {w}
         </MessageBar>
       ))}
+
+      {duplicateStepIds.length > 0 && (
+        <MessageBar messageBarType={MessageBarType.warning} className={styles.banner}>
+          {duplicateStepIds.length} process step{duplicateStepIds.length === 1 ? '' : 's'} in this file
+          ({duplicateStepIds.slice(0, MAX_DUPLICATE_IDS_SHOWN).join(', ')}
+          {duplicateStepIds.length > MAX_DUPLICATE_IDS_SHOWN ? `, +${duplicateStepIds.length - MAX_DUPLICATE_IDS_SHOWN} more` : ''})
+          {' '}{duplicateStepIds.length === 1 ? 'already exists' : 'already exist'} in this diagram. Importing
+          won&apos;t replace or merge {duplicateStepIds.length === 1 ? 'it' : 'them'} - {duplicateStepIds.length === 1 ? 'this row' : 'these rows'} will
+          be added as {duplicateStepIds.length === 1 ? 'its own duplicate step' : 'their own duplicate steps'}.
+          Delete the existing one{duplicateStepIds.length === 1 ? '' : 's'} first if you meant to replace {duplicateStepIds.length === 1 ? 'it' : 'them'}.
+        </MessageBar>
+      )}
 
       {preview && preview.autoLinkedCount > 0 && (
         <MessageBar messageBarType={MessageBarType.info} className={styles.banner}>
@@ -152,7 +184,12 @@ const ImportCsvModal: React.FC<IImportCsvModalProps> = ({ isOpen, dataService, i
               <tbody>
                 {preview.rows.slice(0, MAX_PREVIEW_ROWS).map((row, i) => (
                   <tr key={i}>
-                    <td>{row.step.processStepId}</td>
+                    <td>
+                      {row.step.processStepId}
+                      {duplicateStepIds.includes(row.step.processStepId) && (
+                        <span className={styles.duplicateTag} title="Already exists in this diagram">dup</span>
+                      )}
+                    </td>
                     <td>{row.step.processStepName}</td>
                     <td>{row.step.action}</td>
                     <td>{row.step.responsibleJobTitle}</td>
