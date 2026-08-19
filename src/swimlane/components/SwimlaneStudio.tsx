@@ -14,6 +14,7 @@ import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { computeInsertOrderBefore } from '../utils/columns';
+import { buildExportCsv, downloadTextFile } from '../utils/csvExport';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
   APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
@@ -417,6 +418,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleImported = (created: IProcessStep[]): void => {
     setSteps(prev => [...prev, ...created]);
+  };
+
+  // Always the FULL current dataset, regardless of whatever category/
+  // group/swimlane happens to be on screen right now - see the schema
+  // comment on buildExportCsv for why a filtered subset can't safely
+  // reuse the same DependsOn row-number scheme. Never gated by
+  // activeLock - reading data out doesn't modify anything, same
+  // reasoning as "Leave a comment" above.
+  const handleExportCsv = (): void => {
+    downloadTextFile(`swimlane-export-${new Date().toISOString().slice(0, 10)}.csv`, buildExportCsv(steps), 'text/csv;charset=utf-8;');
   };
 
   const handleGroupLabelCreated = (created: IProcessGroupLabel): void => {
@@ -904,6 +915,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
+                  <DefaultButton text="Export CSV" iconProps={{ iconName: 'Download' }} disabled={steps.length === 0} onClick={handleExportCsv} />
                 </div>
                 <HierarchyPicker
                   steps={steps}
@@ -921,6 +933,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Categories" onClick={() => setSelectedCategoryId(undefined)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
+                  <DefaultButton text="Export CSV" iconProps={{ iconName: 'Download' }} disabled={steps.length === 0} onClick={handleExportCsv} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInCategory}
@@ -942,6 +955,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
                   <DefaultButton text="Import CSV" iconProps={{ iconName: 'Upload' }} onClick={() => setImportOpen(true)} />
+                  <DefaultButton text="Export CSV" iconProps={{ iconName: 'Download' }} disabled={steps.length === 0} onClick={handleExportCsv} />
                 </div>
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
@@ -993,6 +1007,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                         items: [
                           { key: 'addNew', text: '+ Add new process', iconProps: { iconName: 'Add' }, onClick: () => { setNewProcessOpen(true); }, disabled: !!activeLock },
                           { key: 'importCsv', text: 'Import CSV', iconProps: { iconName: 'Upload' }, onClick: () => { setImportOpen(true); }, disabled: !!activeLock },
+                          // Not gated by activeLock - exporting is read-only, same reasoning as "Leave a comment".
+                          { key: 'exportCsv', text: 'Export CSV', iconProps: { iconName: 'Download' }, disabled: steps.length === 0, onClick: handleExportCsv },
                           {
                             key: 'deleteFlow',
                             text: `Delete flow (${visibleSteps.length})`,
