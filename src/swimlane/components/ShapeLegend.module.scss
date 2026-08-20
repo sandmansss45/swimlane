@@ -10,9 +10,8 @@
   left: 0;
   z-index: 5;
   display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 14px;
   margin-bottom: 6px;
   background: var(--surface);
@@ -22,6 +21,17 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text);
+}
+
+// The shape-type/linked-risk groups, as their own row - split out from
+// .legend (which used to just be this row directly) so the stage row
+// below can sit underneath as a visually distinct second row rather than
+// one more inline group in the same line.
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
 }
 
 .group {
@@ -117,4 +127,62 @@
   color: #fff;
   font-size: 11px;
   font-weight: 800;
+}
+
+.stageRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.stageBadge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+// Deliberately quiet/neutral - "not done yet" rather than a warning.
+.stageDraft {
+  background: rgba(160, 175, 200, 0.25); // --text-muted, tinted
+  color: var(--text-secondary);
+}
+
+// The same confident green used for Approval shapes/low risk elsewhere
+// in the app - "Finalised" reads as the good, completed state.
+.stageFinalised {
+  background: rgba(6, 95, 70, 0.12); // --risk-low, tinted
+  color: var(--risk-low);
+}
+
+.stageBy {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.stageToggle {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--blue);
+    color: #fff;
+  }
 }

@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf';
 import { IProcessStep, getShapeType } from '../models/IProcessStep';
 import { IRiskStatement, worstLinkedSeverity } from '../models/IRiskStatement';
 import { IEmployee } from '../models/IEmployee';
+import { SwimlaneStage } from '../models/ISwimlaneStatus';
 import { IResolvedEdge, dependsOnTokensToStepIds, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { orderStepsForTimeline, buildColumnGroups, computeDropOrder, dropKeepsDependencyOrder } from '../utils/columns';
 import { connectorPath, highwayPath, pickSides, rectFromDomRect, IRect, Side } from '../utils/arrowRouting';
@@ -53,6 +54,15 @@ export interface ISwimlaneCanvasProps {
   // immediately, without a separate click to find and open it.
   autoOpenStepId?: string;
   onAutoOpenHandled?: () => void;
+  // Draft/Finalised status for the swimlane currently on screen (see
+  // ISwimlaneStatus) - purely a display label with a toggle button,
+  // shown underneath ShapeLegend. No relation to isLocked/onEditStep -
+  // this never blocks anything, it's informational only.
+  swimlaneStage: SwimlaneStage;
+  // Undefined means no one has ever explicitly set a stage - the current
+  // Draft default has no attribution to show.
+  stageSetBy: string | undefined;
+  onToggleStage: () => void;
 }
 
 interface IEdgeGeometry {
@@ -86,7 +96,7 @@ function formatLaneLabel(raw: string): { primary: string; secondary?: string } {
 // through unrelated boxes between them).
 const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   steps, allSteps, swimlaneSteps, edges, riskStatements, drilledDownStepId, employees, isLocked, onLabelEdge, onEditStep, onDeleteStep, onMoveStep,
-  onCreateStep, autoOpenStepId, onAutoOpenHandled
+  onCreateStep, autoOpenStepId, onAutoOpenHandled, swimlaneStage, stageSetBy, onToggleStage
 }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -793,6 +803,9 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       <ShapeLegend
         onDragShapeStart={shapeOverride => !isLocked && setDraggingNewShape(shapeOverride)}
         onDragShapeEnd={() => setDraggingNewShape(undefined)}
+        stage={swimlaneStage}
+        stageSetBy={stageSetBy}
+        onToggleStage={onToggleStage}
       />
       <svg className={styles.edgeOverlay} ref={svgRef}>
         <defs>

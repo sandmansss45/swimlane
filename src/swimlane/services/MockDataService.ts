@@ -7,6 +7,7 @@ import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
+import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 
 // Real accounts-payable process data from the real Master File SharePoint
 // list (QLE UK; called "9.6 tester" until 2026-08-19) - used deliberately
@@ -141,6 +142,10 @@ export class MockDataService implements IDataService {
   private _progressIdLocks: IProgressIdLock[] = [];
   // Append-only feedback log - see ISwimlaneComment. Starts empty.
   private _swimlaneComments: ISwimlaneComment[] = [];
+  // One mutable record per progressId+region, not append-only - see the
+  // schema comment on ISwimlaneStatus for why. Starts empty; every
+  // swimlane is treated as Draft until someone explicitly sets one.
+  private _swimlaneStatuses: ISwimlaneStatus[] = [];
   // A monotonic counter, not `_steps.length + 1` - length-based IDs looked
   // fine until the first delete-then-add in the same session (e.g. undoing
   // a delete): the array shrinks, so the next "length + 1" ID collides
@@ -264,6 +269,26 @@ export class MockDataService implements IDataService {
     };
     this._swimlaneComments.push(created);
     return Promise.resolve(created);
+  }
+
+  public getSwimlaneStatuses(): Promise<ISwimlaneStatus[]> {
+    return Promise.resolve(this._swimlaneStatuses.slice());
+  }
+
+  public addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
+    const created: ISwimlaneStatus = {
+      id: `mock-status-${this._swimlaneStatuses.length + 1}`,
+      progressId, region, stage, setBy,
+      setAt: new Date().toISOString()
+    };
+    this._swimlaneStatuses.push(created);
+    return Promise.resolve(created);
+  }
+
+  public updateSwimlaneStatus(id: string, stage: SwimlaneStage, setBy: string): Promise<void> {
+    const index = this._swimlaneStatuses.findIndex(s => s.id === id);
+    if (index >= 0) this._swimlaneStatuses[index] = { ...this._swimlaneStatuses[index], stage, setBy, setAt: new Date().toISOString() };
+    return Promise.resolve();
   }
 
   public addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {

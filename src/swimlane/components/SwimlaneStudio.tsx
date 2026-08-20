@@ -13,6 +13,7 @@ import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
+import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { computeInsertOrderBefore } from '../utils/columns';
 import { buildExportCsv, downloadTextFile } from '../utils/csvExport';
@@ -88,6 +89,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
   const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
   const [swimlaneComments, setSwimlaneComments] = React.useState<ISwimlaneComment[]>([]);
+  const [swimlaneStatuses, setSwimlaneStatuses] = React.useState<ISwimlaneStatus[]>([]);
   // One-shot signal telling SwimlaneCanvas to open a just-created step's
   // edit panel automatically - see handleCreateStepFromShape and the
   // matching prop comment on ISwimlaneCanvasProps.
@@ -170,9 +172,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
       dataService.getCategoryLabels(), dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks(),
-      dataService.getSwimlaneComments()
+      dataService.getSwimlaneComments(), dataService.getSwimlaneStatuses()
     ])
-      .then(([stepsResult, employeesResult, risksResult, categoryLabelsResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, categoryLabelsResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult, statusesResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -223,6 +225,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         // system, but worth knowing this is fail-open, not fail-closed.
         if (locksResult.status === 'fulfilled') {
           setProgressIdLocks(locksResult.value);
+        }
+
+        // Same fail-open treatment as locks/labels above - a missing
+        // "Swimlane status" list means every swimlane is treated as its
+        // default Draft rather than blocking the app.
+        if (statusesResult.status === 'fulfilled') {
+          setSwimlaneStatuses(statusesResult.value);
         }
 
         // Same fail-open treatment as locks/labels above - a missing
@@ -316,6 +325,18 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     () => selectedProgressId ? findActiveLock(progressIdLocks, selectedProgressId, selectedFlowRegion) : undefined,
     [progressIdLocks, selectedProgressId, selectedFlowRegion]
   );
+
+  // Same progressId + region scoping as activeLock above. Undefined means
+  // no one has ever explicitly set a stage for this swimlane - treated as
+  // Draft by default (see ISwimlaneStatus) rather than requiring an
+  // explicit initial record before the badge can show anything.
+  const activeStatus = React.useMemo(
+    () => (selectedProgressId
+      ? swimlaneStatuses.find(s => s.progressId === selectedProgressId && s.region === (selectedFlowRegion || ''))
+      : undefined),
+    [swimlaneStatuses, selectedProgressId, selectedFlowRegion]
+  );
+  const currentStage: SwimlaneStage = activeStatus?.stage || 'Draft';
 
   // Same progressId + region scoping as activeLock above - only the
   // comments that actually belong to the swimlane currently on screen,
@@ -566,6 +587,29 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setLockReasonValue('');
     setUnlockPasswordValue('');
     setUnlockPasswordError(false);
+  };
+
+  // Flips Draft <-> Finalised for the swimlane on screen right now. Never
+  // gated by activeLock or a password, unlike locking - this is a plain
+  // status label with no enforcement behind it (see ISwimlaneStatus),
+  // same "social signal, not a technical barrier" philosophy locking
+  // itself already uses. Same update-or-add pattern as handleRenameSave:
+  // updates the existing record in place if one exists (refreshing who/
+  // when along with the new stage), otherwise creates the first one.
+  const handleToggleStage = (): void => {
+    if (!selectedProgressId) return;
+    const region = selectedFlowRegion || '';
+    const nextStage: SwimlaneStage = currentStage === 'Draft' ? 'Finalised' : 'Draft';
+    if (activeStatus) {
+      setSwimlaneStatuses(prev => prev.map(s => (s.id === activeStatus.id
+        ? { ...s, stage: nextStage, setBy: currentUserName, setAt: new Date().toISOString() }
+        : s)));
+      dataService.updateSwimlaneStatus(activeStatus.id, nextStage, currentUserName).catch((err: Error) => setError(err.message));
+    } else {
+      dataService.addSwimlaneStatus(selectedProgressId, region, nextStage, currentUserName)
+        .then(created => setSwimlaneStatuses(prev => [...prev, created]))
+        .catch((err: Error) => setError(err.message));
+    }
   };
 
   // Never gated by activeLock - see ISwimlaneComment for why leaving a
@@ -1125,6 +1169,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   onCreateStep={handleCreateStepFromShape}
                   autoOpenStepId={autoOpenStepId}
                   onAutoOpenHandled={() => setAutoOpenStepId(undefined)}
+                  swimlaneStage={currentStage}
+                  stageSetBy={activeStatus?.setBy}
+                  onToggleStage={handleToggleStage}
                 />
 
                 {!activeLock && (

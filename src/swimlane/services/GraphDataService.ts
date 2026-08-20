@@ -8,6 +8,7 @@ import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
+import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 import { GraphClient } from '../auth/graphClient';
 import { SHAREPOINT_SITE_HOSTNAME, SHAREPOINT_SITE_PATH } from '../auth/authConfig';
 
@@ -64,6 +65,13 @@ const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
 // models/ISwimlaneComment - never edited or deleted once posted, so
 // there's no update/delete method here at all, unlike the locks list.
 const SWIMLANE_COMMENTS_LIST_TITLE = 'Swimlane comments';
+// TODO-CONFIRM: guessed name/shape, needs creating on the real site -
+// single line of text columns "Progress ID", "Region", "Stage", "Set By",
+// "Set At" (built-in Title column unused, blank, same as Progress ID
+// locks/Swimlane comments). One mutable row per progressId+region, not
+// append-only - see the schema comment on ISwimlaneStatus for why this
+// list behaves differently from the two above it.
+const SWIMLANE_STATUS_LIST_TITLE = 'Swimlane status';
 
 type FieldMap = { [displayName: string]: string };
 // createdBy/lastModifiedBy/createdDateTime/lastModifiedDateTime are
@@ -523,6 +531,59 @@ export class GraphDataService implements IDataService {
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     return { id: created.id, progressId, region, author, comment, postedAt };
+  }
+
+  public async getSwimlaneStatuses(): Promise<ISwimlaneStatus[]> {
+    const fieldMap = await this._resolveFieldMap(SWIMLANE_STATUS_LIST_TITLE);
+    const items = await this._getItems(SWIMLANE_STATUS_LIST_TITLE);
+    const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
+
+    return items.map((item): ISwimlaneStatus => ({
+      id: item.id,
+      progressId: get(item, 'Progress ID'),
+      region: get(item, 'Region'),
+      stage: (get(item, 'Stage') === 'Finalised' ? 'Finalised' : 'Draft'),
+      setBy: get(item, 'Set By'),
+      setAt: get(item, 'Set At')
+    }));
+  }
+
+  public async addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
+    const fieldMap = await this._resolveFieldMap(SWIMLANE_STATUS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(SWIMLANE_STATUS_LIST_TITLE);
+    const setAt = new Date().toISOString();
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Progress ID', progressId);
+    set('Region', region);
+    set('Stage', stage);
+    set('Set By', setBy);
+    set('Set At', setAt);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { id: created.id, progressId, region, stage, setBy, setAt };
+  }
+
+  public async updateSwimlaneStatus(id: string, stage: SwimlaneStage, setBy: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(SWIMLANE_STATUS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(SWIMLANE_STATUS_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName) fields[internalName] = value;
+    };
+    set('Stage', stage);
+    set('Set By', setBy);
+    set('Set At', new Date().toISOString());
+
+    await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, fields);
   }
 
   public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {

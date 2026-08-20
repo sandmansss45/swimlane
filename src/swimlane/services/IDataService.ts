@@ -6,6 +6,7 @@ import { ICategoryLabel } from '../models/ICategoryLabel';
 import { IProgressIdLabel } from '../models/IProgressIdLabel';
 import { IProgressIdLock } from '../models/IProgressIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
+import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 
 export interface IBulkAddStepsResult {
   created: IProcessStep[];
@@ -56,6 +57,14 @@ export interface IDataService {
   // Always creates a NEW record (see ISwimlaneComment - append-only,
   // never edited or deleted once posted).
   addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment>;
+  getSwimlaneStatuses(): Promise<ISwimlaneStatus[]>;
+  // One mutable record per progressId+region (unlike locks/comments,
+  // never append-only - see ISwimlaneStatus for why). The caller decides
+  // add vs update by checking whether a record already exists for this
+  // progressId+region (same "first change creates it" pattern already
+  // used for Category/Process Group/Progress ID labels).
+  addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus>;
+  updateSwimlaneStatus(id: string, stage: SwimlaneStage, setBy: string): Promise<void>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**
    * Adds several steps in one call, in array order - used by CSV import.
