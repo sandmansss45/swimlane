@@ -184,9 +184,10 @@ ID, Process Step Name, Action Type, Action, Action Description,
 ResponsibleJobTitle, Region, ShapeOverride, ManualOrder, DependsOn, Edge
 Labels, Linked Risks, SOP Link, Delegation of Authority Link — all
 **CONFIRMED** present on the real list.
-`RiskLevelOverride`'s exact real column name is also unconfirmed (a
-retired feature — see Roadmap — kept only so any pre-existing data in it
-still round-trips, not actively used any more).
+`RiskLevelOverride` — a retired manual risk-level flag, superseded by
+Linked Risks (a real Risk Register link, the app's one actual risk
+indicator) — has been fully removed from the app, and the column has
+been deleted from the real list. **CONFIRMED, done.**
 
 **Data ownership and maintenance.** Master File, Process Group labels,
 Progress ID labels, Progress ID locks, and Swimlane comments are all
@@ -320,10 +321,10 @@ effectively only — diagnostic tool. Several data-loading calls log the
 row count they fetched, useful for confirming a Graph call actually
 reached the list it was meant to.
 
-**Known issues.** `Linked Risks` column doesn't exist yet on the real
-Master File list (see Data Architecture). `RiskLevelOverride`'s exact
-real column name was never confirmed (low priority — the feature it
-served has been retired).
+**Known issues.** None outstanding on the Master File schema — Linked
+Risks, SOP Link, and Delegation of Authority Link are all confirmed
+present, and the retired `RiskLevelOverride` column has been removed
+from both the app and the real list.
 
 **Known limitations.** No automated tests. No monitoring/alerting. No
 formal release process. No role-based access control. CSV import
@@ -416,8 +417,7 @@ release/versioning process.
   constrained to free/no-added-cost options at the user's request. No
   direction has been committed to.
 
-**Outstanding work.** Confirm `RiskLevelOverride`'s real column name, or
-formally retire the field if it's no longer wanted at all.
+**Outstanding work.** None on the schema front — see Known Issues above.
 
 **Future architecture considerations.** If role-based access control is
 built, it needs to go beyond an in-app UI toggle — a restriction enforced
@@ -509,12 +509,9 @@ anyone can do it — not an enforced review/sign-off step).
 1. Transfer the GitHub repository to an organisation-owned account.
 2. Stand up basic monitoring — at minimum, a notification on GitHub
    Actions deploy failures.
-3. Create the missing `Linked Risks` column on the real Master File
-   list, and confirm the `RiskLevelOverride` column name (or retire the
-   field formally).
-4. Decide and scope role-based access control before it's needed for
+3. Decide and scope role-based access control before it's needed for
    real.
-5. Explicitly document who holds admin rights to each of: the GitHub
+4. Explicitly document who holds admin rights to each of: the GitHub
    repository, the Entra app registration, and the SharePoint site.
 
 **Anything a new owner should know that may not be obvious.** This

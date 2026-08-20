@@ -216,9 +216,6 @@ export class GraphDataService implements IDataService {
       // field.
       region: get(item, 'Region') || undefined,
       shapeOverride: get(item, 'ShapeOverride'),
-      // TODO-CONFIRM: guessed display names, not verified against the real
-      // process list yet - same caveat as ShapeOverride's own history.
-      riskLevelOverride: get(item, 'RiskLevelOverride'),
       manualOrder: (() => {
         const raw = get(item, 'ManualOrder');
         const parsed = raw ? parseFloat(raw) : NaN;
@@ -539,7 +536,6 @@ export class GraphDataService implements IDataService {
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('Region', step.region || '');
     set('ShapeOverride', step.shapeOverride || '');
-    set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));
@@ -603,7 +599,6 @@ export class GraphDataService implements IDataService {
     set('ResponsibleJobTitle', step.responsibleJobTitle);
     set('Region', step.region || '');
     set('ShapeOverride', step.shapeOverride || '');
-    set('RiskLevelOverride', step.riskLevelOverride || '');
     set('ManualOrder', step.manualOrder !== undefined ? String(step.manualOrder) : '');
     set('DependsOn', step.dependsOn.join(', '));
     set('Linked Risks', serializeLinkedRisks(step.linkedRisks || []));

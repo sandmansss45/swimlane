@@ -22,12 +22,6 @@ export interface IProcessStep {
   // only shows up under "All".
   region?: string;
   shapeOverride?: string; // raw SharePoint value, e.g. 'Approval', 'Decision', 'Process Step'
-  // Retired manual risk-level flag ('High' | 'Medium' | 'Low' | '') - no
-  // longer settable from the UI and no longer drives any shape color (see
-  // linkedRisks below, the app's one real risk indicator now). Field kept
-  // only so existing values already stored in the real SharePoint column
-  // still round-trip on load/save instead of silently vanishing.
-  riskLevelOverride?: string;
   // Manual drag-and-drop position within this step's own Process Step ID
   // group (see orderStepsForTimeline in utils/columns.ts) - lower sorts
   // first. Independent of DependsOn on purpose: DependsOn only decides
