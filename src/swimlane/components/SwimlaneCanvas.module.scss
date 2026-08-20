@@ -184,6 +184,7 @@
 }
 
 .laneCell {
+  position: relative; // anchors .insertBefore/.insertAfter's line below
   border: 1px solid var(--border);
   padding: 16px 10px;
   display: flex;
@@ -231,6 +232,33 @@
   background: var(--blue-light);
   border-style: solid;
   border-width: 2px;
+}
+
+// A thin vertical bar showing exactly which side of the hovered cell the
+// dragged step will land on - left half of a cell means "insert before
+// this step", right half means "insert after" (see dragOverPosition in
+// SwimlaneCanvas.tsx). Without this, before/after is invisible until
+// after dropping - there's no other visual difference between the two
+// halves of the same cell otherwise.
+.insertBefore,
+.insertAfter {
+  &::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--blue);
+  }
+}
+
+.insertBefore::after {
+  left: -2px;
+}
+
+.insertAfter::after {
+  right: -2px;
 }
 
 .draggableNode {

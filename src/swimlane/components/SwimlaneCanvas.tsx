@@ -123,6 +123,11 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // gesture can be in progress at once.
   const [connectingFromStepId, setConnectingFromStepId] = React.useState<string | undefined>(undefined);
   const [dragOverCellId, setDragOverCellId] = React.useState<string | undefined>(undefined);
+  // Which half of dragOverCellId's cell the pointer is currently over -
+  // left half means the dragged step would land immediately BEFORE
+  // columnStep, right half immediately AFTER (see computeDropOrder).
+  // Only meaningful together with dragOverCellId; stale otherwise.
+  const [dragOverPosition, setDragOverPosition] = React.useState<'before' | 'after'>('after');
   // Latest pointer position during a drag, kept in a ref (not state) since
   // it's read every animation frame by the auto-scroll loop below and
   // doesn't need to trigger a re-render on its own - only the scroll
@@ -138,6 +143,13 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   // meaningful drop target, since dropping there both re-sequences the
   // dragged step relative to columnStep AND reassigns it to this cell's
   // lane.
+  // Coarse check: is this column even a candidate drop target at all,
+  // regardless of which half of the cell (before/after) ends up hovered -
+  // used for the dashed "possible target" outline shown on every
+  // candidate cell for the whole drag, before the pointer has actually
+  // reached any specific one. The precise, side-aware check that decides
+  // whether a specific half is ACTUALLY droppable right now lives in
+  // handleCellDragOver/handleDrop below.
   const isValidDropTarget = (columnStep: IProcessStep): boolean => {
     if (isLocked || !draggingStepId || draggingStepId === columnStep.id) return false;
     const dragged = stepsById.get(draggingStepId);
@@ -146,7 +158,10 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     // never to a position that would put the step before something it
     // depends on, or after something that depends on it - that's what
     // produced backward-pointing arrows before this check existed.
-    return dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id);
+    // Either side counts here - a cell showing the dashed outline just
+    // means SOME drop there is legal, not that both halves necessarily are.
+    return dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id, true)
+      || dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id, false);
   };
 
   // A brand new step (dragged in from ShapeLegend) has no dependency
@@ -172,10 +187,28 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   };
 
   const handleCellDragOver = (columnStep: IProcessStep, lane: string) => (e: React.DragEvent): void => {
-    if (!isValidDropTargetForCurrentDrag(columnStep)) return;
-    e.preventDefault(); // only opt into "droppable" when valid - otherwise leave the browser's own "not allowed" cursor
-    e.dataTransfer.dropEffect = draggingNewShape ? 'copy' : 'move';
+    if (draggingNewShape) {
+      if (!isValidNewShapeDropTarget()) return;
+      e.preventDefault(); // only opt into "droppable" when valid - otherwise leave the browser's own "not allowed" cursor
+      e.dataTransfer.dropEffect = 'copy';
+      setDragOverCellId(`${lane}-${columnStep.id}`);
+      return;
+    }
+    if (!draggingStepId || draggingStepId === columnStep.id) return;
+    const dragged = stepsById.get(draggingStepId);
+    if (!dragged || dragged.processStepId !== columnStep.processStepId || isLocked) return;
+    // Left half of the cell = drop before columnStep, right half = after -
+    // the only way to land a step at the very front of its group, which
+    // dropping-always-after (the original, only behaviour) could never
+    // do, since there's no column further left than the first one to
+    // "drop after" to get the same result.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const insertBefore = e.clientX - rect.left < rect.width / 2;
+    if (!dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id, insertBefore)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverCellId(`${lane}-${columnStep.id}`);
+    setDragOverPosition(insertBefore ? 'before' : 'after');
   };
 
   const handleCellDragLeave = (lane: string, columnStep: IProcessStep) => (): void => {
@@ -235,10 +268,22 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       onCreateStep(shapeOverride, lane, columnStep);
       return;
     }
-    if (!draggingStepId || !isValidDropTarget(columnStep)) { setDraggingStepId(undefined); return; }
+    if (!draggingStepId) { setDraggingStepId(undefined); return; }
     const dragged = stepsById.get(draggingStepId);
     if (!dragged) { setDraggingStepId(undefined); return; }
-    const newOrder = computeDropOrder(allSteps, draggingStepId, columnStep.id);
+    // Recomputed from the drop event's own coordinates rather than
+    // trusting the last dragOverPosition state - the drop can land on a
+    // different element than the last dragover fired on (e.g. a fast
+    // pointer move), so this is the one guaranteed-fresh read of exactly
+    // where it actually landed.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const insertBefore = e.clientX - rect.left < rect.width / 2;
+    if (dragged.processStepId !== columnStep.processStepId
+      || !dropKeepsDependencyOrder(allSteps, edges, draggingStepId, columnStep.id, insertBefore)) {
+      setDraggingStepId(undefined);
+      return;
+    }
+    const newOrder = computeDropOrder(allSteps, draggingStepId, columnStep.id, insertBefore);
     onMoveStep({
       ...dragged,
       responsibleJobTitle: lane === 'Unassigned' ? '' : lane,
@@ -844,10 +889,14 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
             {orderedSteps.map(step => {
               const belongsToLane = (step.responsibleJobTitle || 'Unassigned') === lane;
               const cellKey = `${lane}-${step.id}`;
+              const isDragOverThisCell = dragOverCellId === cellKey;
               const cellClassName = [
                 styles.laneCell,
                 isValidDropTargetForCurrentDrag(step) ? styles.validDropTarget : '',
-                dragOverCellId === cellKey ? styles.dragOver : '',
+                isDragOverThisCell ? styles.dragOver : '',
+                isDragOverThisCell && !draggingNewShape
+                  ? (dragOverPosition === 'before' ? styles.insertBefore : styles.insertAfter)
+                  : '',
                 // A grid full of bare, empty cell outlines reads as visual
                 // noise in an exported PDF meant to be shared/read, even
                 // though the same outlines are genuinely useful in the live

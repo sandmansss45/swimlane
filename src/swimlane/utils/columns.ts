@@ -65,16 +65,31 @@ export function orderStepsForTimeline(steps: IProcessStep[]): IProcessStep[] {
 }
 
 /**
- * New manualOrder for dropping `draggedStepId` immediately after wherever
+ * New manualOrder for dropping `draggedStepId` next to wherever
  * `targetStepId` currently sits within their shared Process Step ID group
  * - the fractional-midpoint drag-reorder technique (sits strictly between
- * the target's own position and whatever comes after it), so only the
- * dragged step's own record needs to change, not everyone else's.
+ * the target's own position and whichever neighbour is on the requested
+ * side), so only the dragged step's own record needs to change, not
+ * everyone else's. `insertBefore` defaults to false (insert immediately
+ * after the target, the original and still most common case) - true
+ * inserts immediately before it instead. Without this, there was no way
+ * to drop a step so it became the very FIRST item in its group: every
+ * drop always landed after whatever cell it was dropped on, and there's
+ * no column further left than the first one to drop "after" to get the
+ * same effect (confirmed real user report - dragging to the front of a
+ * group was simply impossible, not just awkward). See SwimlaneCanvas's
+ * handleCellDragOver/handleDrop for how the two halves of a cell each
+ * map to one of these.
  * Returns undefined if the two steps aren't actually in the same group -
  * dragging across groups is out of scope (see the manualOrder comment on
  * IProcessStep for why).
  */
-export function computeDropOrder(allSteps: IProcessStep[], draggedStepId: string, targetStepId: string): number | undefined {
+export function computeDropOrder(
+  allSteps: IProcessStep[],
+  draggedStepId: string,
+  targetStepId: string,
+  insertBefore = false
+): number | undefined {
   const dragged = allSteps.find(s => s.id === draggedStepId);
   const target = allSteps.find(s => s.id === targetStepId);
   if (!dragged || !target || dragged.processStepId !== target.processStepId || dragged.id === target.id) {
@@ -86,6 +101,14 @@ export function computeDropOrder(allSteps: IProcessStep[], draggedStepId: string
   const targetIdx = groupSteps.findIndex(s => s.id === targetStepId);
   if (targetIdx === -1) return undefined;
   const targetOrder = getEffectiveOrder(groupSteps[targetIdx], allSteps);
+
+  if (insertBefore) {
+    const prevOrder = targetIdx - 1 >= 0
+      ? getEffectiveOrder(groupSteps[targetIdx - 1], allSteps)
+      : targetOrder - 1;
+    return (prevOrder + targetOrder) / 2;
+  }
+
   const nextOrder = targetIdx + 1 < groupSteps.length
     ? getEffectiveOrder(groupSteps[targetIdx + 1], allSteps)
     : targetOrder + 1;
@@ -118,25 +141,27 @@ export function computeInsertOrderBefore(allSteps: IProcessStep[], targetStepId:
 }
 
 /**
- * Whether dropping `draggedStepId` right after `targetStepId` (i.e. at
- * whatever order computeDropOrder would give it) keeps every direct
- * DependsOn relationship inside the group pointing forward - confirmed
- * design rule is that arrows must keep moving in chronological order, so
- * a step can't be dragged to sit before something it depends on, or after
- * something that depends on it. Only edges where BOTH ends share the
- * dragged step's Process Step ID group can even be affected by an
- * intra-group reorder - a cross-group dependency's relative order never
- * changes, since groups themselves always stay in Process Step ID order
- * regardless of manualOrder within one of them.
+ * Whether dropping `draggedStepId` next to `targetStepId` (before or
+ * after, per `insertBefore` - i.e. at whatever order computeDropOrder
+ * would give it) keeps every direct DependsOn relationship inside the
+ * group pointing forward - confirmed design rule is that arrows must
+ * keep moving in chronological order, so a step can't be dragged to sit
+ * before something it depends on, or after something that depends on it.
+ * Only edges where BOTH ends share the dragged step's Process Step ID
+ * group can even be affected by an intra-group reorder - a cross-group
+ * dependency's relative order never changes, since groups themselves
+ * always stay in Process Step ID order regardless of manualOrder within
+ * one of them.
  */
 export function dropKeepsDependencyOrder(
   allSteps: IProcessStep[],
   edges: Array<{ fromRowId: string; toRowId: string }>,
   draggedStepId: string,
-  targetStepId: string
+  targetStepId: string,
+  insertBefore = false
 ): boolean {
   const dragged = allSteps.find(s => s.id === draggedStepId);
-  const newOrder = computeDropOrder(allSteps, draggedStepId, targetStepId);
+  const newOrder = computeDropOrder(allSteps, draggedStepId, targetStepId, insertBefore);
   if (!dragged || newOrder === undefined) return false;
 
   return edges.every(edge => {
