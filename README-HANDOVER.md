@@ -111,6 +111,25 @@ main data-loading path for this reason).
 
 **CONFIRMED** (from `src/swimlane/auth/authConfig.ts` and `AUTH_SETUP.md`).
 
+**Updating the redirect URI after a GitHub transfer (step-by-step).**
+Nothing else about this Entra app registration needs to change — same
+tenant, same Client ID, same permissions, all already owned by QLE. This
+is the only step required:
+1. Go to `portal.azure.com` (or `entra.microsoft.com`) and sign in with
+   an account that has admin rights on the QLE tenant.
+2. Search for **App registrations** in the top search bar.
+3. Click **Swimlane Studio** in the list.
+4. Click **Authentication** in the left-hand menu.
+5. Under the **Web** platform's redirect URIs, click **Add URI** and
+   enter the new address exactly: `https://<new-owner>.github.io/swimlane/`
+   (replace `<new-owner>` with whatever GitHub organisation the repo was
+   transferred to — see Section A below).
+6. Click **Save** at the top of the page.
+7. Once someone's confirmed sign-in works at the new URL, come back and
+   remove the old `https://sandmansss45.github.io/swimlane/` entry the
+   same way (select it, click the bin icon, **Save**) so a personal
+   account URL doesn't stay valid indefinitely.
+
 **API permissions and consent.** Microsoft Graph, delegated: `User.Read`
 and `Sites.Selected`. Deliberately **not** `Sites.ReadWrite.All` — this
 app can only ever read/write the one SharePoint site it's been
@@ -528,6 +547,22 @@ keep that same standard going forward.
 
 The app is *already* on GitHub with Pages already live, so "handing it
 off" is really one of these three, not a from-scratch setup:
+
+**Step 0 — If there's no company-owned GitHub organisation yet.** The
+whole point of this transfer is getting off a personal account, so
+transferring into someone else's personal account instead doesn't
+actually fix that — it needs to land in a proper GitHub Organisation
+that IT/engineering leadership controls, not one individual.
+1. Go to `github.com`, signed in as whoever will administer it.
+2. Click the **+** icon (top-right) → **New organization**.
+3. Pick the **Free** plan unless there's a specific reason for a paid
+   tier — it's enough for what this app needs.
+4. Enter an organisation name (e.g. something identifying the company,
+   like `quantum-leap-energy`) and a contact email.
+5. Follow the remaining prompts (email verification, optionally
+   inviting other admins now or later).
+6. The organisation now exists and can be the destination for Option 1
+   below.
 
 **Option 1 — Transfer the existing repository (recommended).** Keeps the
 full commit history, the Pages configuration, and the Actions run
