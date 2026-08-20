@@ -1,9 +1,9 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import styles from './SwimlaneComments.module.scss';
 
 export interface ISwimlaneCommentsProps {
-  comments: ISwimlaneComment[]; // already filtered to this one swimlane (progressId + region) by the caller
+  comments: ISwimlaneComment[]; // already filtered to this one swimlane (processId + region) by the caller
 }
 
 const formatDate = (iso: string): string => new Date(iso).toLocaleString();

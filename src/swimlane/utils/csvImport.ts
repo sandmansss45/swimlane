@@ -1,4 +1,4 @@
-import { IProcessStep, parseDependsOn, extractRegionFromApqcTitle } from '../models/IProcessStep';
+﻿import { IProcessStep, parseDependsOn, extractRegionFromApqcTitle } from '../models/IProcessStep';
 
 /**
  * Minimal RFC4180 CSV parser (no external dependency): handles quoted
@@ -159,7 +159,7 @@ export function buildImportPreview(csvText: string): ICsvImportPreview {
   // the header row HAS these columns, never that any given row's cells in
   // them weren't blank. An unnoticed blank Process Step ID used to import
   // fine and then silently vanish everywhere (it doesn't belong to any
-  // Category/Group/Progress ID), while still consuming a row-number slot
+  // Category/Group/Process ID), while still consuming a row-number slot
   // other rows' DependsOn tokens count against.
   const skippedRows: Array<{ csvRowNumber: number; missingFields: string[] }> = [];
 

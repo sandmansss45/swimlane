@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import styles from './ImprovementsView.module.scss';
 
@@ -28,7 +28,7 @@ const ImprovementsView: React.FC<IImprovementsViewProps> = ({ comments }) => {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Progress ID</th>
+                <th>Process ID</th>
                 <th>Region</th>
                 <th>Author</th>
                 <th>Comment</th>
@@ -38,7 +38,7 @@ const ImprovementsView: React.FC<IImprovementsViewProps> = ({ comments }) => {
             <tbody>
               {sorted.map(c => (
                 <tr key={c.id}>
-                  <td>{c.progressId}</td>
+                  <td>{c.processId}</td>
                   <td>{c.region || <span className={styles.muted}>All</span>}</td>
                   <td>{c.author}</td>
                   <td className={styles.commentCell}>{c.comment}</td>

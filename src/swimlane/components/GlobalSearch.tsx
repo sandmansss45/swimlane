@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { IProcessStep } from '../models/IProcessStep';
 import styles from './GlobalSearch.module.scss';
 
@@ -10,7 +10,7 @@ export interface IGlobalSearchProps {
 const MAX_RESULTS = 8;
 
 // Finding a specific step meant navigating Category -> Process Group ->
-// Progress ID by hand even if you already knew roughly what you were
+// Process ID by hand even if you already knew roughly what you were
 // looking for - this jumps straight there from a description, step name,
 // or Process Step ID typed anywhere in the app.
 const GlobalSearch: React.FC<IGlobalSearchProps> = ({ steps, onNavigate }) => {

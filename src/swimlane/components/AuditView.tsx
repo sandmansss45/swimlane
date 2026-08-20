@@ -1,11 +1,11 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { IProcessStep } from '../models/IProcessStep';
-import { IProgressIdLock } from '../models/IProgressIdLock';
+import { IProcessIdLock } from '../models/IProcessIdLock';
 import styles from './AuditView.module.scss';
 
 export interface IAuditViewProps {
   steps: IProcessStep[];
-  progressIdLocks: IProgressIdLock[];
+  processIdLocks: IProcessIdLock[];
 }
 
 const formatDate = (iso: string | undefined): string => (iso ? new Date(iso).toLocaleString() : '—');
@@ -16,7 +16,7 @@ const formatDate = (iso: string | undefined): string => (iso ? new Date(iso).toL
 // to a real compliance ask ("who changed a workflow, when, why, who
 // approved it... future SOX-ready"). Read-only by design - nothing here
 // is ever edited from this view, it's a report, not a form.
-const AuditView: React.FC<IAuditViewProps> = ({ steps, progressIdLocks }) => {
+const AuditView: React.FC<IAuditViewProps> = ({ steps, processIdLocks }) => {
   // Most-recently-touched first - what changed lately is almost always
   // what an audit review actually wants to see, not alphabetical/ID
   // order. Steps that have never been touched by this feature (no
@@ -28,8 +28,8 @@ const AuditView: React.FC<IAuditViewProps> = ({ steps, progressIdLocks }) => {
   );
 
   const sortedLocks = React.useMemo(
-    () => progressIdLocks.slice().sort((a, b) => (b.lockedAt || '').localeCompare(a.lockedAt || '')),
-    [progressIdLocks]
+    () => processIdLocks.slice().sort((a, b) => (b.lockedAt || '').localeCompare(a.lockedAt || '')),
+    [processIdLocks]
   );
 
   return (
@@ -65,15 +65,15 @@ const AuditView: React.FC<IAuditViewProps> = ({ steps, progressIdLocks }) => {
       </div>
 
       <div className={styles.card}>
-        <h3 className={styles.title}>Swimlane locks ({progressIdLocks.length})</h3>
-        {progressIdLocks.length === 0 ? (
+        <h3 className={styles.title}>Swimlane locks ({processIdLocks.length})</h3>
+        {processIdLocks.length === 0 ? (
           <p className={styles.empty}>No swimlane has ever been locked yet.</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Progress ID</th>
+                  <th>Process ID</th>
                   <th>Region</th>
                   <th>Locked by</th>
                   <th>Locked at</th>
@@ -86,7 +86,7 @@ const AuditView: React.FC<IAuditViewProps> = ({ steps, progressIdLocks }) => {
               <tbody>
                 {sortedLocks.map(l => (
                   <tr key={l.id}>
-                    <td>{l.progressId}</td>
+                    <td>{l.processId}</td>
                     <td>{l.region || <span className={styles.muted}>All</span>}</td>
                     <td>{l.lockedBy}</td>
                     <td className={styles.muted}>{formatDate(l.lockedAt)}</td>

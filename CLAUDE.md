@@ -1,4 +1,4 @@
-# Swimlane Studio
+﻿# Swimlane Studio
 
 A React/TypeScript/Vite web app for Quantum Leap Energy that visualizes
 business process flows as swimlane diagrams (lane = job title,
@@ -42,20 +42,20 @@ npm run preview  # serve the production build locally
   Process Step ID. See `src/swimlane/utils/dependencyResolution.ts` and
   `parseDependsOn` in `src/swimlane/models/IProcessStep.ts`.
 - **APQC hierarchy**: Category (`"9"`) → Process Group (`"9.6"`) →
-  Progress ID / one swimlane (`"9.6.1"`) → Activity / step
+  Process ID / one swimlane (`"9.6.1"`) → Activity / step
   (`"9.6.1.1"`) - see `src/swimlane/utils/apqcHierarchy.ts`. Static
-  category/group/progress-ID names live in that file; anything not in
+  category/group/process-ID names live in that file; anything not in
   the static table falls back to a user-created custom label (its own
   small SharePoint list) or a derived name.
-- **Region splitting**: one Progress ID can hold several genuinely
+- **Region splitting**: one Process ID can hold several genuinely
   separate swimlanes side by side (UK/US/SA/Global), via
   `IProcessStep.region` - see `FlowRegionTabs.tsx`. `KNOWN_FLOW_REGIONS`
   in `models/IProcessStep.ts` is the one place to add a new region.
-- **Append-only audit patterns**: swimlane locks (`IProgressIdLock`)
+- **Append-only audit patterns**: swimlane locks (`IProcessIdLock`)
   and swimlane comments (`ISwimlaneComment`) are never edited or
   deleted once created - a new record is always added instead, so a
-  full history survives. Both are scoped to `progressId + region`
-  together, not just `progressId`.
+  full history survives. Both are scoped to `processId + region`
+  together, not just `processId`.
 - **Two data services, one interface** (`IDataService`):
   `MockDataService` (in-memory fixture data, used via "Use mock data
   (no sign-in)" on the sign-in screen) and `GraphDataService` (real

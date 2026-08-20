@@ -1,6 +1,6 @@
-// Whether a swimlane (one Progress ID's flow, in one region) is still
+﻿// Whether a swimlane (one Process ID's flow, in one region) is still
 // being worked on or considered done - a lightweight status label,
-// distinct from swimlane locking (IProgressIdLock): locking blocks
+// distinct from swimlane locking (IProcessIdLock): locking blocks
 // further edits and is an append-only audit trail of every lock/unlock;
 // this is just a current, mutable "where is this at" marker with no
 // enforcement behind it at all, same "social signal, not a technical
@@ -11,8 +11,8 @@ export type SwimlaneStage = 'Draft' | 'Finalised';
 
 export interface ISwimlaneStatus {
   id: string;
-  progressId: string;
-  region: string; // '' for no specific region, same convention as IProgressIdLock
+  processId: string;
+  region: string; // '' for no specific region, same convention as IProcessIdLock
   stage: SwimlaneStage;
   // Whoever most recently toggled it - refreshed every time the stage
   // changes (unlike a lock's own createdBy, this is a single mutable

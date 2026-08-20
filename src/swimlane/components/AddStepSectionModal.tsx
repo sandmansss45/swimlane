@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { Modal, PrimaryButton, DefaultButton, TextField } from '@fluentui/react';
 import { IProcessStep } from '../models/IProcessStep';
 import { IDataService } from '../services/IDataService';
@@ -6,12 +6,12 @@ import styles from './AddStepSectionModal.module.scss';
 
 export interface IAddStepSectionModalProps {
   isOpen: boolean;
-  // Already includes the Progress ID plus a trailing dot, e.g. "9.6.1." -
+  // Already includes the Process ID plus a trailing dot, e.g. "9.6.1." -
   // the user only ever types the 4th (Activity) segment, same as every
   // other ID field in this app that's already anchored to a known parent.
   idPrefix: string;
-  // Any existing step already in this Progress ID (any region/section) -
-  // apqcTitle/processDescription describe the Progress ID as a whole, not
+  // Any existing step already in this Process ID (any region/section) -
+  // apqcTitle/processDescription describe the Process ID as a whole, not
   // this specific section, so a new section inherits them rather than
   // asking again (same reasoning as handleAddStep's own fallback logic).
   referenceStep: IProcessStep | undefined;
@@ -23,16 +23,16 @@ export interface IAddStepSectionModalProps {
 
 // The 4th (Activity) level - e.g. "9.6.1.4" as a new sibling to
 // "9.6.1.1"/"9.6.1.2"/"9.6.1.3" - never had a lightweight shell-creation
-// path the way Process Group and Progress ID do (see
+// path the way Process Group and Process ID do (see
 // AddHierarchyShellModal). The only way to add one was the full "Add new
 // process" modal, which both starts an entirely separate area (asking for
 // Process Description again, unrelated to the section you're actually
 // trying to extend) AND demands full step content up front - confirmed
 // as a real, confusing bug source: a user typing into that modal's
 // generically-labeled "Process description" field ended up overwriting
-// the Progress ID's own name with junk. This creates ONE minimal, real
+// the Process ID's own name with junk. This creates ONE minimal, real
 // step (there's no separate "section label" list the way Process
-// Group/Progress ID have - a section's name only ever exists on real step
+// Group/Process ID have - a section's name only ever exists on real step
 // rows) with just an ID and a name, immediately editable afterward via
 // the normal edit panel for everything else (Action, Risk, Responsible,
 // Depends on...).
@@ -72,7 +72,7 @@ const AddStepSectionModal: React.FC<IAddStepSectionModalProps> = ({
       // Seeds the shape's own label with the section name as a starting
       // point rather than leaving it blank - immediately visible and
       // editable on the canvas afterward, same "real but minimal" spirit
-      // as the Process Group/Progress ID shells.
+      // as the Process Group/Process ID shells.
       actionDescription: trimmedName,
       responsibleJobTitle: '',
       region: region || '',

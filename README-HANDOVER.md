@@ -1,4 +1,4 @@
-# Swimlane Studio — Handover Documentation (First Pass)
+﻿# Swimlane Studio — Handover Documentation (First Pass)
 
 Prepared by William Sands · Draft for review · 2026-08-20
 
@@ -87,7 +87,7 @@ SLA exists. **CONFIRMED (bundle size from build output; no SLA exists).**
   fixture data (not real data) so it can still be demonstrated.
 - **A specific SharePoint list becomes unavailable, renamed, or
   permission is revoked** → most secondary lists (Process Group labels,
-  Progress ID labels, Progress ID locks, Swimlane comments) fail open —
+  Process ID labels, Process ID locks, Swimlane comments) fail open —
   the rest of the app keeps working, just without that one feature. The
   core process-step list (**Master File**) failing is a harder failure —
   the main Process Flows view can't load without it.
@@ -192,8 +192,8 @@ created specifically for this app. **CONFIRMED.**
 |---|---|---|---|
 | **Master File** (renamed from "9.6 tester" 2026-08-19) | Swimlane Studio | The core process-step data every swimlane is drawn from | CONFIRMED, real data |
 | **Process Group labels** | Swimlane Studio | User-created names for Process Groups not already in the app's built-in APQC reference table | CONFIRMED, created |
-| **Progress ID labels** | Swimlane Studio | Same idea, one level down — names for empty Progress ID "shells" before real steps exist | CONFIRMED, created |
-| **Progress ID locks** | Swimlane Studio | Append-only audit trail of every swimlane lock/unlock | CONFIRMED, created |
+| **Process ID labels** | Swimlane Studio | Same idea, one level down — names for empty Process ID "shells" before real steps exist | CONFIRMED, created |
+| **Process ID locks** | Swimlane Studio | Append-only audit trail of every swimlane lock/unlock | CONFIRMED, created |
 | **Swimlane comments** | Swimlane Studio | Append-only feedback log (the "Improvements" feature) | CONFIRMED, created |
 | **QLE Existing Organisation** | *(pre-existing, not owned by this app)* | Read-only source for employee job titles/departments | CONFIRMED, read-only |
 | **risk register data** | *(pre-existing, not owned by this app)* | The enterprise Risk Register — read-only, linked into steps | CONFIRMED, read-only |
@@ -209,7 +209,7 @@ indicator) — has been fully removed from the app, and the column has
 been deleted from the real list. **CONFIRMED, done.**
 
 **Data ownership and maintenance.** Master File, Process Group labels,
-Progress ID labels, Progress ID locks, and Swimlane comments are all
+Process ID labels, Process ID locks, and Swimlane comments are all
 owned by this app (created specifically for it, on its own site). QLE
 Existing Organisation and risk register data are owned elsewhere —
 standing enterprise lists this app only ever reads from, never writes
@@ -225,7 +225,7 @@ sequence, by the step's **original row number in the source data** (not
 by any ID — header counted as row 1). `Linked Risks` (once the column
 exists) will encode step-to-risk links by the real Risk Register's
 SharePoint item ID plus a manually chosen severity. `Region` splits one
-Progress ID into several parallel swimlanes (UK/US/SA/Global).
+Process ID into several parallel swimlanes (UK/US/SA/Global).
 **CONFIRMED.**
 
 **Source systems and integrations.** Only Microsoft Graph →
@@ -254,7 +254,7 @@ sites). No backend/API layer of its own — Graph *is* the API layer.
 
 **Data model.** Central entity is `IProcessStep` (one row = one action
 in a process). Supporting entities: `IEmployee`, `IRiskStatement`,
-`IProcessGroupLabel`, `IProgressIdLabel`, `IProgressIdLock`,
+`IProcessGroupLabel`, `IProcessIdLabel`, `IProcessIdLock`,
 `ISwimlaneComment`. Full definitions in `src/swimlane/models/`.
 
 **Integration map.** Browser → MSAL.js (Entra ID, OAuth2/OIDC) →
@@ -264,7 +264,7 @@ integration surface — nothing else.
 
 **Application structure.** Single-page app with five top-level views:
 **Process Flows** (the swimlane diagrams — drill down Category → Process
-Group → Progress ID → swimlane), **Employees** (directory, read-only),
+Group → Process ID → swimlane), **Employees** (directory, read-only),
 **Risk Register** (read-only), **Audit** (per-step change history plus
 lock history), **Improvements** (cross-swimlane comment feed).
 

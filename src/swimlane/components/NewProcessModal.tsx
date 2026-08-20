@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { Modal, PrimaryButton, DefaultButton, TextField, MessageBar, MessageBarType, Spinner } from '@fluentui/react';
 import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
@@ -6,7 +6,7 @@ import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { IDataService } from '../services/IDataService';
 import { getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName } from '../utils/apqcHierarchy';
-import { getProgressId } from '../models/IProcessStep';
+import { getProcessId } from '../models/IProcessStep';
 import { stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import styles from './NewProcessModal.module.scss';
@@ -43,7 +43,7 @@ const emptyStepDraft = (): IProcessStepFormValue => ({
 });
 
 // Every other way of getting a step into the app (Add a step, CSV import)
-// needs an existing Progress ID to attach to - there was no way to start
+// needs an existing Process ID to attach to - there was no way to start
 // a brand new one (e.g. Category 7, which has zero steps today) short of
 // a CSV. This asks for the handful of identity fields a first step in a
 // new area needs (Process Step ID plus the two labels nothing else can
@@ -89,7 +89,7 @@ const NewProcessModal: React.FC<INewProcessModalProps> = ({
     ? (isNewGroup ? (processGroupName.trim() || `Process Group ${groupId}`) : getProcessGroupName(groupId))
     : '';
   const preview = idLooksValid
-    ? `${getCategoryName(getCategoryId(trimmedId))} · ${groupLabel} · Progress ID ${getProgressId(trimmedId)}`
+    ? `${getCategoryName(getCategoryId(trimmedId))} · ${groupLabel} · Process ID ${getProcessId(trimmedId)}`
     : undefined;
 
   const canSubmit = idLooksValid

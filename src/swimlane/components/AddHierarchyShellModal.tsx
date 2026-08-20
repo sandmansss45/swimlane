@@ -1,27 +1,27 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { Modal, PrimaryButton, DefaultButton, TextField } from '@fluentui/react';
 import { IDataService } from '../services/IDataService';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
-import { IProgressIdLabel } from '../models/IProgressIdLabel';
+import { IProcessIdLabel } from '../models/IProcessIdLabel';
 import { ICategoryLabel } from '../models/ICategoryLabel';
 import styles from './AddHierarchyShellModal.module.scss';
 
-export type HierarchyShellLevel = 'category' | 'processGroup' | 'progressId';
+export type HierarchyShellLevel = 'category' | 'processGroup' | 'processId';
 
 export interface IAddHierarchyShellModalProps {
   isOpen: boolean;
   level: HierarchyShellLevel;
   // Already includes the trailing dot, e.g. "13." - the user completes the
-  // rest (one more segment for a Process Group, two more for a Progress ID).
+  // rest (one more segment for a Process Group, two more for a Process ID).
   idPrefix: string;
   dataService: IDataService;
   onDismiss: () => void;
   // The caller can tell which was created from the shape alone (a
   // Category label has categoryId, a Process Group label has groupId, a
-  // Progress ID label has progressId) - lets it both cache the new label
+  // Process ID label has processId) - lets it both cache the new label
   // and navigate straight into it, same as every other "created
   // something, land in it" flow in this app.
-  onCreated: (created: ICategoryLabel | IProcessGroupLabel | IProgressIdLabel) => void;
+  onCreated: (created: ICategoryLabel | IProcessGroupLabel | IProcessIdLabel) => void;
 }
 
 const LEVEL_COPY: Record<HierarchyShellLevel, { title: string; idLabel: string; nameLabel: string; namePlaceholder: string; segments: number }> = {
@@ -39,10 +39,10 @@ const LEVEL_COPY: Record<HierarchyShellLevel, { title: string; idLabel: string; 
     namePlaceholder: 'e.g. Manage petty cash',
     segments: 2
   },
-  progressId: {
-    title: 'Add a new Progress ID',
-    idLabel: 'Progress ID',
-    nameLabel: 'Progress ID name',
+  processId: {
+    title: 'Add a new Process ID',
+    idLabel: 'Process ID',
+    nameLabel: 'Process ID name',
     namePlaceholder: 'e.g. Manage portfolio project',
     segments: 3
   }
@@ -50,11 +50,11 @@ const LEVEL_COPY: Record<HierarchyShellLevel, { title: string; idLabel: string; 
 
 // Creating a process previously always meant going all the way down to a
 // full 4-segment Activity with a complete step form - there was no way to
-// just reserve and name an empty Process Group or Progress ID first and
+// just reserve and name an empty Process Group or Process ID first and
 // fill in real steps later, which is exactly backwards from how someone
 // actually plans out a framework. This creates just the shell (an ID plus
 // a name, persisted the same way a rename does - see IProcessGroupLabel/
-// IProgressIdLabel) with no step content at all; "Add a step" handles
+// IProcessIdLabel) with no step content at all; "Add a step" handles
 // populating it afterward.
 const AddHierarchyShellModal: React.FC<IAddHierarchyShellModalProps> = ({
   isOpen, level, idPrefix, dataService, onDismiss, onCreated
@@ -87,7 +87,7 @@ const AddHierarchyShellModal: React.FC<IAddHierarchyShellModalProps> = ({
       ? dataService.addCategoryLabel(trimmedId, trimmedName)
       : level === 'processGroup'
         ? dataService.addProcessGroupLabel(trimmedId, trimmedName)
-        : dataService.addProgressIdLabel(trimmedId, trimmedName);
+        : dataService.addProcessIdLabel(trimmedId, trimmedName);
     request
       .then(created => {
         setSaving(false);

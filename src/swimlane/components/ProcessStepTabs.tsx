@@ -1,10 +1,10 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { IProcessStep } from '../models/IProcessStep';
 import { compareProcessStepIds } from '../utils/columns';
 import styles from './ProcessStepTabs.module.scss';
 
 export interface IProcessStepTabsProps {
-  steps: IProcessStep[]; // all steps for the currently selected Progress ID
+  steps: IProcessStep[]; // all steps for the currently selected Process ID
   selectedStepId: string | undefined; // undefined = "All" (top-level view)
   onSelect: (stepId: string | undefined) => void;
   // Opens the lightweight section-creation flow (see AddStepSectionModal)
@@ -14,7 +14,7 @@ export interface IProcessStepTabsProps {
 }
 
 // Drill-down level of the two confirmed navigation levels: "All" shows
-// every row under the Progress ID as one continuous flow; each tab
+// every row under the Process ID as one continuous flow; each tab
 // narrows to a single Process Step ID.
 const ProcessStepTabs: React.FC<IProcessStepTabsProps> = ({ steps, selectedStepId, onSelect, onAddNew }) => {
   const stepIds = React.useMemo(

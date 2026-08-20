@@ -1,4 +1,4 @@
-.canvasToolbar {
+﻿.canvasToolbar {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 8px;
@@ -172,7 +172,7 @@
   border-bottom: 1px solid var(--border);
 }
 
-// Most filtered views (drilled into one Progress ID, especially with only
+// Most filtered views (drilled into one Process ID, especially with only
 // 1-2 lanes) have zero edges that actually need the cross-lane strip -
 // every connection stays inside its own row as a "local hop" instead (see
 // measureEdges in SwimlaneCanvas.tsx). Reserving the full 140px anyway

@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { DefaultButton, PrimaryButton, IconButton, Modal, IDropdownOption, Callout, TextField } from '@fluentui/react';
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
@@ -15,9 +15,9 @@ import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import styles from './SwimlaneCanvas.module.scss';
 
 export interface ISwimlaneCanvasProps {
-  steps: IProcessStep[]; // already filtered to the current Progress ID (and Process Step ID, if drilled down) - for display
+  steps: IProcessStep[]; // already filtered to the current Process ID (and Process Step ID, if drilled down) - for display
   allSteps: IProcessStep[]; // FULL, unfiltered, original-order dataset - needed to compute row-number DependsOn tokens, which only make sense against original load order
-  // This Progress ID's own steps, NOT narrowed further by drilledDownStepId
+  // This Process ID's own steps, NOT narrowed further by drilledDownStepId
   // the way `steps` is - the "Depends on" picker's option list, since a
   // step only ever realistically depends on something in its own swimlane,
   // not one of the ~40 unrelated steps from every other flow in allSteps.
@@ -27,7 +27,7 @@ export interface ISwimlaneCanvasProps {
   drilledDownStepId: string | undefined;
   employees: IEmployee[];
   // True while the swimlane currently on screen is locked (see
-  // IProgressIdLock) - disables dragging entirely and switches the edit
+  // IProcessIdLock) - disables dragging entirely and switches the edit
   // panel to read-only (still opens, just can't Save or Delete), rather
   // than hiding the panel altogether - people should still be able to
   // look at a locked step's details.
@@ -105,7 +105,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   const [edgeGeometry, setEdgeGeometry] = React.useState<IEdgeGeometry[]>([]);
   // Whether any edge in the CURRENT view actually needs the reserved
   // cross-lane highway strip (see the .highwaySpacer comment) - most
-  // filtered views (e.g. drilled into one Progress ID with only 1-2 lanes)
+  // filtered views (e.g. drilled into one Process ID with only 1-2 lanes)
   // have none, and reserving the full strip height anyway left a large
   // dead band of empty grid between the header and the first lane row.
   const [needsHighwayStrip, setNeedsHighwayStrip] = React.useState(true);
@@ -303,7 +303,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   };
 
   // Scoped to this swimlane's own steps, not every step across every
-  // Progress ID (allSteps) - a step only ever realistically depends on
+  // Process ID (allSteps) - a step only ever realistically depends on
   // something in its own flow, and offering ~40 mostly-unrelated options
   // just buried the real one in noise.
   const dependsOnOptions: IDropdownOption[] = React.useMemo(
@@ -379,7 +379,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
   };
 
   // Only edges whose both ends are currently rendered - the rest belong to
-  // a different Progress ID / Process Step ID that isn't in view right now.
+  // a different Process ID / Process Step ID that isn't in view right now.
   const visibleEdges = React.useMemo(
     () => edges.filter(e => stepsById.has(e.fromRowId) && stepsById.has(e.toRowId)),
     [edges, stepsById]
@@ -421,7 +421,7 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
     // (it's a real child, not removed from flow), so reading that value
     // without resetting the SVG first picks up ITS OWN previous size -
     // switching from a wide filtered view (e.g. "All") to a narrower one
-    // (e.g. a single Progress ID) would otherwise never shrink back down,
+    // (e.g. a single Process ID) would otherwise never shrink back down,
     // stuck forever at the widest size ever rendered this session. Collapse
     // it first so the measurement reflects only the grid's real content.
     if (svgRef.current) {

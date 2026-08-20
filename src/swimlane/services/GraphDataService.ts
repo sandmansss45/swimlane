@@ -1,12 +1,12 @@
-import { IPublicClientApplication } from '@azure/msal-browser';
+﻿import { IPublicClientApplication } from '@azure/msal-browser';
 import { IDataService, IBulkAddStepsResult } from './IDataService';
 import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { ICategoryLabel } from '../models/ICategoryLabel';
-import { IProgressIdLabel } from '../models/IProgressIdLabel';
-import { IProgressIdLock } from '../models/IProgressIdLock';
+import { IProcessIdLabel } from '../models/IProcessIdLabel';
+import { IProcessIdLock } from '../models/IProcessIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 import { GraphClient } from '../auth/graphClient';
@@ -45,30 +45,30 @@ const PROCESS_GROUP_LABELS_LIST_TITLE = 'Process Group labels';
 const CATEGORY_LABELS_LIST_TITLE = 'Category labels';
 // CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, same
 // shape as "Process Group labels": the built-in Title column (the
-// Progress ID's name) plus a single line of text column "Progress ID".
-// Stores names for a Progress ID created as an empty shell (see "+ Add
-// new progress ID") before it has any real steps of its own to derive a
+// Process ID's name) plus a single line of text column "Process ID".
+// Stores names for a Process ID created as an empty shell (see "+ Add
+// new process ID") before it has any real steps of its own to derive a
 // name from.
-const PROGRESS_ID_LABELS_LIST_TITLE = 'Progress ID labels';
+const PROCESS_ID_LABELS_LIST_TITLE = 'Process ID labels';
 // CONFIRMED 2026-08-18 - created on the real "Swimlane Studio" site, with
 // the built-in Title column (unused - left blank) plus single line of
-// text columns "Progress ID", "Region", "Locked By", "Locked At",
+// text columns "Process ID", "Region", "Locked By", "Locked At",
 // "Reason", "Unlocked By", "Unlocked At", "Unlock Reason". Append-only
-// audit trail for swimlane sign-off/locking - see models/IProgressIdLock
+// audit trail for swimlane sign-off/locking - see models/IProcessIdLock
 // for why this is never edited in place except to fill in the three
 // Unlocked* columns once, on unlock.
-const PROGRESS_ID_LOCKS_LIST_TITLE = 'Progress ID locks';
+const PROCESS_ID_LOCKS_LIST_TITLE = 'Process ID locks';
 // CONFIRMED 2026-08-19 - created on the real site, same shape as
-// "Progress ID locks" above - the built-in Title column (unused - left
-// blank) plus single line of text columns "Progress ID", "Region",
+// "Process ID locks" above - the built-in Title column (unused - left
+// blank) plus single line of text columns "Process ID", "Region",
 // "Author", "Comment", "Posted At". Append-only feedback log - see
 // models/ISwimlaneComment - never edited or deleted once posted, so
 // there's no update/delete method here at all, unlike the locks list.
 const SWIMLANE_COMMENTS_LIST_TITLE = 'Swimlane comments';
 // TODO-CONFIRM: guessed name/shape, needs creating on the real site -
-// single line of text columns "Progress ID", "Region", "Stage", "Set By",
-// "Set At" (built-in Title column unused, blank, same as Progress ID
-// locks/Swimlane comments). One mutable row per progressId+region, not
+// single line of text columns "Process ID", "Region", "Stage", "Set By",
+// "Set At" (built-in Title column unused, blank, same as Process ID
+// locks/Swimlane comments). One mutable row per processId+region, not
 // append-only - see the schema comment on ISwimlaneStatus for why this
 // list behaves differently from the two above it.
 const SWIMLANE_STATUS_LIST_TITLE = 'Swimlane status';
@@ -403,52 +403,52 @@ export class GraphDataService implements IDataService {
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });
   }
 
-  public async getProgressIdLabels(): Promise<IProgressIdLabel[]> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
-    const items = await this._getItems(PROGRESS_ID_LABELS_LIST_TITLE);
+  public async getProcessIdLabels(): Promise<IProcessIdLabel[]> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LABELS_LIST_TITLE);
+    const items = await this._getItems(PROCESS_ID_LABELS_LIST_TITLE);
     const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
 
-    return items.map((item): IProgressIdLabel => ({
+    return items.map((item): IProcessIdLabel => ({
       id: item.id,
-      progressId: get(item, 'Progress ID'),
+      processId: get(item, 'Process ID'),
       name: get(item, 'Title')
     }));
   }
 
-  public async addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
+  public async addProcessIdLabel(processId: string, name: string): Promise<IProcessIdLabel> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LABELS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
-    const listId = await this._resolveListId(PROGRESS_ID_LABELS_LIST_TITLE);
+    const listId = await this._resolveListId(PROCESS_ID_LABELS_LIST_TITLE);
 
     const fields: Record<string, string> = {};
     const set = (displayName: string, value: string): void => {
       const internalName = fieldMap[displayName];
       if (internalName) fields[internalName] = value;
     };
-    set('Progress ID', progressId);
+    set('Process ID', processId);
     set('Title', name);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
-    return { id: created.id, progressId, name };
+    return { id: created.id, processId, name };
   }
 
-  public async updateProgressIdLabel(id: string, name: string): Promise<void> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LABELS_LIST_TITLE);
+  public async updateProcessIdLabel(id: string, name: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LABELS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
-    const listId = await this._resolveListId(PROGRESS_ID_LABELS_LIST_TITLE);
+    const listId = await this._resolveListId(PROCESS_ID_LABELS_LIST_TITLE);
     const titleField = fieldMap['Title'];
     if (!titleField) return;
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, { [titleField]: name });
   }
 
-  public async getProgressIdLocks(): Promise<IProgressIdLock[]> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
-    const items = await this._getItems(PROGRESS_ID_LOCKS_LIST_TITLE);
+  public async getProcessIdLocks(): Promise<IProcessIdLock[]> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LOCKS_LIST_TITLE);
+    const items = await this._getItems(PROCESS_ID_LOCKS_LIST_TITLE);
     const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
 
-    return items.map((item): IProgressIdLock => ({
+    return items.map((item): IProcessIdLock => ({
       id: item.id,
-      progressId: get(item, 'Progress ID'),
+      processId: get(item, 'Process ID'),
       region: get(item, 'Region'),
       lockedBy: get(item, 'Locked By'),
       lockedAt: get(item, 'Locked At'),
@@ -459,10 +459,10 @@ export class GraphDataService implements IDataService {
     }));
   }
 
-  public async lockProgressId(progressId: string, region: string, lockedBy: string, reason: string): Promise<IProgressIdLock> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
+  public async lockProcessId(processId: string, region: string, lockedBy: string, reason: string): Promise<IProcessIdLock> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LOCKS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
-    const listId = await this._resolveListId(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const listId = await this._resolveListId(PROCESS_ID_LOCKS_LIST_TITLE);
     const lockedAt = new Date().toISOString();
 
     const fields: Record<string, string> = {};
@@ -470,20 +470,20 @@ export class GraphDataService implements IDataService {
       const internalName = fieldMap[displayName];
       if (internalName) fields[internalName] = value;
     };
-    set('Progress ID', progressId);
+    set('Process ID', processId);
     set('Region', region);
     set('Locked By', lockedBy);
     set('Locked At', lockedAt);
     set('Reason', reason);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
-    return { id: created.id, progressId, region, lockedBy, lockedAt, reason, unlockedBy: '', unlockedAt: '', unlockReason: '' };
+    return { id: created.id, processId, region, lockedBy, lockedAt, reason, unlockedBy: '', unlockedAt: '', unlockReason: '' };
   }
 
-  public async unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void> {
-    const fieldMap = await this._resolveFieldMap(PROGRESS_ID_LOCKS_LIST_TITLE);
+  public async unlockProcessId(id: string, unlockedBy: string, reason: string): Promise<void> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_ID_LOCKS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
-    const listId = await this._resolveListId(PROGRESS_ID_LOCKS_LIST_TITLE);
+    const listId = await this._resolveListId(PROCESS_ID_LOCKS_LIST_TITLE);
 
     const fields: Record<string, string> = {};
     const set = (displayName: string, value: string): void => {
@@ -504,7 +504,7 @@ export class GraphDataService implements IDataService {
 
     return items.map((item): ISwimlaneComment => ({
       id: item.id,
-      progressId: get(item, 'Progress ID'),
+      processId: get(item, 'Process ID'),
       region: get(item, 'Region'),
       author: get(item, 'Author'),
       comment: get(item, 'Comment'),
@@ -512,7 +512,7 @@ export class GraphDataService implements IDataService {
     }));
   }
 
-  public async addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
+  public async addSwimlaneComment(processId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
     const fieldMap = await this._resolveFieldMap(SWIMLANE_COMMENTS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(SWIMLANE_COMMENTS_LIST_TITLE);
@@ -523,14 +523,14 @@ export class GraphDataService implements IDataService {
       const internalName = fieldMap[displayName];
       if (internalName) fields[internalName] = value;
     };
-    set('Progress ID', progressId);
+    set('Process ID', processId);
     set('Region', region);
     set('Author', author);
     set('Comment', comment);
     set('Posted At', postedAt);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
-    return { id: created.id, progressId, region, author, comment, postedAt };
+    return { id: created.id, processId, region, author, comment, postedAt };
   }
 
   public async getSwimlaneStatuses(): Promise<ISwimlaneStatus[]> {
@@ -540,7 +540,7 @@ export class GraphDataService implements IDataService {
 
     return items.map((item): ISwimlaneStatus => ({
       id: item.id,
-      progressId: get(item, 'Progress ID'),
+      processId: get(item, 'Process ID'),
       region: get(item, 'Region'),
       stage: (get(item, 'Stage') === 'Finalised' ? 'Finalised' : 'Draft'),
       setBy: get(item, 'Set By'),
@@ -548,7 +548,7 @@ export class GraphDataService implements IDataService {
     }));
   }
 
-  public async addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
+  public async addSwimlaneStatus(processId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
     const fieldMap = await this._resolveFieldMap(SWIMLANE_STATUS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(SWIMLANE_STATUS_LIST_TITLE);
@@ -559,14 +559,14 @@ export class GraphDataService implements IDataService {
       const internalName = fieldMap[displayName];
       if (internalName) fields[internalName] = value;
     };
-    set('Progress ID', progressId);
+    set('Process ID', processId);
     set('Region', region);
     set('Stage', stage);
     set('Set By', setBy);
     set('Set At', setAt);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
-    return { id: created.id, progressId, region, stage, setBy, setAt };
+    return { id: created.id, processId, region, stage, setBy, setAt };
   }
 
   public async updateSwimlaneStatus(id: string, stage: SwimlaneStage, setBy: string): Promise<void> {

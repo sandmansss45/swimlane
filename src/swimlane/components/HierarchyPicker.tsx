@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { IProcessStep } from '../models/IProcessStep';
 import { compareProcessStepIds } from '../utils/columns';
 import styles from './HierarchyPicker.module.scss';
@@ -22,11 +22,11 @@ export interface IHierarchyPickerProps {
   onAddNew?: () => void;
   addNewLabel?: string;
   // Small edit affordance on each real card (not the "+ Add new" tile) -
-  // wired in at all three levels (Category, Process Group, Progress ID),
+  // wired in at all three levels (Category, Process Group, Process ID),
   // each of which can carry a user-assigned custom label that wins over
   // whatever name would otherwise show (static APQC table, or a step's
   // own derived text) - see customCategoryNames/customGroupNames/
-  // customProgressIdNames in SwimlaneStudio.tsx. Renaming one of the
+  // customProcessIdNames in SwimlaneStudio.tsx. Renaming one of the
   // fixed 13 real APQC categories creates a new custom label the first
   // time (same "first rename creates a label" behaviour as the other two
   // levels), rather than editing anything in the static table itself.
@@ -35,7 +35,7 @@ export interface IHierarchyPickerProps {
   // returns per step (e.g. distinct Process Group IDs), not the number of
   // raw process steps - used at the Category level, where "steps" was a
   // less useful number than "how many process groups this category has".
-  // Process Group and Progress ID levels leave this unset and keep
+  // Process Group and Process ID levels leave this unset and keep
   // showing their own step counts.
   countBy?: (processStepId: string) => string;
   countLabel?: string; // singular noun for the count, e.g. "process group" - defaults to "step"
@@ -54,7 +54,7 @@ export interface IHierarchyPickerProps {
 }
 
 // Generic drill-down level: groups steps by whatever ID prefix the caller
-// asks for (Category, Process Group, or Progress ID - see the APQC
+// asks for (Category, Process Group, or Process ID - see the APQC
 // hierarchy comment in utils/apqcHierarchy.ts) and shows one card per
 // group. The same component powers all three levels above the swimlane
 // itself, so they look and behave identically by construction.

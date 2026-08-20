@@ -1,17 +1,17 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import {
   Spinner, MessageBar, MessageBarType, MessageBarButton, DefaultButton, PrimaryButton, IconButton, Pivot, PivotItem,
   Dialog, DialogType, DialogFooter, TextField
 } from '@fluentui/react';
 import styles from './SwimlaneStudio.module.scss';
 import type { ISwimlaneStudioProps } from './ISwimlaneStudioProps';
-import { IProcessStep, getProgressId } from '../models/IProcessStep';
+import { IProcessStep, getProcessId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { ICategoryLabel } from '../models/ICategoryLabel';
-import { IProgressIdLabel } from '../models/IProgressIdLabel';
-import { IProgressIdLock, findActiveLock } from '../models/IProgressIdLock';
+import { IProcessIdLabel } from '../models/IProcessIdLabel';
+import { IProcessIdLock, findActiveLock } from '../models/IProcessIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
@@ -19,8 +19,8 @@ import { computeInsertOrderBefore } from '../utils/columns';
 import { buildExportCsv, downloadTextFile } from '../utils/csvExport';
 import { ADMIN_UNLOCK_PASSWORD } from '../adminConfig';
 import {
-  getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
-  APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
+  getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProcessIdName,
+  APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROCESS_ID_NAMES
 } from '../utils/apqcHierarchy';
 import HierarchyPicker from './HierarchyPicker';
 import GlobalSearch from './GlobalSearch';
@@ -86,8 +86,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [riskStatements, setRiskStatements] = React.useState<IRiskStatement[]>([]);
   const [categoryLabels, setCategoryLabels] = React.useState<ICategoryLabel[]>([]);
   const [processGroupLabels, setProcessGroupLabels] = React.useState<IProcessGroupLabel[]>([]);
-  const [progressIdLabels, setProgressIdLabels] = React.useState<IProgressIdLabel[]>([]);
-  const [progressIdLocks, setProgressIdLocks] = React.useState<IProgressIdLock[]>([]);
+  const [processIdLabels, setProcessIdLabels] = React.useState<IProcessIdLabel[]>([]);
+  const [processIdLocks, setProcessIdLocks] = React.useState<IProcessIdLock[]>([]);
   const [swimlaneComments, setSwimlaneComments] = React.useState<ISwimlaneComment[]>([]);
   const [swimlaneStatuses, setSwimlaneStatuses] = React.useState<ISwimlaneStatus[]>([]);
   // One-shot signal telling SwimlaneCanvas to open a just-created step's
@@ -98,14 +98,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [error, setError] = React.useState<string | undefined>(undefined);
 
   // APQC drill-down: Category (e.g. "9") -> Process Group (e.g. "9.6") ->
-  // Progress ID (e.g. "9.6.1", the existing swimlane-per-flow level) - see
+  // Process ID (e.g. "9.6.1", the existing swimlane-per-flow level) - see
   // utils/apqcHierarchy.ts. Each level's picker is only reachable once its
   // parent is chosen, and clearing a level clears everything below it.
   const [selectedCategoryId, setSelectedCategoryId] = React.useState<string | undefined>(undefined);
   const [selectedProcessGroupId, setSelectedProcessGroupId] = React.useState<string | undefined>(undefined);
-  const [selectedProgressId, setSelectedProgressId] = React.useState<string | undefined>(undefined);
+  const [selectedProcessId, setSelectedProcessId] = React.useState<string | undefined>(undefined);
   const [drilledDownStepId, setDrilledDownStepId] = React.useState<string | undefined>(undefined);
-  // Which region's variant of the current Progress ID's flow is showing -
+  // Which region's variant of the current Process ID's flow is showing -
   // undefined = "All" regions combined. See FlowRegionTabs for the full
   // reasoning.
   const [selectedFlowRegion, setSelectedFlowRegion] = React.useState<string | undefined>(undefined);
@@ -125,11 +125,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // The lightweight "add a 4th-level section" flow (see
   // AddStepSectionModal) - a real minimal step, not a label-only shell
   // like addShellState above, since a section's name only ever lives on
-  // real step rows. true only once a Progress ID is actually selected
+  // real step rows. true only once a Process ID is actually selected
   // (there's nowhere to add a section before that).
   const [addSectionOpen, setAddSectionOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
-  const [renameTarget, setRenameTarget] = React.useState<{ level: 'category' | 'processGroup' | 'progressId'; id: string; currentLabel: string } | undefined>(undefined);
+  const [renameTarget, setRenameTarget] = React.useState<{ level: 'category' | 'processGroup' | 'processId'; id: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
   // Which lock dialog is open, if any, and the reason text being typed
   // into it - 'lock' and 'unlock' share one dialog/one reason field since
@@ -171,10 +171,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setError(undefined);
     Promise.allSettled([
       dataService.getProcessSteps(), dataService.getEmployees(), dataService.getRiskStatements(),
-      dataService.getCategoryLabels(), dataService.getProcessGroupLabels(), dataService.getProgressIdLabels(), dataService.getProgressIdLocks(),
+      dataService.getCategoryLabels(), dataService.getProcessGroupLabels(), dataService.getProcessIdLabels(), dataService.getProcessIdLocks(),
       dataService.getSwimlaneComments(), dataService.getSwimlaneStatuses()
     ])
-      .then(([stepsResult, employeesResult, risksResult, categoryLabelsResult, groupLabelsResult, progressIdLabelsResult, locksResult, commentsResult, statusesResult]) => {
+      .then(([stepsResult, employeesResult, risksResult, categoryLabelsResult, groupLabelsResult, processIdLabelsResult, locksResult, commentsResult, statusesResult]) => {
         const errors: string[] = [];
 
         if (stepsResult.status === 'fulfilled') {
@@ -212,8 +212,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           setProcessGroupLabels(groupLabelsResult.value);
         }
 
-        if (progressIdLabelsResult.status === 'fulfilled') {
-          setProgressIdLabels(progressIdLabelsResult.value);
+        if (processIdLabelsResult.status === 'fulfilled') {
+          setProcessIdLabels(processIdLabelsResult.value);
         }
 
         // Same "nice to have, not a blocking error" treatment as the label
@@ -221,10 +221,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         // sites yet). Deliberate trade-off: a failure here means locks are
         // treated as "nothing is locked" rather than making the whole app
         // unusable - reasonable given locking is a v1, anyone-signed-in
-        // social control (see IProgressIdLock), not a hard permission
+        // social control (see IProcessIdLock), not a hard permission
         // system, but worth knowing this is fail-open, not fail-closed.
         if (locksResult.status === 'fulfilled') {
-          setProgressIdLocks(locksResult.value);
+          setProcessIdLocks(locksResult.value);
         }
 
         // Same fail-open treatment as locks/labels above - a missing
@@ -265,11 +265,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   // Same idea as customGroupNames, one level down - a name for a Progress
   // ID that has no real steps yet to derive one from (see getLabel on the
-  // Progress ID HierarchyPicker below, which otherwise falls back to a
+  // Process ID HierarchyPicker below, which otherwise falls back to a
   // real step's processDescription or the static APQC table).
-  const customProgressIdNames = React.useMemo(
-    () => Object.fromEntries(progressIdLabels.map(l => [l.progressId, l.name])) as Record<string, string>,
-    [progressIdLabels]
+  const customProcessIdNames = React.useMemo(
+    () => Object.fromEntries(processIdLabels.map(l => [l.processId, l.name])) as Record<string, string>,
+    [processIdLabels]
   );
 
   const stepsInCategory = React.useMemo(
@@ -282,9 +282,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [stepsInCategory, selectedProcessGroupId]
   );
 
-  const stepsInProgressId = React.useMemo(
-    () => selectedProgressId ? steps.filter(s => getProgressId(s.processStepId) === selectedProgressId) : [],
-    [steps, selectedProgressId]
+  const stepsInProcessId = React.useMemo(
+    () => selectedProcessId ? steps.filter(s => getProcessId(s.processStepId) === selectedProcessId) : [],
+    [steps, selectedProcessId]
   );
 
   // The readable name for wherever the header breadcrumb is currently
@@ -300,10 +300,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // corrected via rename instead of being permanently stuck showing.
   const currentLevelName = React.useMemo(() => {
     if (drilledDownStepId) {
-      return stepsInProgressId.find(s => s.processStepId === drilledDownStepId)?.processStepName;
+      return stepsInProcessId.find(s => s.processStepId === drilledDownStepId)?.processStepName;
     }
-    if (selectedProgressId) {
-      return customProgressIdNames[selectedProgressId] || stepsInProgressId[0]?.processDescription || getProgressIdName(selectedProgressId);
+    if (selectedProcessId) {
+      return customProcessIdNames[selectedProcessId] || stepsInProcessId[0]?.processDescription || getProcessIdName(selectedProcessId);
     }
     if (selectedProcessGroupId) {
       return customGroupNames[selectedProcessGroupId] || getProcessGroupName(selectedProcessGroupId);
@@ -312,55 +312,55 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
       return getCategoryName(selectedCategoryId);
     }
     return undefined;
-  }, [drilledDownStepId, selectedProgressId, selectedProcessGroupId, selectedCategoryId, stepsInProgressId, customGroupNames, customProgressIdNames]);
+  }, [drilledDownStepId, selectedProcessId, selectedProcessGroupId, selectedCategoryId, stepsInProcessId, customGroupNames, customProcessIdNames]);
 
   // The lock currently in effect for the swimlane actually on screen right
-  // now (this Progress ID + this region), if any - undefined means it's
-  // editable. Scoped to progressId+region together, not just progressId,
+  // now (this Process ID + this region), if any - undefined means it's
+  // editable. Scoped to processId+region together, not just processId,
   // matching the confirmed design rule that regions are genuinely separate
-  // swimlanes (see IProgressIdLock/FlowRegionTabs) - locking the UK
+  // swimlanes (see IProcessIdLock/FlowRegionTabs) - locking the UK
   // version of a flow never touches the US/SA versions on the same
-  // Progress ID.
+  // Process ID.
   const activeLock = React.useMemo(
-    () => selectedProgressId ? findActiveLock(progressIdLocks, selectedProgressId, selectedFlowRegion) : undefined,
-    [progressIdLocks, selectedProgressId, selectedFlowRegion]
+    () => selectedProcessId ? findActiveLock(processIdLocks, selectedProcessId, selectedFlowRegion) : undefined,
+    [processIdLocks, selectedProcessId, selectedFlowRegion]
   );
 
-  // Same progressId + region scoping as activeLock above. Undefined means
+  // Same processId + region scoping as activeLock above. Undefined means
   // no one has ever explicitly set a stage for this swimlane - treated as
   // Draft by default (see ISwimlaneStatus) rather than requiring an
   // explicit initial record before the badge can show anything.
   const activeStatus = React.useMemo(
-    () => (selectedProgressId
-      ? swimlaneStatuses.find(s => s.progressId === selectedProgressId && s.region === (selectedFlowRegion || ''))
+    () => (selectedProcessId
+      ? swimlaneStatuses.find(s => s.processId === selectedProcessId && s.region === (selectedFlowRegion || ''))
       : undefined),
-    [swimlaneStatuses, selectedProgressId, selectedFlowRegion]
+    [swimlaneStatuses, selectedProcessId, selectedFlowRegion]
   );
   const currentStage: SwimlaneStage = activeStatus?.stage || 'Draft';
 
-  // Same progressId + region scoping as activeLock above - only the
+  // Same processId + region scoping as activeLock above - only the
   // comments that actually belong to the swimlane currently on screen,
   // not every comment ever left anywhere (that's what the separate
   // Improvements tab is for).
   const commentsForSwimlane = React.useMemo(
-    () => selectedProgressId
-      ? swimlaneComments.filter(c => c.progressId === selectedProgressId && c.region === (selectedFlowRegion || ''))
+    () => selectedProcessId
+      ? swimlaneComments.filter(c => c.processId === selectedProcessId && c.region === (selectedFlowRegion || ''))
       : [],
-    [swimlaneComments, selectedProgressId, selectedFlowRegion]
+    [swimlaneComments, selectedProcessId, selectedFlowRegion]
   );
 
-  // A Progress ID can hold several genuinely separate swimlanes side by
+  // A Process ID can hold several genuinely separate swimlanes side by
   // side, one per region (see FlowRegionTabs) - narrowed here, upstream of
-  // everything else derived from stepsInProgressId, so picking a region
+  // everything else derived from stepsInProcessId, so picking a region
   // acts as the primary partition and Process Step ID tabs/Depends-on
   // options/the canvas itself only ever see that region's own steps.
   const stepsInRegion = React.useMemo(
-    () => selectedFlowRegion ? stepsInProgressId.filter(s => (s.region || '') === selectedFlowRegion) : stepsInProgressId,
-    [stepsInProgressId, selectedFlowRegion]
+    () => selectedFlowRegion ? stepsInProcessId.filter(s => (s.region || '') === selectedFlowRegion) : stepsInProcessId,
+    [stepsInProcessId, selectedFlowRegion]
   );
 
   // Scoped to the current swimlane (this region's own steps within the
-  // Progress ID), not the full cross-progress-ID dataset - a step
+  // Process ID), not the full cross-process-ID dataset - a step
   // realistically only ever depends on something in its own flow, and
   // listing all ~40 steps from every unrelated flow made the real option
   // buried in noise. No excludeStepId - a brand-new step has no "self" to
@@ -419,7 +419,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   // Deletes every step currently visible - the whole selected Process Step
-  // ID group's flow, or the whole Progress ID if "All" is selected (see
+  // ID group's flow, or the whole Process ID if "All" is selected (see
   // visibleSteps) - so removing a whole mistaken flow doesn't mean
   // deleting each of its steps one at a time via the edit panel.
   const handleBulkDelete = (): void => {
@@ -485,11 +485,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   // Lands the user straight in the empty Category, Process Group, or
-  // Progress ID they just named, same "go straight to what you made"
+  // Process ID they just named, same "go straight to what you made"
   // treatment as handleProcessCreated gets for a full step - the
   // difference here is there's no step to select underneath it, so
   // drilling in shows an empty picker/canvas ready for "Add a step".
-  const handleShellCreated = (created: ICategoryLabel | IProcessGroupLabel | IProgressIdLabel): void => {
+  const handleShellCreated = (created: ICategoryLabel | IProcessGroupLabel | IProcessIdLabel): void => {
     if ('categoryId' in created) {
       setCategoryLabels(prev => [...prev, created]);
       setSelectedCategoryId(created.categoryId);
@@ -497,14 +497,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
       setProcessGroupLabels(prev => [...prev, created]);
       setSelectedProcessGroupId(created.groupId);
     } else {
-      setProgressIdLabels(prev => [...prev, created]);
-      setSelectedProgressId(created.progressId);
+      setProcessIdLabels(prev => [...prev, created]);
+      setSelectedProcessId(created.processId);
       setSelectedFlowRegion(undefined);
     }
     setAddShellState(undefined);
   };
 
-  const openRename = (level: 'category' | 'processGroup' | 'progressId', id: string, currentLabel: string): void => {
+  const openRename = (level: 'category' | 'processGroup' | 'processId', id: string, currentLabel: string): void => {
     setRenameTarget({ level, id, currentLabel });
     setRenameValue(currentLabel);
   };
@@ -513,10 +513,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // record; renaming one that's still showing its static apqcHierarchy.ts
   // name (or a step-derived/generic fallback) creates a new custom label
   // instead, which then wins over that fallback the same way it already
-  // does for a brand-new group/progress ID (see customGroupNames /
-  // customProgressIdNames) - this is the ONLY way to correct a wrong
+  // does for a brand-new group/process ID (see customGroupNames /
+  // customProcessIdNames) - this is the ONLY way to correct a wrong
   // value that ended up baked into real step data (e.g. a real case: a
-  // Progress ID showing "yes" as its name because that's literally what
+  // Process ID showing "yes" as its name because that's literally what
   // ended up in some step's Process Description field).
   const handleRenameSave = (): void => {
     if (!renameTarget) return;
@@ -543,13 +543,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           .catch((err: Error) => setError(err.message));
       }
     } else {
-      const existingLabel = progressIdLabels.find(l => l.progressId === renameTarget.id);
+      const existingLabel = processIdLabels.find(l => l.processId === renameTarget.id);
       if (existingLabel) {
-        setProgressIdLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
-        dataService.updateProgressIdLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+        setProcessIdLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
+        dataService.updateProcessIdLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
       } else {
-        dataService.addProgressIdLabel(renameTarget.id, trimmed)
-          .then(created => setProgressIdLabels(prev => [...prev, created]))
+        dataService.addProcessIdLabel(renameTarget.id, trimmed)
+          .then(created => setProcessIdLabels(prev => [...prev, created]))
           .catch((err: Error) => setError(err.message));
       }
     }
@@ -559,13 +559,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // Confirmed design rule: v1 doesn't restrict who can lock/unlock to
   // specific people - anyone signed in can do either. Accountability comes
   // from every action being attributed (currentUserName) and permanently
-  // logged (see IProgressIdLock's append-only shape), not from a
+  // logged (see IProcessIdLock's append-only shape), not from a
   // technical permission barrier.
   const handleLockConfirm = (): void => {
-    if (!selectedProgressId || lockDialogMode !== 'lock') return;
+    if (!selectedProcessId || lockDialogMode !== 'lock') return;
     const region = selectedFlowRegion || '';
-    dataService.lockProgressId(selectedProgressId, region, currentUserName, lockReasonValue.trim())
-      .then(created => setProgressIdLocks(prev => [...prev, created]))
+    dataService.lockProcessId(selectedProcessId, region, currentUserName, lockReasonValue.trim())
+      .then(created => setProcessIdLocks(prev => [...prev, created]))
       .catch((err: Error) => setError(err.message));
     setLockDialogMode(undefined);
     setLockReasonValue('');
@@ -579,10 +579,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     }
     const reason = lockReasonValue.trim();
     const unlockedAt = new Date().toISOString();
-    setProgressIdLocks(prev => prev.map(l => (l.id === activeLock.id
+    setProcessIdLocks(prev => prev.map(l => (l.id === activeLock.id
       ? { ...l, unlockedBy: currentUserName, unlockedAt, unlockReason: reason }
       : l)));
-    dataService.unlockProgressId(activeLock.id, currentUserName, reason).catch((err: Error) => setError(err.message));
+    dataService.unlockProcessId(activeLock.id, currentUserName, reason).catch((err: Error) => setError(err.message));
     setLockDialogMode(undefined);
     setLockReasonValue('');
     setUnlockPasswordValue('');
@@ -597,7 +597,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // updates the existing record in place if one exists (refreshing who/
   // when along with the new stage), otherwise creates the first one.
   const handleToggleStage = (): void => {
-    if (!selectedProgressId) return;
+    if (!selectedProcessId) return;
     const region = selectedFlowRegion || '';
     const nextStage: SwimlaneStage = currentStage === 'Draft' ? 'Finalised' : 'Draft';
     if (activeStatus) {
@@ -606,7 +606,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         : s)));
       dataService.updateSwimlaneStatus(activeStatus.id, nextStage, currentUserName).catch((err: Error) => setError(err.message));
     } else {
-      dataService.addSwimlaneStatus(selectedProgressId, region, nextStage, currentUserName)
+      dataService.addSwimlaneStatus(selectedProcessId, region, nextStage, currentUserName)
         .then(created => setSwimlaneStatuses(prev => [...prev, created]))
         .catch((err: Error) => setError(err.message));
     }
@@ -616,9 +616,9 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // comment is deliberately independent of the lock/edit flow entirely.
   const handleCommentConfirm = (): void => {
     const text = commentValue.trim();
-    if (!selectedProgressId || !text) return;
+    if (!selectedProcessId || !text) return;
     const region = selectedFlowRegion || '';
-    dataService.addSwimlaneComment(selectedProgressId, region, currentUserName, text)
+    dataService.addSwimlaneComment(selectedProcessId, region, currentUserName, text)
       .then(created => setSwimlaneComments(prev => [...prev, created]))
       .catch((err: Error) => setError(err.message));
     setCommentDialogOpen(false);
@@ -633,14 +633,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setSteps(prev => [...prev, created]);
     setSelectedCategoryId(getCategoryId(created.processStepId));
     setSelectedProcessGroupId(getProcessGroupId(created.processStepId));
-    setSelectedProgressId(getProgressId(created.processStepId));
+    setSelectedProcessId(getProcessId(created.processStepId));
     // NewProcessModal has no region context to inherit (it's often used to
     // start an entirely new area from scratch), so the created step is
     // unregioned - "All" is the only view it's guaranteed to show up in.
     setSelectedFlowRegion(undefined);
     // Selects the new step's own Process Step ID tab, not "All" - without
-    // this, "Add a step" right afterward defaulted to the bare Progress ID
-    // as its processStepId (drilledDownStepId || selectedProgressId, with
+    // this, "Add a step" right afterward defaulted to the bare Process ID
+    // as its processStepId (drilledDownStepId || selectedProcessId, with
     // drilledDownStepId unset), landing new steps in a second, separate
     // column group instead of continuing the one the user just started.
     setDrilledDownStepId(created.processStepId);
@@ -649,7 +649,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   // Lands the user straight in the section they just created, same "go
   // straight to what you made" treatment as handleProcessCreated - the
-  // new section already belongs to the current Progress ID/region (see
+  // new section already belongs to the current Process ID/region (see
   // AddStepSectionModal), so only its own Process Step ID tab needs
   // selecting, nothing else about the current context changes.
   const handleSectionCreated = (created: IProcessStep): void => {
@@ -659,16 +659,16 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   // Jumps straight to a step found via GlobalSearch - lands on the
-  // Progress ID's swimlane (Category -> Process Group -> Progress ID),
+  // Process ID's swimlane (Category -> Process Group -> Process ID),
   // same as clicking all the way down by hand, but stops there rather
   // than also auto-selecting that step's own Process Step ID tab - the
-  // swimlane for the whole Progress ID is the useful landing spot, since
+  // swimlane for the whole Process ID is the useful landing spot, since
   // it shows the found step in context next to everything around it.
   const handleSearchNavigate = (step: IProcessStep): void => {
     setActiveTab('flows');
     setSelectedCategoryId(getCategoryId(step.processStepId));
     setSelectedProcessGroupId(getProcessGroupId(step.processStepId));
-    setSelectedProgressId(getProgressId(step.processStepId));
+    setSelectedProcessId(getProcessId(step.processStepId));
     // Guarantees the found step is actually visible - without this, a
     // stale region selection from wherever the user was browsing before
     // could hide the very step search just landed them on.
@@ -679,12 +679,12 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const newProcessPrefix = selectedProcessGroupId ? `${selectedProcessGroupId}.` : selectedCategoryId ? `${selectedCategoryId}.` : '';
 
   const handleAddStep = (): void => {
-    if (!selectedProgressId || !newStepDraft.actionDescription.trim() || activeLock) return;
+    if (!selectedProcessId || !newStepDraft.actionDescription.trim() || activeLock) return;
     // The very first step in a brand-new region has no reference step IN
     // THAT REGION to inherit from (stepsInRegion is empty) - it used to
     // fall back straight to blank/bare defaults there, leaving Process
-    // Description empty and APQC Title as just the bare Progress ID
-    // number. Falls back to ANY step in the Progress ID instead: Process
+    // Description empty and APQC Title as just the bare Process ID
+    // number. Falls back to ANY step in the Process ID instead: Process
     // Description/Step Name describe the same underlying business process
     // regardless of which region's specific procedure this is, so
     // inheriting them from another region's step is far more useful than
@@ -693,22 +693,22 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     // rather than inherited verbatim, since copying e.g. "9.6.1 - US"
     // onto a brand-new UK step would mislabel it.
     const regionReferenceStep = stepsInRegion[0];
-    const anyReferenceStep = stepsInProgressId[0];
+    const anyReferenceStep = stepsInProcessId[0];
     const { dependsOnStepIds, ...fields } = newStepDraft;
     setSaving(true);
     dataService.addProcessStep({
       apqcTitle: regionReferenceStep
         ? regionReferenceStep.apqcTitle
         : selectedFlowRegion
-          ? `${selectedProgressId} - ${selectedFlowRegion}`
-          : anyReferenceStep ? anyReferenceStep.apqcTitle : selectedProgressId,
+          ? `${selectedProcessId} - ${selectedFlowRegion}`
+          : anyReferenceStep ? anyReferenceStep.apqcTitle : selectedProcessId,
       // A custom rename (if one's been set) wins over whatever's actually
       // sitting in existing steps' processDescription - otherwise a new
       // step would keep perpetuating a wrong value a rename was supposed
       // to have already corrected.
-      processDescription: (selectedProgressId && customProgressIdNames[selectedProgressId])
+      processDescription: (selectedProcessId && customProcessIdNames[selectedProcessId])
         || regionReferenceStep?.processDescription || anyReferenceStep?.processDescription || '',
-      processStepId: drilledDownStepId || selectedProgressId,
+      processStepId: drilledDownStepId || selectedProcessId,
       processStepName: regionReferenceStep?.processStepName || anyReferenceStep?.processStepName || '',
       region: selectedFlowRegion || '',
       ...fields,
@@ -794,7 +794,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           <h2 className={styles.title}>Swimlane Studio</h2>
           {selectedCategoryId ? (
             <p className={styles.breadcrumb}>
-              {[selectedCategoryId, selectedProcessGroupId, selectedProgressId, drilledDownStepId].filter(Boolean).join(' / ')}
+              {[selectedCategoryId, selectedProcessGroupId, selectedProcessId, drilledDownStepId].filter(Boolean).join(' / ')}
               {currentLevelName ? ` — ${currentLevelName}` : ''}
             </p>
           ) : (
@@ -865,8 +865,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
       <AddStepSectionModal
         isOpen={addSectionOpen}
-        idPrefix={selectedProgressId ? `${selectedProgressId}.` : ''}
-        referenceStep={stepsInProgressId[0]}
+        idPrefix={selectedProcessId ? `${selectedProcessId}.` : ''}
+        referenceStep={stepsInProcessId[0]}
         region={selectedFlowRegion}
         dataService={dataService}
         onDismiss={() => setAddSectionOpen(false)}
@@ -898,7 +898,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         dialogContentProps={{ type: DialogType.normal, title: `Rename ${renameTarget?.id || ''}` }}
       >
         <TextField
-          label={renameTarget?.level === 'progressId' ? 'Progress ID name' : renameTarget?.level === 'category' ? 'Category name' : 'Process Group name'}
+          label={renameTarget?.level === 'processId' ? 'Process ID name' : renameTarget?.level === 'category' ? 'Category name' : 'Process Group name'}
           value={renameValue}
           onChange={(_e, v) => setRenameValue(v || '')}
           onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(); }}
@@ -1009,7 +1009,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         ) : activeTab === 'risks' ? (
           <RiskRegisterList riskStatements={riskStatements} steps={steps} />
         ) : activeTab === 'audit' ? (
-          <AuditView steps={steps} progressIdLocks={progressIdLocks} />
+          <AuditView steps={steps} processIdLocks={processIdLocks} />
         ) : activeTab === 'improvements' ? (
           <ImprovementsView comments={swimlaneComments} />
         ) : (
@@ -1017,7 +1017,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             {!selectedCategoryId && (
               <div className={styles.intro}>
                 <h3>Select a category to explore</h3>
-                <p>Pick an APQC process category, then a process group, then a Progress ID to open its swimlane.</p>
+                <p>Pick an APQC process category, then a process group, then a Process ID to open its swimlane.</p>
               </div>
             )}
 
@@ -1057,13 +1057,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   onAddNew={() => setAddShellState({ level: 'processGroup', idPrefix: `${selectedCategoryId}.` })}
                   addNewLabel="+ Add new process group"
                   onRename={(id, label) => openRename('processGroup', id, label)}
-                  countBy={getProgressId}
+                  countBy={getProcessId}
                   countLabel="process"
                   countLabelPlural="processes"
-                  allSubGroupIds={[...Object.keys(APQC_PROGRESS_ID_NAMES), ...Object.keys(customProgressIdNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
+                  allSubGroupIds={[...Object.keys(APQC_PROCESS_ID_NAMES), ...Object.keys(customProcessIdNames)].filter(id => getCategoryId(id) === selectedCategoryId)}
                 />
               </>
-            ) : !selectedProgressId ? (
+            ) : !selectedProcessId ? (
               <>
                 <div className={styles.toolbar}>
                   <DefaultButton text="Back to Process Groups" onClick={() => setSelectedProcessGroupId(undefined)} />
@@ -1072,13 +1072,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 </div>
                 <HierarchyPicker
                   steps={stepsInProcessGroup}
-                  getGroupId={getProgressId}
-                  getLabel={(id, sampleStep) => customProgressIdNames[id] || sampleStep?.processDescription || getProgressIdName(id)}
-                  onSelect={setSelectedProgressId}
-                  allGroupIds={[...Object.keys(APQC_PROGRESS_ID_NAMES), ...Object.keys(customProgressIdNames)].filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
-                  onAddNew={() => setAddShellState({ level: 'progressId', idPrefix: `${selectedProcessGroupId}.` })}
-                  addNewLabel="+ Add new progress ID"
-                  onRename={(id, label) => openRename('progressId', id, label)}
+                  getGroupId={getProcessId}
+                  getLabel={(id, sampleStep) => customProcessIdNames[id] || sampleStep?.processDescription || getProcessIdName(id)}
+                  onSelect={setSelectedProcessId}
+                  allGroupIds={[...Object.keys(APQC_PROCESS_ID_NAMES), ...Object.keys(customProcessIdNames)].filter(id => getProcessGroupId(id) === selectedProcessGroupId)}
+                  onAddNew={() => setAddShellState({ level: 'processId', idPrefix: `${selectedProcessGroupId}.` })}
+                  addNewLabel="+ Add new process ID"
+                  onRename={(id, label) => openRename('processId', id, label)}
                 />
               </>
             ) : (
@@ -1091,7 +1091,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     </MessageBar>
                   )}
                   <div className={styles.toolbarRow}>
-                    <DefaultButton text="Back to Progress IDs" onClick={() => { setSelectedProgressId(undefined); setDrilledDownStepId(undefined); setSelectedFlowRegion(undefined); }} />
+                    <DefaultButton text="Back to Process IDs" onClick={() => { setSelectedProcessId(undefined); setDrilledDownStepId(undefined); setSelectedFlowRegion(undefined); }} />
                     {activeLock ? (
                       <DefaultButton
                         text="Unlock swimlane"
@@ -1134,7 +1134,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     />
                   </div>
                   <FlowRegionTabs
-                    steps={stepsInProgressId}
+                    steps={stepsInProcessId}
                     selectedRegion={selectedFlowRegion}
                     onSelect={region => {
                       // A Process Step ID tab selected in one region may not

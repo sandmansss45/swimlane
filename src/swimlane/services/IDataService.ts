@@ -1,10 +1,10 @@
-import { IProcessStep } from '../models/IProcessStep';
+﻿import { IProcessStep } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { ICategoryLabel } from '../models/ICategoryLabel';
-import { IProgressIdLabel } from '../models/IProgressIdLabel';
-import { IProgressIdLock } from '../models/IProgressIdLock';
+import { IProcessIdLabel } from '../models/IProcessIdLabel';
+import { IProcessIdLock } from '../models/IProcessIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 
@@ -42,28 +42,28 @@ export interface IDataService {
   // addProcessGroupLabel) - not for the static, confirmed-real names in
   // apqcHierarchy.ts, which live in code rather than a list.
   updateProcessGroupLabel(id: string, name: string): Promise<void>;
-  getProgressIdLabels(): Promise<IProgressIdLabel[]>;
-  addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel>;
-  updateProgressIdLabel(id: string, name: string): Promise<void>;
-  getProgressIdLocks(): Promise<IProgressIdLock[]>;
-  // Always creates a NEW record (see IProgressIdLock for why - append-only
+  getProcessIdLabels(): Promise<IProcessIdLabel[]>;
+  addProcessIdLabel(processId: string, name: string): Promise<IProcessIdLabel>;
+  updateProcessIdLabel(id: string, name: string): Promise<void>;
+  getProcessIdLocks(): Promise<IProcessIdLock[]>;
+  // Always creates a NEW record (see IProcessIdLock for why - append-only
   // audit trail, not a mutable status flag).
-  lockProgressId(progressId: string, region: string, lockedBy: string, reason: string): Promise<IProgressIdLock>;
+  lockProcessId(processId: string, region: string, lockedBy: string, reason: string): Promise<IProcessIdLock>;
   // Sets unlockedBy/unlockedAt on the existing record identified by id -
   // the one and only mutation this list ever gets, and even then only
   // ever fills in previously-blank fields, never overwrites what's there.
-  unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void>;
+  unlockProcessId(id: string, unlockedBy: string, reason: string): Promise<void>;
   getSwimlaneComments(): Promise<ISwimlaneComment[]>;
   // Always creates a NEW record (see ISwimlaneComment - append-only,
   // never edited or deleted once posted).
-  addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment>;
+  addSwimlaneComment(processId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment>;
   getSwimlaneStatuses(): Promise<ISwimlaneStatus[]>;
-  // One mutable record per progressId+region (unlike locks/comments,
+  // One mutable record per processId+region (unlike locks/comments,
   // never append-only - see ISwimlaneStatus for why). The caller decides
   // add vs update by checking whether a record already exists for this
-  // progressId+region (same "first change creates it" pattern already
-  // used for Category/Process Group/Progress ID labels).
-  addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus>;
+  // processId+region (same "first change creates it" pattern already
+  // used for Category/Process Group/Process ID labels).
+  addSwimlaneStatus(processId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus>;
   updateSwimlaneStatus(id: string, stage: SwimlaneStage, setBy: string): Promise<void>;
   addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep>;
   /**

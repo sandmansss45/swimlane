@@ -1,4 +1,4 @@
-import { IRiskLink } from './IRiskStatement';
+﻿import { IRiskLink } from './IRiskStatement';
 
 export type ShapeType = 'process' | 'decision' | 'approval' | 'document';
 
@@ -15,7 +15,7 @@ export interface IProcessStep {
   // Which country/entity's variant of this flow this step belongs to (e.g.
   // 'UK', 'US', 'SA') - confirmed 2026-08-18 as a real, separate concept
   // from IEmployee.department (which is just which department a
-  // RESPONSIBLE PERSON sits in, unrelated). A Progress ID can hold several
+  // RESPONSIBLE PERSON sits in, unrelated). A Process ID can hold several
   // genuinely different swimlanes side by side, one per region - see
   // FlowRegionTabs, which is the only thing that reads/sets this. '' or
   // undefined means the step isn't tagged to any particular region and
@@ -46,7 +46,7 @@ export interface IProcessStep {
   linkedRisks?: IRiskLink[];
   // Who created/last touched this step, and when - confirmed 2026-08-19,
   // part of the same audit-trail thread as swimlane locking
-  // (IProgressIdLock). In real (Graph) usage these are read straight from
+  // (IProcessIdLock). In real (Graph) usage these are read straight from
   // SharePoint's own native, system-managed item metadata (createdBy/
   // lastModifiedBy/createdDateTime/lastModifiedDateTime) - the app never
   // writes them as a custom column, since SharePoint already tracks this
@@ -74,13 +74,13 @@ export interface IProcessStep {
 }
 
 /**
- * Progress ID groups a continuous flow of Process Step IDs (e.g. 9.6.1
+ * Process ID groups a continuous flow of Process Step IDs (e.g. 9.6.1
  * contains 9.6.1.1 through 9.6.1.6 as one flow). There is no separate
  * SharePoint column for it - confirmed design rule is that it's always
  * derived by truncating Process Step ID to its first three dot-separated
  * segments.
  */
-export function getProgressId(processStepId: string): string {
+export function getProcessId(processStepId: string): string {
   return (processStepId || '').split('.').slice(0, 3).join('.');
 }
 

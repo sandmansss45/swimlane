@@ -1,7 +1,7 @@
-import { IProcessStep } from '../models/IProcessStep';
+﻿import { IProcessStep } from '../models/IProcessStep';
 
 /**
- * Tasks within a Progress ID group sequence left-to-right by numeric
+ * Tasks within a Process ID group sequence left-to-right by numeric
  * Process Step ID order - confirmed design rule.
  */
 export function compareProcessStepIds(a: string, b: string): number {

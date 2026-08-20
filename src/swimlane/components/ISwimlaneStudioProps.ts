@@ -1,4 +1,4 @@
-import { IDataService } from '../services/IDataService';
+﻿import { IDataService } from '../services/IDataService';
 
 export interface ISwimlaneStudioProps {
   dataService: IDataService;
@@ -10,7 +10,7 @@ export interface ISwimlaneStudioProps {
   onSignOut?: () => void;
   signOutLabel?: string;
   // Attributes swimlane locks/unlocks to a real name (see
-  // IProgressIdLock) - the signed-in MSAL account's display name in real
+  // IProcessIdLock) - the signed-in MSAL account's display name in real
   // usage, a fixed stand-in in mock mode since there's no real session to
   // read one from.
   currentUserName: string;

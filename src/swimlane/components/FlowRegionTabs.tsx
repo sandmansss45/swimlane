@@ -1,16 +1,16 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { IProcessStep, KNOWN_FLOW_REGIONS } from '../models/IProcessStep';
 import styles from './FlowRegionTabs.module.scss';
 
 export interface IFlowRegionTabsProps {
-  steps: IProcessStep[]; // all steps for the currently selected Progress ID, UNFILTERED by region - the tab list needs to see every region present, not just the selected one
+  steps: IProcessStep[]; // all steps for the currently selected Process ID, UNFILTERED by region - the tab list needs to see every region present, not just the selected one
   selectedRegion: string | undefined; // undefined = "All"
   onSelect: (region: string | undefined) => void;
 }
 
 // A genuinely different concept from ProcessStepTabs just below it in the
 // toolbar: those narrow within ONE continuous flow, this picks between
-// entirely separate swimlanes for the same Progress ID (e.g. the UK AP
+// entirely separate swimlanes for the same Process ID (e.g. the UK AP
 // process vs the US AP process) - confirmed design rule, added at a real
 // user's request after Department (an unrelated per-employee grouping)
 // turned out not to cover this at all. Sits above ProcessStepTabs since

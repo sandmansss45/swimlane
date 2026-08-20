@@ -1,11 +1,11 @@
-import { IDataService, IBulkAddStepsResult } from './IDataService';
+﻿import { IDataService, IBulkAddStepsResult } from './IDataService';
 import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
 import { ICategoryLabel } from '../models/ICategoryLabel';
-import { IProgressIdLabel } from '../models/IProgressIdLabel';
-import { IProgressIdLock } from '../models/IProgressIdLock';
+import { IProcessIdLabel } from '../models/IProcessIdLabel';
+import { IProcessIdLock } from '../models/IProcessIdLock';
 import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { ISwimlaneStatus, SwimlaneStage } from '../models/ISwimlaneStatus';
 
@@ -134,15 +134,15 @@ export class MockDataService implements IDataService {
   // same reasoning as _groupLabels/_categoryLabels layering runtime
   // additions on top of static seed data instead of touching it directly.
   private _addedEmployees: IEmployee[] = [];
-  // Same idea, one level down - names for an empty Progress ID shell
-  // created via "+ Add new progress ID" before it has any real steps.
-  private _progressIdLabels: IProgressIdLabel[] = [];
-  // Append-only audit trail - see IProgressIdLock. Starts empty; nothing
+  // Same idea, one level down - names for an empty Process ID shell
+  // created via "+ Add new process ID" before it has any real steps.
+  private _processIdLabels: IProcessIdLabel[] = [];
+  // Append-only audit trail - see IProcessIdLock. Starts empty; nothing
   // is locked until someone explicitly locks it.
-  private _progressIdLocks: IProgressIdLock[] = [];
+  private _processIdLocks: IProcessIdLock[] = [];
   // Append-only feedback log - see ISwimlaneComment. Starts empty.
   private _swimlaneComments: ISwimlaneComment[] = [];
-  // One mutable record per progressId+region, not append-only - see the
+  // One mutable record per processId+region, not append-only - see the
   // schema comment on ISwimlaneStatus for why. Starts empty; every
   // swimlane is treated as Draft until someone explicitly sets one.
   private _swimlaneStatuses: ISwimlaneStatus[] = [];
@@ -213,42 +213,42 @@ export class MockDataService implements IDataService {
     return Promise.resolve();
   }
 
-  public getProgressIdLabels(): Promise<IProgressIdLabel[]> {
-    return Promise.resolve(this._progressIdLabels.slice());
+  public getProcessIdLabels(): Promise<IProcessIdLabel[]> {
+    return Promise.resolve(this._processIdLabels.slice());
   }
 
-  public addProgressIdLabel(progressId: string, name: string): Promise<IProgressIdLabel> {
-    const created: IProgressIdLabel = { id: `mock-progress-${this._progressIdLabels.length + 1}`, progressId, name };
-    this._progressIdLabels.push(created);
+  public addProcessIdLabel(processId: string, name: string): Promise<IProcessIdLabel> {
+    const created: IProcessIdLabel = { id: `mock-progress-${this._processIdLabels.length + 1}`, processId, name };
+    this._processIdLabels.push(created);
     return Promise.resolve(created);
   }
 
-  public updateProgressIdLabel(id: string, name: string): Promise<void> {
-    const index = this._progressIdLabels.findIndex(l => l.id === id);
-    if (index >= 0) this._progressIdLabels[index] = { ...this._progressIdLabels[index], name };
+  public updateProcessIdLabel(id: string, name: string): Promise<void> {
+    const index = this._processIdLabels.findIndex(l => l.id === id);
+    if (index >= 0) this._processIdLabels[index] = { ...this._processIdLabels[index], name };
     return Promise.resolve();
   }
 
-  public getProgressIdLocks(): Promise<IProgressIdLock[]> {
-    return Promise.resolve(this._progressIdLocks.slice());
+  public getProcessIdLocks(): Promise<IProcessIdLock[]> {
+    return Promise.resolve(this._processIdLocks.slice());
   }
 
-  public lockProgressId(progressId: string, region: string, lockedBy: string, reason: string): Promise<IProgressIdLock> {
-    const created: IProgressIdLock = {
-      id: `mock-lock-${this._progressIdLocks.length + 1}`,
-      progressId, region, lockedBy, reason,
+  public lockProcessId(processId: string, region: string, lockedBy: string, reason: string): Promise<IProcessIdLock> {
+    const created: IProcessIdLock = {
+      id: `mock-lock-${this._processIdLocks.length + 1}`,
+      processId, region, lockedBy, reason,
       lockedAt: new Date().toISOString(),
       unlockedBy: '', unlockedAt: '', unlockReason: ''
     };
-    this._progressIdLocks.push(created);
+    this._processIdLocks.push(created);
     return Promise.resolve(created);
   }
 
-  public unlockProgressId(id: string, unlockedBy: string, reason: string): Promise<void> {
-    const index = this._progressIdLocks.findIndex(l => l.id === id);
+  public unlockProcessId(id: string, unlockedBy: string, reason: string): Promise<void> {
+    const index = this._processIdLocks.findIndex(l => l.id === id);
     if (index >= 0) {
-      this._progressIdLocks[index] = {
-        ...this._progressIdLocks[index],
+      this._processIdLocks[index] = {
+        ...this._processIdLocks[index],
         unlockedBy,
         unlockedAt: new Date().toISOString(),
         unlockReason: reason
@@ -261,10 +261,10 @@ export class MockDataService implements IDataService {
     return Promise.resolve(this._swimlaneComments.slice());
   }
 
-  public addSwimlaneComment(progressId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
+  public addSwimlaneComment(processId: string, region: string, author: string, comment: string): Promise<ISwimlaneComment> {
     const created: ISwimlaneComment = {
       id: `mock-comment-${this._swimlaneComments.length + 1}`,
-      progressId, region, author, comment,
+      processId, region, author, comment,
       postedAt: new Date().toISOString()
     };
     this._swimlaneComments.push(created);
@@ -275,10 +275,10 @@ export class MockDataService implements IDataService {
     return Promise.resolve(this._swimlaneStatuses.slice());
   }
 
-  public addSwimlaneStatus(progressId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
+  public addSwimlaneStatus(processId: string, region: string, stage: SwimlaneStage, setBy: string): Promise<ISwimlaneStatus> {
     const created: ISwimlaneStatus = {
       id: `mock-status-${this._swimlaneStatuses.length + 1}`,
-      progressId, region, stage, setBy,
+      processId, region, stage, setBy,
       setAt: new Date().toISOString()
     };
     this._swimlaneStatuses.push(created);

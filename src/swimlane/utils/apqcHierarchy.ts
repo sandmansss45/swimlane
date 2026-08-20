@@ -1,7 +1,7 @@
-// APQC Process Classification Framework navigation levels above Progress
+﻿// APQC Process Classification Framework navigation levels above Progress
 // ID. Process Step IDs already encode this - e.g. "9.6.1.1" is Category 9,
 // Process Group 9.6, Process 9.6.1, Activity 9.6.1.1 - these just truncate
-// to fewer segments, same technique getProgressId (in models/IProcessStep.ts)
+// to fewer segments, same technique getProcessId (in models/IProcessStep.ts)
 // already uses for 3 segments.
 
 export function getCategoryId(processStepId: string): string {
@@ -18,18 +18,18 @@ export function getProcessGroupId(processStepId: string): string {
 // 1, 7, 8, 9, 11, 12, 13: transcribed directly from the user's own
 // reference sheet (Category/Process Group/Process, PDF text extracted
 // verbatim, not OCR'd off a screenshot) - see APQC_PROCESS_GROUP_NAMES/
-// APQC_PROGRESS_ID_NAMES below for the full verified breakdown of these.
+// APQC_PROCESS_ID_NAMES below for the full verified breakdown of these.
 //
 // 2, 3, 4, 5, 6, 10: added 2026-08-19 from the standard published APQC
 // Cross-Industry Process Classification Framework, NOT from a QLE-
 // specific reference document the way the others were - there isn't one
 // for these categories yet. Category-level names only; deliberately no
-// Process Group/Progress ID entries added underneath them, since
+// Process Group/Process ID entries added underneath them, since
 // fabricating that level of sub-classification from general knowledge
 // risks presenting made-up detail as if it were verified reference data
 // (exactly the kind of thing that already caused a real bug once - see
 // the precedence-fix commit from 2026-08-18). Build these out for real
-// via "+ Add new process group"/"+ Add new progress ID" as needed, or
+// via "+ Add new process group"/"+ Add new process ID" as needed, or
 // swap this comment out once a real reference sheet exists for them.
 export const APQC_CATEGORY_NAMES: Record<string, string> = {
   '1': 'Develop Vision and Strategy',
@@ -105,11 +105,11 @@ export const APQC_PROCESS_GROUP_NAMES: Record<string, string> = {
   '13.10': 'Manage sustainability'
 };
 
-// Progress ID (3-segment) names - the "Process" level of the reference
+// Process ID (3-segment) names - the "Process" level of the reference
 // sheet, one level below Process Group. Used as a fallback label for the
-// Progress ID picker when a group has no steps loaded yet to read
+// Process ID picker when a group has no steps loaded yet to read
 // processDescription from (see getLabel in SwimlaneStudio.tsx).
-export const APQC_PROGRESS_ID_NAMES: Record<string, string> = {
+export const APQC_PROCESS_ID_NAMES: Record<string, string> = {
   '1.1.1': 'Assess the external environment',
   '1.1.2': 'Survey market and determine customer needs and wants',
   '1.1.3': 'Assess the internal environment',
@@ -363,6 +363,6 @@ export function getProcessGroupName(groupId: string): string {
   return APQC_PROCESS_GROUP_NAMES[groupId] || `Process Group ${groupId}`;
 }
 
-export function getProgressIdName(progressId: string): string {
-  return APQC_PROGRESS_ID_NAMES[progressId] || `Progress ID ${progressId}`;
+export function getProcessIdName(processId: string): string {
+  return APQC_PROCESS_ID_NAMES[processId] || `Process ID ${processId}`;
 }
