@@ -28,10 +28,13 @@ export interface IDataService {
   addEmployee(jobTitle: string, department: string): Promise<IEmployee>;
   getRiskStatements(): Promise<IRiskStatement[]>;
   getCategoryLabels(): Promise<ICategoryLabel[]>;
-  // No update/rename here (unlike the two levels below) - not asked for,
-  // and the static Category table is already complete for every category
-  // that exists today; this only covers a genuinely new one.
   addCategoryLabel(categoryId: string, name: string): Promise<ICategoryLabel>;
+  // Renaming an existing custom label OR one of the 13 real, static APQC
+  // categories - unlike addCategoryLabel, this can target a category that
+  // was never added through this app at all (see handleRenameSave in
+  // SwimlaneStudio.tsx, which creates a new label on first rename of a
+  // static one rather than requiring addCategoryLabel to have run first).
+  updateCategoryLabel(id: string, name: string): Promise<void>;
   getProcessGroupLabels(): Promise<IProcessGroupLabel[]>;
   addProcessGroupLabel(groupId: string, name: string): Promise<IProcessGroupLabel>;
   // Renaming an existing custom label (one previously created via

@@ -22,15 +22,14 @@ export interface IHierarchyPickerProps {
   onAddNew?: () => void;
   addNewLabel?: string;
   // Small edit affordance on each real card (not the "+ Add new" tile) -
-  // wired in at the Process Group and Progress ID levels, both of which
-  // can carry a user-assigned custom label that wins over whatever name
-  // would otherwise show (static APQC table, or a step's own derived
-  // text) - see customGroupNames/customProgressIdNames in
-  // SwimlaneStudio.tsx. Not offered at the Category level - it can now
-  // have a custom name too (see customCategoryNames, for a genuinely new
-  // Category 14+ the static table doesn't cover), but renaming one of
-  // the fixed 13 real APQC categories was never asked for, so only "+ Add
-  // new" is wired up there, not this.
+  // wired in at all three levels (Category, Process Group, Progress ID),
+  // each of which can carry a user-assigned custom label that wins over
+  // whatever name would otherwise show (static APQC table, or a step's
+  // own derived text) - see customCategoryNames/customGroupNames/
+  // customProgressIdNames in SwimlaneStudio.tsx. Renaming one of the
+  // fixed 13 real APQC categories creates a new custom label the first
+  // time (same "first rename creates a label" behaviour as the other two
+  // levels), rather than editing anything in the static table itself.
   onRename?: (groupId: string, currentLabel: string) => void;
   // When set, a card's count shows the number of DISTINCT values this
   // returns per step (e.g. distinct Process Group IDs), not the number of

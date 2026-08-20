@@ -127,7 +127,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // (there's nowhere to add a section before that).
   const [addSectionOpen, setAddSectionOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
-  const [renameTarget, setRenameTarget] = React.useState<{ level: 'processGroup' | 'progressId'; id: string; currentLabel: string } | undefined>(undefined);
+  const [renameTarget, setRenameTarget] = React.useState<{ level: 'category' | 'processGroup' | 'progressId'; id: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
   // Which lock dialog is open, if any, and the reason text being typed
   // into it - 'lock' and 'unlock' share one dialog/one reason field since
@@ -483,7 +483,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     setAddShellState(undefined);
   };
 
-  const openRename = (level: 'processGroup' | 'progressId', id: string, currentLabel: string): void => {
+  const openRename = (level: 'category' | 'processGroup' | 'progressId', id: string, currentLabel: string): void => {
     setRenameTarget({ level, id, currentLabel });
     setRenameValue(currentLabel);
   };
@@ -501,7 +501,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     if (!renameTarget) return;
     const trimmed = renameValue.trim();
     if (!trimmed) return;
-    if (renameTarget.level === 'processGroup') {
+    if (renameTarget.level === 'category') {
+      const existingLabel = categoryLabels.find(l => l.categoryId === renameTarget.id);
+      if (existingLabel) {
+        setCategoryLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
+        dataService.updateCategoryLabel(existingLabel.id, trimmed).catch((err: Error) => setError(err.message));
+      } else {
+        dataService.addCategoryLabel(renameTarget.id, trimmed)
+          .then(created => setCategoryLabels(prev => [...prev, created]))
+          .catch((err: Error) => setError(err.message));
+      }
+    } else if (renameTarget.level === 'processGroup') {
       const existingLabel = processGroupLabels.find(l => l.groupId === renameTarget.id);
       if (existingLabel) {
         setProcessGroupLabels(prev => prev.map(l => (l.id === existingLabel.id ? { ...l, name: trimmed } : l)));
@@ -844,7 +854,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         dialogContentProps={{ type: DialogType.normal, title: `Rename ${renameTarget?.id || ''}` }}
       >
         <TextField
-          label={renameTarget?.level === 'progressId' ? 'Progress ID name' : 'Process Group name'}
+          label={renameTarget?.level === 'progressId' ? 'Progress ID name' : renameTarget?.level === 'category' ? 'Category name' : 'Process Group name'}
           value={renameValue}
           onChange={(_e, v) => setRenameValue(v || '')}
           onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(); }}
@@ -981,6 +991,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                   allGroupIds={[...Object.keys(APQC_CATEGORY_NAMES), ...Object.keys(customCategoryNames)]}
                   onAddNew={() => setAddShellState({ level: 'category', idPrefix: '' })}
                   addNewLabel="+ Add new category"
+                  onRename={(id, label) => openRename('category', id, label)}
                   countBy={getProcessGroupId}
                   countLabel="process group"
                   allSubGroupIds={[...Object.keys(APQC_PROCESS_GROUP_NAMES), ...Object.keys(customGroupNames)]}

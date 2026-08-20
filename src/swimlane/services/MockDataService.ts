@@ -186,6 +186,12 @@ export class MockDataService implements IDataService {
     return Promise.resolve(created);
   }
 
+  public updateCategoryLabel(id: string, name: string): Promise<void> {
+    const index = this._categoryLabels.findIndex(l => l.id === id);
+    if (index >= 0) this._categoryLabels[index] = { ...this._categoryLabels[index], name };
+    return Promise.resolve();
+  }
+
   public getProcessGroupLabels(): Promise<IProcessGroupLabel[]> {
     return Promise.resolve(this._groupLabels.slice());
   }
