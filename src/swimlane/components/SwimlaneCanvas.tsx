@@ -496,6 +496,36 @@ const SwimlaneCanvas: React.FC<ISwimlaneCanvasProps> = ({
       }
     });
 
+    // A direct cross-lane edge that happens to have a clear straight-line
+    // path can still land on a box that OTHER edges already reach via the
+    // highway/local-hop system - confirmed real user report: a
+    // diagonally-routed "yes" edge cutting straight across visibly
+    // crossed/tangled with unrelated highway traffic converging on the
+    // same box from a completely different side. pathIsClear only checks
+    // for STEP BOXES in the way, never other ALREADY-ROUTED EDGES, so
+    // this diagonal had no way to know it was about to cut through a busy
+    // convergence point. Upgrade it to highway too, so it joins the same
+    // coordinated track system (assignTracks below) instead of drawing
+    // independently through space other edges already occupy. Same-lane
+    // direct edges are excluded - they're short/local and never reach
+    // anywhere near the highway convergence zone in the first place.
+    const nodesWithConvergingTraffic = new Set<string>();
+    candidates.forEach(c => {
+      if (c.tier === 'highway' || c.tier === 'localHop') {
+        nodesWithConvergingTraffic.add(c.edge.fromRowId);
+        nodesWithConvergingTraffic.add(c.edge.toRowId);
+      }
+    });
+    candidates.forEach(c => {
+      if (c.tier !== 'direct') return;
+      const fromLane = stepsById.get(c.edge.fromRowId)?.responsibleJobTitle || 'Unassigned';
+      const toLane = stepsById.get(c.edge.toRowId)?.responsibleJobTitle || 'Unassigned';
+      if (fromLane === toLane) return;
+      if (nodesWithConvergingTraffic.has(c.edge.fromRowId) || nodesWithConvergingTraffic.has(c.edge.toRowId)) {
+        c.tier = 'highway';
+      }
+    });
+
     // Classic greedy interval-coloring (sort by start, reuse the first
     // track that's already clear by then) so two connections whose
     // horizontal spans overlap land on distinct parallel Y-levels instead
