@@ -16,6 +16,7 @@ import { ISwimlaneComment } from '../models/ISwimlaneComment';
 import { resolveDependencyEdges, stepIdsToDependsOnTokens, buildDependsOnOptions } from '../utils/dependencyResolution';
 import { computeInsertOrderBefore } from '../utils/columns';
 import { buildExportCsv, downloadTextFile } from '../utils/csvExport';
+import { ADMIN_UNLOCK_PASSWORD } from '../adminConfig';
 import {
   getCategoryId, getProcessGroupId, getCategoryName, getProcessGroupName, getProgressIdName,
   APQC_CATEGORY_NAMES, APQC_PROCESS_GROUP_NAMES, APQC_PROGRESS_ID_NAMES
@@ -133,6 +134,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // they're never open at the same time.
   const [lockDialogMode, setLockDialogMode] = React.useState<'lock' | 'unlock' | undefined>(undefined);
   const [lockReasonValue, setLockReasonValue] = React.useState('');
+  // Only used for unlock, not lock - see ADMIN_UNLOCK_PASSWORD for why
+  // this exists and what it actually does/doesn't protect against.
+  const [unlockPasswordValue, setUnlockPasswordValue] = React.useState('');
+  const [unlockPasswordError, setUnlockPasswordError] = React.useState(false);
   // "Leave a comment" dialog - never gated by activeLock (see
   // ISwimlaneComment), so it's a plain independent boolean rather than
   // sharing lockDialogMode's 'lock' | 'unlock' pattern.
@@ -537,6 +542,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
   const handleUnlockConfirm = (): void => {
     if (!activeLock || lockDialogMode !== 'unlock') return;
+    if (unlockPasswordValue !== ADMIN_UNLOCK_PASSWORD) {
+      setUnlockPasswordError(true);
+      return;
+    }
     const reason = lockReasonValue.trim();
     const unlockedAt = new Date().toISOString();
     setProgressIdLocks(prev => prev.map(l => (l.id === activeLock.id
@@ -545,6 +554,8 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     dataService.unlockProgressId(activeLock.id, currentUserName, reason).catch((err: Error) => setError(err.message));
     setLockDialogMode(undefined);
     setLockReasonValue('');
+    setUnlockPasswordValue('');
+    setUnlockPasswordError(false);
   };
 
   // Never gated by activeLock - see ISwimlaneComment for why leaving a
@@ -846,7 +857,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
 
       <Dialog
         hidden={!lockDialogMode}
-        onDismiss={() => { setLockDialogMode(undefined); setLockReasonValue(''); }}
+        onDismiss={() => { setLockDialogMode(undefined); setLockReasonValue(''); setUnlockPasswordValue(''); setUnlockPasswordError(false); }}
         dialogContentProps={{
           type: DialogType.normal,
           title: lockDialogMode === 'unlock' ? 'Unlock this swimlane?' : 'Lock this swimlane?',
@@ -855,6 +866,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
             : "Blocks further edits until it's unlocked again. Who locked it, when, and why is recorded permanently."
         }}
       >
+        {lockDialogMode === 'unlock' && (
+          <TextField
+            label="Admin password"
+            type="password"
+            canRevealPassword
+            value={unlockPasswordValue}
+            onChange={(_e, v) => { setUnlockPasswordValue(v || ''); setUnlockPasswordError(false); }}
+            errorMessage={unlockPasswordError ? 'Wrong password.' : undefined}
+            onKeyDown={e => { if (e.key === 'Enter') handleUnlockConfirm(); }}
+          />
+        )}
         <TextField
           label="Reason (optional)"
           placeholder={lockDialogMode === 'unlock' ? 'e.g. Reopening to fix an error found in review' : 'e.g. Approved for FY26 audit'}
@@ -863,7 +885,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           onKeyDown={e => { if (e.key === 'Enter') (lockDialogMode === 'unlock' ? handleUnlockConfirm() : handleLockConfirm()); }}
         />
         <DialogFooter>
-          <DefaultButton text="Cancel" onClick={() => { setLockDialogMode(undefined); setLockReasonValue(''); }} />
+          <DefaultButton text="Cancel" onClick={() => { setLockDialogMode(undefined); setLockReasonValue(''); setUnlockPasswordValue(''); setUnlockPasswordError(false); }} />
           <PrimaryButton
             text={lockDialogMode === 'unlock' ? 'Unlock' : 'Lock'}
             onClick={lockDialogMode === 'unlock' ? handleUnlockConfirm : handleLockConfirm}
