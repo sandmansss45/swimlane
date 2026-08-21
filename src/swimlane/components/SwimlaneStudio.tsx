@@ -131,6 +131,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // (there's nowhere to add a section before that).
   const [addSectionOpen, setAddSectionOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+  // TEMPORARY - see the interface comment on IDataService.backfillUniqueIds.
+  const [backfillDialogOpen, setBackfillDialogOpen] = React.useState(false);
+  const [backfilling, setBackfilling] = React.useState(false);
+  const [backfillMessage, setBackfillMessage] = React.useState<string | undefined>(undefined);
   const [renameTarget, setRenameTarget] = React.useState<{ level: 'category' | 'processGroup' | 'processId'; id: string; currentLabel: string } | undefined>(undefined);
   const [renameValue, setRenameValue] = React.useState('');
   // Which lock dialog is open, if any, and the reason text being typed
@@ -475,6 +479,22 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // reasoning as "Leave a comment" above.
   const handleExportCsv = (): void => {
     downloadTextFile(`swimlane-export-${new Date().toISOString().slice(0, 10)}.csv`, buildExportCsv(steps), 'text/csv;charset=utf-8;');
+  };
+
+  // TEMPORARY - see the interface comment on IDataService.backfillUniqueIds.
+  const handleBackfillUniqueIds = (): void => {
+    setBackfilling(true);
+    dataService.backfillUniqueIds()
+      .then(count => {
+        setBackfilling(false);
+        setBackfillDialogOpen(false);
+        setBackfillMessage(`Assigned Unique IDs to ${count} step${count === 1 ? '' : 's'}.`);
+        loadAll();
+      })
+      .catch((err: Error) => {
+        setBackfilling(false);
+        setBackfillMessage(`Failed: ${err.message}`);
+      });
   };
 
   const handleGroupLabelCreated = (created: IProcessGroupLabel): void => {
@@ -906,6 +926,22 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         </DialogFooter>
       </Dialog>
 
+      {/* TEMPORARY - see the interface comment on IDataService.backfillUniqueIds. */}
+      <Dialog
+        hidden={!backfillDialogOpen}
+        onDismiss={() => setBackfillDialogOpen(false)}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Backfill Unique IDs?',
+          subText: `This overwrites the "Unique ID" column on all ${steps.length} process steps, numbering them 001, 002... in their current order. One-time migration - safe to run again, but there's no need to.`
+        }}
+      >
+        <DialogFooter>
+          <DefaultButton text="Cancel" onClick={() => setBackfillDialogOpen(false)} disabled={backfilling} />
+          <PrimaryButton text={backfilling ? 'Assigning...' : 'Assign Unique IDs'} onClick={handleBackfillUniqueIds} disabled={backfilling} />
+        </DialogFooter>
+      </Dialog>
+
       <Dialog
         hidden={!renameTarget}
         onDismiss={() => setRenameTarget(undefined)}
@@ -1023,7 +1059,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         ) : activeTab === 'risks' ? (
           <RiskRegisterList riskStatements={riskStatements} steps={steps} onAddClick={() => setAddRiskOpen(true)} />
         ) : activeTab === 'audit' ? (
-          <AuditView steps={steps} processIdLocks={processIdLocks} />
+          <>
+            {/* TEMPORARY - see the interface comment on IDataService.backfillUniqueIds. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <DefaultButton text="Backfill Unique IDs (run once)" onClick={() => setBackfillDialogOpen(true)} />
+              {backfillMessage && <span>{backfillMessage}</span>}
+            </div>
+            <AuditView steps={steps} processIdLocks={processIdLocks} />
+          </>
         ) : activeTab === 'improvements' ? (
           <ImprovementsView comments={swimlaneComments} />
         ) : (

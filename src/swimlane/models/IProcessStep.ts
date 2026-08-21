@@ -71,6 +71,30 @@ export interface IProcessStep {
   // OptionalLinkField) instead of always showing two empty boxes.
   sopLink?: string;
   delegationOfAuthorityLink?: string;
+  // "Unique ID" column added to the real Master File list 2026-08-21 -
+  // TODO-CONFIRM real SharePoint column type (assumed Single line of
+  // text, same as every other custom column on this list, so zero-padding
+  // like "001" survives - a Number column would silently store 1
+  // instead). A simple sequential identifier in row/chronological order,
+  // independent of Process Step ID/APQC hierarchy - system-assigned (see
+  // nextUniqueId below) at creation, never user-edited, so
+  // updateProcessStep deliberately never touches this field.
+  uniqueId?: string;
+}
+
+/**
+ * Next sequential Unique ID to assign a newly-created step, given every
+ * step that currently exists - "001", "002", etc. Based on the highest
+ * existing numeric value rather than steps.length so a delete followed by
+ * an add can never hand out a number that collides with one still in use
+ * (same reasoning as MockDataService's _nextStepId counter).
+ */
+export function nextUniqueId(steps: Array<{ uniqueId?: string }>): string {
+  const max = steps.reduce((acc, s) => {
+    const parsed = parseInt(s.uniqueId || '', 10);
+    return isNaN(parsed) ? acc : Math.max(acc, parsed);
+  }, 0);
+  return String(max + 1).padStart(3, '0');
 }
 
 /**

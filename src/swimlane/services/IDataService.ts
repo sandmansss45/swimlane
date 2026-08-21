@@ -92,4 +92,12 @@ export interface IDataService {
   addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IBulkAddStepsResult>;
   updateProcessStep(step: IProcessStep): Promise<void>;
   deleteProcessStep(id: string): Promise<void>;
+  // TEMPORARY - one-time migration for the ~89 existing Master File rows
+  // that predate the "Unique ID" column (see nextUniqueId in
+  // IProcessStep.ts). Assigns 001, 002... in current chronological row
+  // order to every step, overwriting any existing value. Remove this
+  // method, its UI trigger, and both implementations once it's been run
+  // once against the real data - see the "Backfill Unique IDs" button in
+  // SwimlaneStudio.tsx.
+  backfillUniqueIds(): Promise<number>;
 }

@@ -1,5 +1,5 @@
 ﻿import { IDataService, IBulkAddStepsResult } from './IDataService';
-import { IProcessStep, parseDependsOn } from '../models/IProcessStep';
+import { IProcessStep, parseDependsOn, nextUniqueId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
@@ -73,7 +73,8 @@ function buildMockSteps(): IProcessStep[] {
       ...rest,
       id: `mock-${index + 1}`,
       dependsOn: parseDependsOn(dependsOnRaw),
-      linkedRisks: parseLinkedRisks(linkedRisksRaw)
+      linkedRisks: parseLinkedRisks(linkedRisksRaw),
+      uniqueId: String(index + 1).padStart(3, '0')
     };
   });
 }
@@ -305,6 +306,7 @@ export class MockDataService implements IDataService {
     const created: IProcessStep = {
       ...step,
       id: `mock-${this._nextStepId++}`,
+      uniqueId: nextUniqueId(this._steps),
       createdBy: this._currentUserName, createdAt: now,
       modifiedBy: this._currentUserName, modifiedAt: now
     };
@@ -318,6 +320,7 @@ export class MockDataService implements IDataService {
       const item: IProcessStep = {
         ...step,
         id: `mock-${this._nextStepId++}`,
+        uniqueId: nextUniqueId(this._steps),
         createdBy: this._currentUserName, createdAt: now,
         modifiedBy: this._currentUserName, modifiedAt: now
       };
@@ -336,6 +339,12 @@ export class MockDataService implements IDataService {
       this._steps[index] = step;
     }
     return Promise.resolve();
+  }
+
+  // TEMPORARY - see the interface comment on IDataService.backfillUniqueIds.
+  public backfillUniqueIds(): Promise<number> {
+    this._steps = this._steps.map((s, index) => ({ ...s, uniqueId: String(index + 1).padStart(3, '0') }));
+    return Promise.resolve(this._steps.length);
   }
 
   public deleteProcessStep(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 ﻿import { IPublicClientApplication } from '@azure/msal-browser';
 import { IDataService, IBulkAddStepsResult } from './IDataService';
-import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels } from '../models/IProcessStep';
+import { IProcessStep, parseDependsOn, parseEdgeLabels, serializeEdgeLabels, nextUniqueId } from '../models/IProcessStep';
 import { IEmployee } from '../models/IEmployee';
 import { IRiskStatement, parseLinkedRisks, serializeLinkedRisks } from '../models/IRiskStatement';
 import { IProcessGroupLabel } from '../models/IProcessGroupLabel';
@@ -252,6 +252,10 @@ export class GraphDataService implements IDataService {
       // for what each is for.
       sopLink: get(item, 'SOP Link') || undefined,
       delegationOfAuthorityLink: get(item, 'Delegation of Authority Link') || undefined,
+      // CONFIRMED 2026-08-21 - "Unique ID" column created on the real
+      // Master File list (single line of text) - see the schema comment
+      // on IProcessStep.uniqueId.
+      uniqueId: get(item, 'Unique ID') || undefined,
       // Native SharePoint item metadata, not a custom column - see the
       // GraphItem type comment and IProcessStep.createdBy for why.
       createdBy: GraphDataService._identityName(item.createdBy),
@@ -614,7 +618,11 @@ export class GraphDataService implements IDataService {
     await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${id}/fields`, fields);
   }
 
-  public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
+  // Shared by addProcessStep/addProcessSteps below - `uniqueId` is passed
+  // in rather than computed here so a bulk import can work out its whole
+  // batch's sequence once up front instead of re-fetching every existing
+  // row before every single row it creates.
+  private async _createProcessStep(step: Omit<IProcessStep, 'id'>, uniqueId: string): Promise<IProcessStep> {
     const fieldMap = await this._resolveFieldMap(PROCESS_LIST_TITLE);
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(PROCESS_LIST_TITLE);
@@ -640,14 +648,20 @@ export class GraphDataService implements IDataService {
     set('Edge Labels', serializeEdgeLabels(step.edgeLabels));
     set('SOP Link', step.sopLink || '');
     set('Delegation of Authority Link', step.delegationOfAuthorityLink || '');
+    set('Unique ID', uniqueId);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     const now = new Date().toISOString();
     return {
-      ...step, id: created.id,
+      ...step, id: created.id, uniqueId,
       createdBy: this._currentUserName, createdAt: now,
       modifiedBy: this._currentUserName, modifiedAt: now
     };
+  }
+
+  public async addProcessStep(step: Omit<IProcessStep, 'id'>): Promise<IProcessStep> {
+    const uniqueId = nextUniqueId(await this.getProcessSteps());
+    return this._createProcessStep(step, uniqueId);
   }
 
   public async addProcessSteps(steps: Array<Omit<IProcessStep, 'id'>>): Promise<IBulkAddStepsResult> {
@@ -665,11 +679,16 @@ export class GraphDataService implements IDataService {
     // until a manual reload. Now nothing that succeeds is ever lost, and
     // every failure is reported with why instead of one bad row erasing
     // the whole batch's progress.
+    //
+    // uniqueId is computed once here (not per-row via addProcessStep) so a
+    // large import doesn't re-fetch every existing row before each one it
+    // creates - each new row's number just increments locally from there.
+    let nextId = parseInt(nextUniqueId(await this.getProcessSteps()), 10);
     const created: IProcessStep[] = [];
     const failed: Array<{ index: number; error: string }> = [];
     for (let i = 0; i < steps.length; i++) {
       try {
-        created.push(await this.addProcessStep(steps[i]));
+        created.push(await this._createProcessStep(steps[i], String(nextId++).padStart(3, '0')));
       } catch (err) {
         failed.push({ index: i, error: err instanceof Error ? err.message : String(err) });
       }
@@ -711,5 +730,21 @@ export class GraphDataService implements IDataService {
     const siteId = await this._resolveSiteId();
     const listId = await this._resolveListId(PROCESS_LIST_TITLE);
     await this._graph.delete(`/sites/${siteId}/lists/${listId}/items/${id}`);
+  }
+
+  // TEMPORARY - see the interface comment on IDataService.backfillUniqueIds.
+  public async backfillUniqueIds(): Promise<number> {
+    const fieldMap = await this._resolveFieldMap(PROCESS_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(PROCESS_LIST_TITLE);
+    const items = await this._getItems(PROCESS_LIST_TITLE);
+    const internalName = fieldMap['Unique ID'];
+
+    for (let i = 0; i < items.length; i++) {
+      await this._graph.patch(`/sites/${siteId}/lists/${listId}/items/${items[i].id}/fields`, {
+        [internalName]: String(i + 1).padStart(3, '0')
+      });
+    }
+    return items.length;
   }
 }
