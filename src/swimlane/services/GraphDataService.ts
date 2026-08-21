@@ -327,6 +327,34 @@ export class GraphDataService implements IDataService {
     }));
   }
 
+  // Writes directly into "risk register data" - see the interface comment
+  // on IDataService.addRiskStatement for why that's a deliberate,
+  // explicitly-confirmed choice despite the list otherwise being a
+  // standing enterprise register this app doesn't own. Every column
+  // getRiskStatements reads is set here too, nothing more.
+  public async addRiskStatement(risk: Omit<IRiskStatement, 'id'>): Promise<IRiskStatement> {
+    const fieldMap = await this._resolveFieldMap(RISK_LIST_TITLE);
+    const siteId = await this._resolveSiteId();
+    const listId = await this._resolveListId(RISK_LIST_TITLE);
+
+    const fields: Record<string, string> = {};
+    const set = (displayName: string, value: string | number | undefined): void => {
+      const internalName = fieldMap[displayName];
+      if (internalName && value !== undefined && value !== '') fields[internalName] = String(value);
+    };
+    set('Risk ID', risk.riskId);
+    set('Category', risk.category);
+    set('Risk Statement', risk.riskStatement);
+    set('Root Cause', risk.rootCause);
+    set('Likelihood (P)', risk.likelihood);
+    set('Materiality ($Mn)', risk.materiality);
+    set('Inherent Risk Rating', risk.inherentRiskRating);
+    set('Risk Response', risk.riskResponse);
+
+    const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
+    return { ...risk, id: created.id };
+  }
+
   public async getCategoryLabels(): Promise<ICategoryLabel[]> {
     const fieldMap = await this._resolveFieldMap(CATEGORY_LABELS_LIST_TITLE);
     const items = await this._getItems(CATEGORY_LABELS_LIST_TITLE);

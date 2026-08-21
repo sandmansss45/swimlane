@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { DefaultButton } from '@fluentui/react';
 import { IRiskStatement } from '../models/IRiskStatement';
 import { IProcessStep } from '../models/IProcessStep';
 import styles from './RiskRegisterList.module.scss';
@@ -9,9 +10,10 @@ export interface IRiskRegisterListProps {
   // itself lives on the step (see IProcessStep.linkedRisks), not here, so
   // this table has to look it up rather than just reading a field.
   steps: IProcessStep[];
+  onAddClick: () => void;
 }
 
-const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, steps }) => {
+const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, steps, onAddClick }) => {
   const linkedStepIdsByRisk = React.useMemo(() => {
     const map = new Map<string, string[]>();
     steps.forEach(step => {
@@ -27,7 +29,10 @@ const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, st
   if (riskStatements.length === 0) {
     return (
       <div className={styles.card}>
-        <h3 className={styles.title}>Risk Register</h3>
+        <div className={styles.toolbar}>
+          <h3 className={styles.title}>Risk Register</h3>
+          <DefaultButton text="+ Add risk" iconProps={{ iconName: 'Warning' }} onClick={onAddClick} />
+        </div>
         <p className={styles.muted}>No risks loaded yet.</p>
       </div>
     );
@@ -35,7 +40,10 @@ const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, st
 
   return (
     <div className={styles.card}>
-      <h3 className={styles.title}>Risk Register ({riskStatements.length})</h3>
+      <div className={styles.toolbar}>
+        <h3 className={styles.title}>Risk Register ({riskStatements.length})</h3>
+        <DefaultButton text="+ Add risk" iconProps={{ iconName: 'Warning' }} onClick={onAddClick} />
+      </div>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>

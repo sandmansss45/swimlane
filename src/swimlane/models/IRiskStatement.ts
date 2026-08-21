@@ -4,10 +4,11 @@ export type RiskLevel = 'High' | 'Medium' | 'Low';
  * The real "risk register data" SharePoint list - confirmed columns as of
  * 2026-08-17 from a live screenshot of the list: Risk ID, Category, Risk
  * Statement, Root Cause, Likelihood (P), Materiality ($Mn), Inherent Risk
- * Rating, Risk Response. This is a standing enterprise register, not
- * something this app owns - Risk ID is often blank in practice, so linking
- * (see IRiskLink below) keys off the SharePoint item id instead, never the
- * Risk ID text column.
+ * Rating, Risk Response. This is a standing enterprise register this app
+ * doesn't own, but can add new rows to (see IDataService.addRiskStatement -
+ * same deliberate, explicitly-confirmed exception as addEmployee) - Risk ID
+ * is often blank in practice, so linking (see IRiskLink below) keys off the
+ * SharePoint item id instead, never the Risk ID text column.
  */
 export interface IRiskStatement {
   id: string; // SharePoint list item ID - the stable key used for linking

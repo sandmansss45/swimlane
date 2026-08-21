@@ -28,6 +28,13 @@ export interface IDataService {
   // rows can now originate from this app too.
   addEmployee(jobTitle: string, department: string): Promise<IEmployee>;
   getRiskStatements(): Promise<IRiskStatement[]>;
+  // Writes a real new row into "risk register data" - same kind of
+  // explicit, deliberate exception as addEmployee above: that list is
+  // otherwise a standing enterprise register this app only reads from
+  // (see the schema comment on IRiskStatement), not one it owns.
+  // Whoever owns that list should be aware rows can now originate from
+  // this app too.
+  addRiskStatement(risk: Omit<IRiskStatement, 'id'>): Promise<IRiskStatement>;
   getCategoryLabels(): Promise<ICategoryLabel[]>;
   addCategoryLabel(categoryId: string, name: string): Promise<ICategoryLabel>;
   // Renaming an existing custom label OR one of the 13 real, static APQC

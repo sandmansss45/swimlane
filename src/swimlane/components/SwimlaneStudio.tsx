@@ -28,6 +28,7 @@ import ProcessStepTabs from './ProcessStepTabs';
 import FlowRegionTabs from './FlowRegionTabs';
 import EmployeesList from './EmployeesList';
 import AddEmployeeModal from './AddEmployeeModal';
+import AddRiskModal from './AddRiskModal';
 import RiskRegisterList from './RiskRegisterList';
 import AuditView from './AuditView';
 import ImprovementsView from './ImprovementsView';
@@ -115,6 +116,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const [importOpen, setImportOpen] = React.useState(false);
   const [newProcessOpen, setNewProcessOpen] = React.useState(false);
   const [addEmployeeOpen, setAddEmployeeOpen] = React.useState(false);
+  const [addRiskOpen, setAddRiskOpen] = React.useState(false);
   // The lightweight "just name and reserve an ID" flow (see
   // AddHierarchyShellModal) - separate from newProcessOpen, which is the
   // full "create a complete step" flow. idPrefix is the parent ID plus a
@@ -482,6 +484,11 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   const handleEmployeeCreated = (created: IEmployee): void => {
     setEmployees(prev => [...prev, created]);
     setAddEmployeeOpen(false);
+  };
+
+  const handleRiskCreated = (created: IRiskStatement): void => {
+    setRiskStatements(prev => [...prev, created]);
+    setAddRiskOpen(false);
   };
 
   // Lands the user straight in the empty Category, Process Group, or
@@ -863,6 +870,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onCreated={handleEmployeeCreated}
       />
 
+      <AddRiskModal
+        isOpen={addRiskOpen}
+        dataService={dataService}
+        onDismiss={() => setAddRiskOpen(false)}
+        onCreated={handleRiskCreated}
+      />
+
       <AddStepSectionModal
         isOpen={addSectionOpen}
         idPrefix={selectedProcessId ? `${selectedProcessId}.` : ''}
@@ -1007,7 +1021,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         {activeTab === 'employees' ? (
           <EmployeesList employees={employees} onAddClick={() => setAddEmployeeOpen(true)} />
         ) : activeTab === 'risks' ? (
-          <RiskRegisterList riskStatements={riskStatements} steps={steps} />
+          <RiskRegisterList riskStatements={riskStatements} steps={steps} onAddClick={() => setAddRiskOpen(true)} />
         ) : activeTab === 'audit' ? (
           <AuditView steps={steps} processIdLocks={processIdLocks} />
         ) : activeTab === 'improvements' ? (

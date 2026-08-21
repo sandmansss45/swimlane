@@ -137,6 +137,9 @@ export class MockDataService implements IDataService {
   // Same idea, one level down - names for an empty Process ID shell
   // created via "+ Add new process ID" before it has any real steps.
   private _processIdLabels: IProcessIdLabel[] = [];
+  // Risks added at runtime via "+ Add risk" - kept separate from the
+  // static MOCK_RISKS const, same layering reasoning as _addedEmployees.
+  private _addedRisks: IRiskStatement[] = [];
   // Append-only audit trail - see IProcessIdLock. Starts empty; nothing
   // is locked until someone explicitly locks it.
   private _processIdLocks: IProcessIdLock[] = [];
@@ -178,7 +181,13 @@ export class MockDataService implements IDataService {
   }
 
   public getRiskStatements(): Promise<IRiskStatement[]> {
-    return Promise.resolve(MOCK_RISKS.slice());
+    return Promise.resolve([...MOCK_RISKS, ...this._addedRisks]);
+  }
+
+  public addRiskStatement(risk: Omit<IRiskStatement, 'id'>): Promise<IRiskStatement> {
+    const created: IRiskStatement = { ...risk, id: `mock-risk-${this._addedRisks.length + 1}` };
+    this._addedRisks.push(created);
+    return Promise.resolve(created);
   }
 
   public getCategoryLabels(): Promise<ICategoryLabel[]> {
