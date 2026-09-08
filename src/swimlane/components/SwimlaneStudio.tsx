@@ -380,6 +380,20 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [selectedFlowRegion, stepsInRegion, stepsInProcessId]
   );
 
+  // Whether this Process ID actually uses regions at all - most don't,
+  // and for those "All" is the only view that ever exists, so adding
+  // steps from it is completely normal. Once even one region-tagged step
+  // exists here, though, "All" becomes a genuine aggregate of separate
+  // swimlanes (see FlowRegionTabs) rather than a swimlane of its own -
+  // confirmed at a real user's request that adding directly from "All" in
+  // that case is exactly how steps were silently ending up with no region
+  // tag at all ("created in All by error").
+  const regionsInUseForProcessId = React.useMemo(
+    () => stepsInProcessId.some(s => !!s.region),
+    [stepsInProcessId]
+  );
+  const addBlockedInAllView = !selectedFlowRegion && regionsInUseForProcessId;
+
   // Scoped to the current swimlane (this region's own steps within the
   // Process ID), not the full cross-process-ID dataset - a step
   // realistically only ever depends on something in its own flow, and
@@ -1261,7 +1275,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                     steps={stepsInRegion}
                     selectedStepId={drilledDownStepId}
                     onSelect={setDrilledDownStepId}
-                    onAddNew={activeLock ? undefined : () => setAddSectionOpen(true)}
+                    onAddNew={activeLock || addBlockedInAllView ? undefined : () => setAddSectionOpen(true)}
                   />
                 </div>
 
@@ -1289,18 +1303,28 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                 {!activeLock && (
                 <div className={styles.addStepForm}>
                   <h3 className={styles.cardTitle}>Add a step</h3>
-                  <ProcessStepForm
-                    value={newStepDraft}
-                    onChange={setNewStepDraft}
-                    employees={employees}
-                    dependsOnOptions={addStepDependsOnOptions}
-                    riskStatements={riskStatements}
-                  />
-                  <PrimaryButton
-                    text={saving ? 'Adding...' : 'Add step'}
-                    disabled={saving || !newStepDraft.actionDescription.trim()}
-                    onClick={handleAddStep}
-                  />
+                  {addBlockedInAllView ? (
+                    <p className={styles.mutedNote}>
+                      "All" is a combined view across every region this Process ID has ({Array.from(new Set(
+                        stepsInProcessId.map(s => s.region).filter((r): r is string => !!r)
+                      )).join(', ')}), not its own swimlane - select one of those region tabs above to add a step to it.
+                    </p>
+                  ) : (
+                    <>
+                      <ProcessStepForm
+                        value={newStepDraft}
+                        onChange={setNewStepDraft}
+                        employees={employees}
+                        dependsOnOptions={addStepDependsOnOptions}
+                        riskStatements={riskStatements}
+                      />
+                      <PrimaryButton
+                        text={saving ? 'Adding...' : 'Add step'}
+                        disabled={saving || !newStepDraft.actionDescription.trim()}
+                        onClick={handleAddStep}
+                      />
+                    </>
+                  )}
                 </div>
                 )}
 

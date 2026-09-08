@@ -130,6 +130,12 @@
   color: var(--navy);
 }
 
+.mutedNote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-base);
+}
+
 // Was a single fixed-width (480px) column - on a wide screen that left a
 // large dead gap of empty canvas to its right with nothing in it. Each
 // field (ProcessStepForm renders them as plain siblings, not its own
