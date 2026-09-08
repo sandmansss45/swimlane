@@ -22,6 +22,16 @@
   color: var(--navy);
 }
 
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchBox {
+  width: 240px;
+}
+
 .tableWrap {
   border: 1px solid var(--border);
   border-radius: 10px;
