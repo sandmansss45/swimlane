@@ -27,6 +27,9 @@ export type RiskLevel = 'High' | 'Medium' | 'Low';
  * user's request (columns they use to tie a risk register row back to the
  * APQC hierarchy) - same not-yet-verified status as Risk Owner above, same
  * silent-blank failure mode if the real display names differ.
+ *
+ * TODO-CONFIRM: "Function" added 2026-09-08 at the user's request - same
+ * not-yet-verified status as the other TODO-CONFIRM columns above.
  */
 export interface IRiskStatement {
   id: string; // SharePoint list item ID - the stable key used for linking
@@ -38,6 +41,7 @@ export interface IRiskStatement {
   riskOwner: string; // TODO-CONFIRM - see interface comment above
   apqcProcessArea: string; // TODO-CONFIRM - see interface comment above
   process: string; // TODO-CONFIRM - see interface comment above
+  function: string; // TODO-CONFIRM - see interface comment above
 }
 
 /**

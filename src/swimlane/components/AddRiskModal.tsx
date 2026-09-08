@@ -14,13 +14,17 @@ export interface IAddRiskModalProps {
 // Writes a real row into "risk register data" - CONFIRMED 2026-08-21, an
 // explicit user choice despite that list otherwise being a standing
 // enterprise register this app doesn't own (see the schema comment on
-// IDataService.addRiskStatement). All eight real columns are editable
+// IDataService.addRiskStatement). All nine real columns are editable
 // here, same set getRiskStatements/RiskRegisterList already read.
 const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDismiss, onCreated }) => {
   const [riskId, setRiskId] = React.useState('');
   const [category, setCategory] = React.useState('');
   const [apqcProcessArea, setApqcProcessArea] = React.useState('');
   const [process, setProcess] = React.useState('');
+  // Named riskFunction, not function - "function" is a reserved word and
+  // can't be a local variable/state name, even though it's the real
+  // column's display name (see IRiskStatement.function).
+  const [riskFunction, setRiskFunction] = React.useState('');
   const [riskStatement, setRiskStatement] = React.useState('');
   const [rootCause, setRootCause] = React.useState('');
   const [riskResponse, setRiskResponse] = React.useState('');
@@ -34,6 +38,7 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
       setCategory('');
       setApqcProcessArea('');
       setProcess('');
+      setRiskFunction('');
       setRiskStatement('');
       setRootCause('');
       setRiskResponse('');
@@ -54,6 +59,7 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
       category: category.trim(),
       apqcProcessArea: apqcProcessArea.trim(),
       process: process.trim(),
+      function: riskFunction.trim(),
       riskStatement: trimmedStatement,
       rootCause: rootCause.trim(),
       riskResponse: riskResponse.trim(),
@@ -91,6 +97,12 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
         placeholder="e.g. Process accounts payable (AP)"
         value={process}
         onChange={(_e, v) => setProcess(v || '')}
+      />
+      <TextField
+        label="Function"
+        placeholder="e.g. Finance"
+        value={riskFunction}
+        onChange={(_e, v) => setRiskFunction(v || '')}
       />
       <TextField
         label="Risk statement"

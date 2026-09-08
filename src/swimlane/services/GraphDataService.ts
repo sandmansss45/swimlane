@@ -324,7 +324,8 @@ export class GraphDataService implements IDataService {
       riskResponse: get(item, 'Risk Response'),
       riskOwner: get(item, 'Risk Owner'),
       apqcProcessArea: get(item, 'APQC Process Area'),
-      process: get(item, 'Process')
+      process: get(item, 'Process'),
+      function: get(item, 'Function')
     }));
   }
 
@@ -351,6 +352,7 @@ export class GraphDataService implements IDataService {
     set('Risk Owner', risk.riskOwner);
     set('APQC Process Area', risk.apqcProcessArea);
     set('Process', risk.process);
+    set('Function', risk.function);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     return { ...risk, id: created.id };
