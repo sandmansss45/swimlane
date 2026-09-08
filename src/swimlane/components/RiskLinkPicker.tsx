@@ -114,6 +114,11 @@ const RiskLinkPicker: React.FC<IRiskLinkPickerProps> = ({ riskStatements, value,
             disabled={!riskFunction}
             onChange={(_e, option) => setRiskId(option ? String(option.key) : undefined)}
             className={styles.addField}
+            // Options here are "riskId — full risk statement", often much
+            // longer than the field itself is wide - "auto" sizes the
+            // dropdown menu to its content instead of matching the narrow
+            // field width, so options aren't clipped.
+            dropdownWidth="auto"
           />
           <Dropdown
             placeholder="Severity"
