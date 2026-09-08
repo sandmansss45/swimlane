@@ -642,7 +642,14 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // Never gated by activeLock - see ISwimlaneComment for why leaving a
   // comment is deliberately independent of the lock/edit flow entirely.
   const handleCommentConfirm = (): void => {
-    const text = commentValue.trim();
+    // The "Comment" box is multiline for comfortable typing, but the real
+    // SharePoint column it's stored in is a single line of text field -
+    // Graph rejects a value containing a line break with a generic 400
+    // "Invalid request" (no field-level detail). Collapse line breaks into
+    // spaces so multi-line typing still saves successfully. The 255-char
+    // cap mirrors the TextField's own maxLength - kept here too as a
+    // safety net against that limit changing in only one place.
+    const text = commentValue.trim().replace(/\s*\n+\s*/g, ' ').slice(0, 255);
     if (!selectedProcessId || !text) return;
     const region = selectedFlowRegion || '';
     dataService.addSwimlaneComment(selectedProcessId, region, currentUserName, text)
@@ -983,6 +990,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         )}
         <TextField
           label="Reason (optional)"
+          // Same 255-char single line of text column as "Comment" (see
+          // handleCommentConfirm) - capped here so this field can't hit the
+          // same generic Graph 400 "Invalid request".
+          maxLength={255}
           placeholder={lockDialogMode === 'unlock' ? 'e.g. Reopening to fix an error found in review' : 'e.g. Approved for FY26 audit'}
           value={lockReasonValue}
           onChange={(_e, v) => setLockReasonValue(v || '')}
@@ -1010,6 +1021,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
           label="Comment"
           multiline
           rows={4}
+          // The real SharePoint "Comment" column is a Single line of text
+          // field, capped at 255 characters - Graph rejects anything longer
+          // with a generic, field-agnostic 400 "Invalid request" (no detail
+          // pointing at which field or why). Capping input here means that
+          // failure mode can't happen from this dialog.
+          maxLength={255}
+          description={`${commentValue.length}/255`}
           placeholder="e.g. This step should route to the Regional Finance Manager instead"
           value={commentValue}
           onChange={(_e, v) => setCommentValue(v || '')}
@@ -1057,7 +1075,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         {activeTab === 'employees' ? (
           <EmployeesList employees={employees} onAddClick={() => setAddEmployeeOpen(true)} />
         ) : activeTab === 'risks' ? (
-          <RiskRegisterList riskStatements={riskStatements} steps={steps} onAddClick={() => setAddRiskOpen(true)} />
+          <RiskRegisterList riskStatements={riskStatements} onAddClick={() => setAddRiskOpen(true)} />
         ) : activeTab === 'audit' ? (
           <>
             {/* TEMPORARY - see the interface comment on IDataService.backfillUniqueIds. */}

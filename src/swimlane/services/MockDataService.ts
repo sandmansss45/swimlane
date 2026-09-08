@@ -104,19 +104,19 @@ const MOCK_RISKS: IRiskStatement[] = [
     id: 'r1', riskId: 'OP-014', category: 'Operational / Financial Controls',
     riskStatement: 'Same person creates and approves a purchase order.',
     rootCause: "NetSuite's approval workflow doesn't enforce maker-checker separation for this role.",
-    likelihood: 0.4, materiality: 25, inherentRiskRating: 10, riskResponse: 'Mitigate'
+    riskResponse: 'Mitigate', riskOwner: 'Finance Manager'
   },
   {
     id: 'r2', riskId: 'OP-021', category: 'Operational / Financial Controls',
     riskStatement: 'Payment released without required approval threshold met.',
     rootCause: 'Manual override of banking system approval limits.',
-    likelihood: 0.2, materiality: 50, inherentRiskRating: 10, riskResponse: 'Mitigate'
+    riskResponse: 'Mitigate', riskOwner: 'Finance Manager'
   },
   {
     id: 'r3', riskId: 'OP-033', category: 'Operational / Financial Controls',
     riskStatement: 'Invoice approved without a matching Purchase Order on file.',
     rootCause: '3-way match exception queue not reviewed consistently.',
-    likelihood: 0.5, materiality: 10, inherentRiskRating: 5, riskResponse: 'Accept'
+    riskResponse: 'Accept', riskOwner: 'Chief Financial Officer'
   }
 ];
 

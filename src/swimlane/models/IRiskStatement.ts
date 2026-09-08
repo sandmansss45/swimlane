@@ -3,12 +3,25 @@ export type RiskLevel = 'High' | 'Medium' | 'Low';
 /**
  * The real "risk register data" SharePoint list - confirmed columns as of
  * 2026-08-17 from a live screenshot of the list: Risk ID, Category, Risk
- * Statement, Root Cause, Likelihood (P), Materiality ($Mn), Inherent Risk
- * Rating, Risk Response. This is a standing enterprise register this app
- * doesn't own, but can add new rows to (see IDataService.addRiskStatement -
- * same deliberate, explicitly-confirmed exception as addEmployee) - Risk ID
- * is often blank in practice, so linking (see IRiskLink below) keys off the
- * SharePoint item id instead, never the Risk ID text column.
+ * Statement, Root Cause, Risk Response. This is a standing enterprise
+ * register this app doesn't own, but can add new rows to (see
+ * IDataService.addRiskStatement - same deliberate, explicitly-confirmed
+ * exception as addEmployee) - Risk ID is often blank in practice, so
+ * linking (see IRiskLink below) keys off the SharePoint item id instead,
+ * never the Risk ID text column.
+ *
+ * Likelihood (P), Materiality ($Mn), and Inherent Risk Rating were removed
+ * 2026-09-08 - confirmed (live, on the real site) that these columns no
+ * longer exist on the real list, so the app no longer reads, writes, or
+ * displays them anywhere.
+ *
+ * TODO-CONFIRM: "Risk Owner" added 2026-09-08 at the user's request - not
+ * yet verified against a live screenshot of the real list like the columns
+ * above. If the real column has a different display name, get(item, 'Risk
+ * Owner') in GraphDataService.getRiskStatements will silently come back
+ * blank (console warning: "No field found for display name 'Risk Owner'")
+ * rather than throwing - check the real list and update the display name
+ * used there (and in addRiskStatement) once confirmed.
  */
 export interface IRiskStatement {
   id: string; // SharePoint list item ID - the stable key used for linking
@@ -16,10 +29,8 @@ export interface IRiskStatement {
   category: string; // e.g. "External / Market / Reputational" - the grouping the risk-linking picker drills through
   riskStatement: string;
   rootCause: string;
-  likelihood?: number; // "Likelihood (P)", e.g. 0.3
-  materiality?: number; // "Materiality ($Mn)", e.g. 150
-  inherentRiskRating?: number; // "Inherent Risk Rating" (Likelihood x Materiality) - informational only, does NOT drive severity/color, see IRiskLink
   riskResponse: string; // e.g. "Mitigate", "Transfer"
+  riskOwner: string; // TODO-CONFIRM - see interface comment above
 }
 
 /**

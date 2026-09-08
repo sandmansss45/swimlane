@@ -27,10 +27,13 @@ const PROCESS_LIST_TITLE = 'Master File';
 // why Display name isn't mapped at all.
 const EMPLOYEES_LIST_TITLE = 'QLE Existing Organisation';
 // CONFIRMED 2026-08-17 against a live screenshot of the real list -
-// columns Risk ID, Category, Risk Statement, Root Cause, Likelihood (P),
-// Materiality ($Mn), Inherent Risk Rating, Risk Response. This is a
-// standing enterprise register the app reads from, not one it owns - see
-// the schema comment in models/IRiskStatement.ts.
+// columns Risk ID, Category, Risk Statement, Root Cause, Risk Response
+// (Likelihood (P), Materiality ($Mn), and Inherent Risk Rating removed
+// 2026-09-08 - confirmed no longer present on the real list). "Risk Owner"
+// added 2026-09-08 - NOT YET CONFIRMED against a live screenshot, see
+// TODO-CONFIRM in models/IRiskStatement.ts. This is a standing enterprise
+// register the app reads from, not one it owns - see the schema comment in
+// models/IRiskStatement.ts.
 const RISK_LIST_TITLE = 'risk register data';
 // CONFIRMED 2026-08-17 - created on the real "Swimlane Studio" site with
 // the built-in Title column (group name) plus a single line of text
@@ -311,12 +314,6 @@ export class GraphDataService implements IDataService {
     console.log(`[SwimlaneStudio] "${RISK_LIST_TITLE}" live row count: ${items.length} - confirm this matches the list in SharePoint.`);
 
     const get = (item: GraphItem, displayName: string): string => GraphDataService._get(item, fieldMap, displayName);
-    const getNumber = (item: GraphItem, displayName: string): number | undefined => {
-      const raw = get(item, displayName);
-      if (!raw) return undefined;
-      const parsed = parseFloat(raw);
-      return isNaN(parsed) ? undefined : parsed;
-    };
 
     return items.map((item): IRiskStatement => ({
       id: item.id,
@@ -324,10 +321,8 @@ export class GraphDataService implements IDataService {
       category: get(item, 'Category'),
       riskStatement: get(item, 'Risk Statement'),
       rootCause: get(item, 'Root Cause'),
-      likelihood: getNumber(item, 'Likelihood (P)'),
-      materiality: getNumber(item, 'Materiality ($Mn)'),
-      inherentRiskRating: getNumber(item, 'Inherent Risk Rating'),
-      riskResponse: get(item, 'Risk Response')
+      riskResponse: get(item, 'Risk Response'),
+      riskOwner: get(item, 'Risk Owner')
     }));
   }
 
@@ -342,18 +337,16 @@ export class GraphDataService implements IDataService {
     const listId = await this._resolveListId(RISK_LIST_TITLE);
 
     const fields: Record<string, string> = {};
-    const set = (displayName: string, value: string | number | undefined): void => {
+    const set = (displayName: string, value: string | undefined): void => {
       const internalName = fieldMap[displayName];
-      if (internalName && value !== undefined && value !== '') fields[internalName] = String(value);
+      if (internalName && value !== undefined && value !== '') fields[internalName] = value;
     };
     set('Risk ID', risk.riskId);
     set('Category', risk.category);
     set('Risk Statement', risk.riskStatement);
     set('Root Cause', risk.rootCause);
-    set('Likelihood (P)', risk.likelihood);
-    set('Materiality ($Mn)', risk.materiality);
-    set('Inherent Risk Rating', risk.inherentRiskRating);
     set('Risk Response', risk.riskResponse);
+    set('Risk Owner', risk.riskOwner);
 
     const created = await this._graph.post<GraphItem>(`/sites/${siteId}/lists/${listId}/items`, { fields });
     return { ...risk, id: created.id };

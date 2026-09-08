@@ -1,31 +1,14 @@
 import * as React from 'react';
 import { DefaultButton } from '@fluentui/react';
 import { IRiskStatement } from '../models/IRiskStatement';
-import { IProcessStep } from '../models/IProcessStep';
 import styles from './RiskRegisterList.module.scss';
 
 export interface IRiskRegisterListProps {
   riskStatements: IRiskStatement[];
-  // Used to work out which steps currently link each risk - the link
-  // itself lives on the step (see IProcessStep.linkedRisks), not here, so
-  // this table has to look it up rather than just reading a field.
-  steps: IProcessStep[];
   onAddClick: () => void;
 }
 
-const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, steps, onAddClick }) => {
-  const linkedStepIdsByRisk = React.useMemo(() => {
-    const map = new Map<string, string[]>();
-    steps.forEach(step => {
-      (step.linkedRisks || []).forEach(link => {
-        const list = map.get(link.riskId) || [];
-        list.push(step.processStepId);
-        map.set(link.riskId, list);
-      });
-    });
-    return map;
-  }, [steps]);
-
+const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, onAddClick }) => {
   if (riskStatements.length === 0) {
     return (
       <div className={styles.card}>
@@ -52,30 +35,21 @@ const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, st
               <th>Category</th>
               <th>Risk Statement</th>
               <th>Root Cause</th>
-              <th>Likelihood</th>
-              <th>Materiality ($Mn)</th>
-              <th>Inherent Risk Rating</th>
               <th>Risk Response</th>
-              <th>Linked steps</th>
+              <th>Risk Owner</th>
             </tr>
           </thead>
           <tbody>
-            {riskStatements.map(r => {
-              const linkedStepIds = linkedStepIdsByRisk.get(r.id) || [];
-              return (
-                <tr key={r.id}>
-                  <td>{r.riskId || <span className={styles.muted}>—</span>}</td>
-                  <td>{r.category || <span className={styles.muted}>—</span>}</td>
-                  <td>{r.riskStatement}</td>
-                  <td className={styles.muted}>{r.rootCause || '—'}</td>
-                  <td>{r.likelihood !== undefined ? r.likelihood : <span className={styles.muted}>—</span>}</td>
-                  <td>{r.materiality !== undefined ? r.materiality : <span className={styles.muted}>—</span>}</td>
-                  <td>{r.inherentRiskRating !== undefined ? r.inherentRiskRating : <span className={styles.muted}>—</span>}</td>
-                  <td>{r.riskResponse || <span className={styles.muted}>—</span>}</td>
-                  <td>{linkedStepIds.length > 0 ? linkedStepIds.join(', ') : <span className={styles.muted}>—</span>}</td>
-                </tr>
-              );
-            })}
+            {riskStatements.map(r => (
+              <tr key={r.id}>
+                <td>{r.riskId || <span className={styles.muted}>—</span>}</td>
+                <td>{r.category || <span className={styles.muted}>—</span>}</td>
+                <td>{r.riskStatement}</td>
+                <td className={styles.muted}>{r.rootCause || '—'}</td>
+                <td>{r.riskResponse || <span className={styles.muted}>—</span>}</td>
+                <td>{r.riskOwner || <span className={styles.muted}>—</span>}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
