@@ -286,7 +286,10 @@
 // content scroll instead of the whole page when a step has many fields
 // or many outgoing connections.
 .editModal {
-  max-width: 480px;
+  // Widened 2026-09-08 (was 480px) - too narrow to show more than the Risk
+  // ID once linked risks display Function/Category alongside the risk
+  // statement text, everything past the ID was getting clipped.
+  max-width: 720px;
   width: 90vw;
 }
 
