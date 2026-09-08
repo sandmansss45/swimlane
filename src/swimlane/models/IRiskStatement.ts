@@ -15,21 +15,9 @@ export type RiskLevel = 'High' | 'Medium' | 'Low';
  * longer exist on the real list, so the app no longer reads, writes, or
  * displays them anywhere.
  *
- * TODO-CONFIRM: "Risk Owner" added 2026-09-08 at the user's request - not
- * yet verified against a live screenshot of the real list like the columns
- * above. If the real column has a different display name, get(item, 'Risk
- * Owner') in GraphDataService.getRiskStatements will silently come back
- * blank (console warning: "No field found for display name 'Risk Owner'")
- * rather than throwing - check the real list and update the display name
- * used there (and in addRiskStatement) once confirmed.
- *
- * TODO-CONFIRM: "APQC Process Area" and "Process" added 2026-09-08 at the
- * user's request (columns they use to tie a risk register row back to the
- * APQC hierarchy) - same not-yet-verified status as Risk Owner above, same
- * silent-blank failure mode if the real display names differ.
- *
- * TODO-CONFIRM: "Function" added 2026-09-08 at the user's request - same
- * not-yet-verified status as the other TODO-CONFIRM columns above.
+ * "Risk Owner", "APQC Process Area", "Process", and "Function" added
+ * 2026-09-08 at the user's request - CONFIRMED 2026-09-08 against the live
+ * site, exact display names as used below.
  */
 export interface IRiskStatement {
   id: string; // SharePoint list item ID - the stable key used for linking
@@ -38,10 +26,10 @@ export interface IRiskStatement {
   riskStatement: string;
   rootCause: string;
   riskResponse: string; // e.g. "Mitigate", "Transfer"
-  riskOwner: string; // TODO-CONFIRM - see interface comment above
-  apqcProcessArea: string; // TODO-CONFIRM - see interface comment above
-  process: string; // TODO-CONFIRM - see interface comment above
-  function: string; // TODO-CONFIRM - see interface comment above
+  riskOwner: string;
+  apqcProcessArea: string; // "APQC Process Area" column
+  process: string; // "Process" column
+  function: string; // "Function" column
 }
 
 /**
