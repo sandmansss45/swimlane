@@ -33,6 +33,8 @@ const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, on
             <tr>
               <th>Risk ID</th>
               <th>Category</th>
+              <th>APQC Process Area</th>
+              <th>Process</th>
               <th>Risk Statement</th>
               <th>Root Cause</th>
               <th>Risk Response</th>
@@ -44,6 +46,8 @@ const RiskRegisterList: React.FC<IRiskRegisterListProps> = ({ riskStatements, on
               <tr key={r.id}>
                 <td>{r.riskId || <span className={styles.muted}>—</span>}</td>
                 <td>{r.category || <span className={styles.muted}>—</span>}</td>
+                <td>{r.apqcProcessArea || <span className={styles.muted}>—</span>}</td>
+                <td>{r.process || <span className={styles.muted}>—</span>}</td>
                 <td>{r.riskStatement}</td>
                 <td className={styles.muted}>{r.rootCause || '—'}</td>
                 <td>{r.riskResponse || <span className={styles.muted}>—</span>}</td>

@@ -14,11 +14,13 @@ export interface IAddRiskModalProps {
 // Writes a real row into "risk register data" - CONFIRMED 2026-08-21, an
 // explicit user choice despite that list otherwise being a standing
 // enterprise register this app doesn't own (see the schema comment on
-// IDataService.addRiskStatement). All six real columns are editable
+// IDataService.addRiskStatement). All eight real columns are editable
 // here, same set getRiskStatements/RiskRegisterList already read.
 const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDismiss, onCreated }) => {
   const [riskId, setRiskId] = React.useState('');
   const [category, setCategory] = React.useState('');
+  const [apqcProcessArea, setApqcProcessArea] = React.useState('');
+  const [process, setProcess] = React.useState('');
   const [riskStatement, setRiskStatement] = React.useState('');
   const [rootCause, setRootCause] = React.useState('');
   const [riskResponse, setRiskResponse] = React.useState('');
@@ -30,6 +32,8 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
     if (isOpen) {
       setRiskId('');
       setCategory('');
+      setApqcProcessArea('');
+      setProcess('');
       setRiskStatement('');
       setRootCause('');
       setRiskResponse('');
@@ -48,6 +52,8 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
     dataService.addRiskStatement({
       riskId: riskId.trim(),
       category: category.trim(),
+      apqcProcessArea: apqcProcessArea.trim(),
+      process: process.trim(),
       riskStatement: trimmedStatement,
       rootCause: rootCause.trim(),
       riskResponse: riskResponse.trim(),
@@ -74,6 +80,18 @@ const AddRiskModal: React.FC<IAddRiskModalProps> = ({ isOpen, dataService, onDis
 
       <TextField label="Risk ID" placeholder="e.g. OP-042" value={riskId} onChange={(_e, v) => setRiskId(v || '')} />
       <TextField label="Category" placeholder="e.g. Operational / Financial Controls" value={category} onChange={(_e, v) => setCategory(v || '')} />
+      <TextField
+        label="APQC process area"
+        placeholder="e.g. Manage Financial Resources"
+        value={apqcProcessArea}
+        onChange={(_e, v) => setApqcProcessArea(v || '')}
+      />
+      <TextField
+        label="Process"
+        placeholder="e.g. Process accounts payable (AP)"
+        value={process}
+        onChange={(_e, v) => setProcess(v || '')}
+      />
       <TextField
         label="Risk statement"
         placeholder="Describe the risk"
