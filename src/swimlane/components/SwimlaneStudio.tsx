@@ -38,6 +38,7 @@ import ImportCsvModal from './ImportCsvModal';
 import NewProcessModal from './NewProcessModal';
 import AddHierarchyShellModal, { HierarchyShellLevel } from './AddHierarchyShellModal';
 import AddStepSectionModal from './AddStepSectionModal';
+import DuplicateRegionModal from './DuplicateRegionModal';
 import ProcessStepForm, { IProcessStepFormValue } from './ProcessStepForm';
 import qleLogo from '../../assets/qle-logo.svg';
 
@@ -130,6 +131,7 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   // real step rows. true only once a Process ID is actually selected
   // (there's nowhere to add a section before that).
   const [addSectionOpen, setAddSectionOpen] = React.useState(false);
+  const [duplicateRegionOpen, setDuplicateRegionOpen] = React.useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   // TEMPORARY - see the interface comment on IDataService.backfillUniqueIds.
   const [backfillDialogOpen, setBackfillDialogOpen] = React.useState(false);
@@ -365,6 +367,19 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
     [stepsInProcessId, selectedFlowRegion]
   );
 
+  // What "Duplicate to another region" duplicates FROM. A specific region
+  // tab duplicates just that region's steps (stepsInRegion above already
+  // narrows to that). "All" is different: stepsInRegion there is EVERY
+  // step regardless of tag, which would merge already-distinct regions
+  // together if duplicated as-is - not useful. What people actually want
+  // from "All" (confirmed at a real user's request) is to duplicate the
+  // steps that never got a region tag at all (created there by mistake,
+  // sitting under "All" with nowhere else to be) into a real one.
+  const duplicateSourceSteps = React.useMemo(
+    () => selectedFlowRegion ? stepsInRegion : stepsInProcessId.filter(s => !s.region),
+    [selectedFlowRegion, stepsInRegion, stepsInProcessId]
+  );
+
   // Scoped to the current swimlane (this region's own steps within the
   // Process ID), not the full cross-process-ID dataset - a step
   // realistically only ever depends on something in its own flow, and
@@ -468,6 +483,10 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
   };
 
   const handleImported = (created: IProcessStep[]): void => {
+    setSteps(prev => [...prev, ...created]);
+  };
+
+  const handleDuplicated = (created: IProcessStep[]): void => {
     setSteps(prev => [...prev, ...created]);
   };
 
@@ -914,6 +933,17 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
         onCreated={handleSectionCreated}
       />
 
+      <DuplicateRegionModal
+        isOpen={duplicateRegionOpen}
+        dataService={dataService}
+        processId={selectedProcessId || ''}
+        sourceRegion={selectedFlowRegion || ''}
+        sourceSteps={duplicateSourceSteps}
+        allSteps={steps}
+        onDismiss={() => setDuplicateRegionOpen(false)}
+        onDuplicated={handleDuplicated}
+      />
+
       <Dialog
         hidden={!bulkDeleteOpen}
         onDismiss={() => setBulkDeleteOpen(false)}
@@ -1194,6 +1224,13 @@ const SwimlaneStudio: React.FC<ISwimlaneStudioProps> = (props) => {
                       menuProps={{
                         items: [
                           { key: 'addNew', text: '+ Add new process', iconProps: { iconName: 'Add' }, onClick: () => { setNewProcessOpen(true); }, disabled: !!activeLock },
+                          {
+                            key: 'duplicateRegion',
+                            text: 'Duplicate to another region',
+                            iconProps: { iconName: 'Copy' },
+                            disabled: duplicateSourceSteps.length === 0 || !!activeLock,
+                            onClick: () => { setDuplicateRegionOpen(true); }
+                          },
                           { key: 'importCsv', text: 'Import CSV', iconProps: { iconName: 'Upload' }, onClick: () => { setImportOpen(true); }, disabled: !!activeLock },
                           // Not gated by activeLock - exporting is read-only, same reasoning as "Leave a comment".
                           { key: 'exportCsv', text: 'Export CSV', iconProps: { iconName: 'Download' }, disabled: steps.length === 0, onClick: handleExportCsv },
